@@ -11,6 +11,12 @@ import pygame
 import itertools
 import random
 
+colors = [
+    (255, 0, 0),
+    (0, 255, 0),
+    (0, 0, 255),
+]
+
 N_AGENTS = 15
 RADIUS = 8.
 MAX_SPEED = 4
@@ -27,7 +33,7 @@ def init_agents():
     i = 0
     while(i <= N_AGENTS):
         theta = 2 * pi * i / N_AGENTS
-        x = RADIUS * array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
+        x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
         vel = normalized(-x) * MAX_SPEED
         pos = (random.uniform(-20, 20), random.uniform(-20, 20))
         new_agent = Agent(pos, (0., 0.), 1., MAX_SPEED, vel)
@@ -38,25 +44,24 @@ def init_agents():
 
 
 class Drone2DEnv(gym.Env):
-    
-    metadata = {
-        'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second' : 10
-    }
      
     def __init__(self):
         self.dt = 1/20
         self.agents = init_agents()
         self.action_space = None
         self.observation_space = None
-        self.viewer = None
+        
+        self.dim = (640, 480)
+        pygame.init()
+        self.screen = pygame.display.set_mode(self.dim)
+        self.clock = pygame.time.Clock()
         
     
     def step(self):
         new_vels = [None] * len(self.agents)
         for i, agent in enumerate(self.agents):
             candidates = self.agents[:i] + self.agents[i + 1:]
-            new_vels[i], _ = orca(agent, candidates, 1, self.dt)
+            new_vels[i], _ = orca(agent, candidates, 3, self.dt)
 
         for i, agent in enumerate(self.agents):
             agent.velocity = new_vels[i]
@@ -78,20 +83,25 @@ class Drone2DEnv(gym.Env):
         
     def render(self, mode='human'):
         
-        if self.viewer is None:
-            self.viewer = rendering.Viewer(600, 400)
-            self.pedtrans = []
-            circle = []
-            for i, agent in enumerate(self.agents):
-                circle.append(rendering.make_circle(8))
-                self.pedtrans.append(rendering.Transform())
-                circle[i].add_attr(self.pedtrans[i])
-                self.viewer.add_geom(circle[i])
-        for i, agent in enumerate(self.agents):
-            self.pedtrans[i].set_translation(agent.position[0] * 6 + 300, 
-                                             agent.position[1] * 6 + 200)
+        origin = array(self.dim) / 2  # Screen position of origin.
+        scale = 6  # Drawing scale.
+        self.screen.fill(pygame.Color(0, 0, 0))
         
-        return self.viewer.render(return_rgb_array=mode == 'rgb_array')
+        def draw_agent(agent, color):
+            pygame.draw.circle(self.screen, color, rint(agent.position * scale + origin).astype(int), int(round(agent.radius * scale)), 0)
+        
+        def draw_velocity(a, color):
+            pygame.draw.line(self.screen, color, rint(a.position * scale + origin).astype(int), rint((a.position + a.velocity) * scale + origin).astype(int), 1)
+        
+        for agent, color in zip(self.agents, itertools.cycle(colors)):
+            draw_agent(agent, pygame.Color(0, 255, 255))
+
+            print(norm(agent.velocity))
+            
+            draw_velocity(agent, pygame.Color(0, int(255 * norm(agent.velocity) / 10), 0))
+        
+        pygame.display.update()
+        self.clock.tick(60)
     
 if __name__ == '__main__':
     t = Drone2DEnv()

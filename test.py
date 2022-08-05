@@ -49,7 +49,7 @@ def init_agents():
     i = 0
     while(i <= N_AGENTS):
         theta = 2 * pi * i / N_AGENTS
-        x = RADIUS * array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
+        x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
         vel = normalized(-x) * MAX_SPEED
         pos = (random.uniform(-20, 20), random.uniform(-20, 20))
         new_agent = Agent(pos, (0., 0.), 1., MAX_SPEED, vel)
