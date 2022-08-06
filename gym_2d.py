@@ -1,7 +1,7 @@
 from __future__ import division
 import math
 from pyorca import Agent, orca, normalized
-from numpy import angle, array, rint, linspace, pi, cos, sin
+from numpy import array, rint, pi, cos, sin
 from numpy.linalg import norm
 from time import sleep
 import gym
@@ -82,8 +82,6 @@ class Drone2DEnv(gym.Env):
                 agent.seen = True
             else:
                 agent.seen = False
-        
-        self.drone.yaw += 2
         reward = 10
         
         done = False
@@ -97,6 +95,15 @@ class Drone2DEnv(gym.Env):
     def render(self, mode='human'):
         scale = 1  # Drawing scale.
         self.screen.fill(pygame.Color(0, 0, 0))
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            self.drone.yaw += 2
+        if keys[pygame.K_RIGHT]:
+            self.drone.yaw -= 2
+        if keys[pygame.K_UP]:
+            self.drone.x += 5*cos(math.radians(self.drone.yaw))
+            self.drone.y -= 5*sin(math.radians(self.drone.yaw))
+        pygame.event.pump() # process event queue
         
         def draw_agent(agent, color):
             pygame.draw.circle(self.screen, color, rint(agent.position * scale).astype(int), int(round(agent.radius * scale)), 0)
