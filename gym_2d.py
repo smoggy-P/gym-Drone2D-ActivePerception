@@ -1,24 +1,16 @@
 from __future__ import division
-import enum
 import math
-from sqlalchemy import false, true
-from pyorca import Agent, get_avoidance_velocity, orca, normalized, perp
+from pyorca import Agent, orca, normalized
 from numpy import angle, array, rint, linspace, pi, cos, sin
 from numpy.linalg import norm
-from gym.envs.classic_control import rendering
 from time import sleep
 import gym
 import pygame
-import itertools
 import random
+import numpy as np
 
-colors = [
-    (255, 0, 0),
-    (0, 255, 0),
-    (0, 0, 255),
-]
 
-N_AGENTS = 10
+N_AGENTS = 15
 RADIUS = 8.
 MAX_SPEED = 24
 
@@ -36,7 +28,7 @@ def init_agents():
         theta = 2 * pi * i / N_AGENTS
         x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
         vel = normalized(-x) * MAX_SPEED
-        pos = (random.uniform(-120, 120), random.uniform(-120, 120))
+        pos = (random.uniform(200, 440), random.uniform(120, 360))
         new_agent = Agent(pos, (0., 0.), 6., MAX_SPEED, vel)
         if check_collision(agents, new_agent):
             agents.append(new_agent)
@@ -64,7 +56,7 @@ class Drone2DEnv(gym.Env):
         pygame.init()
         self.screen = pygame.display.set_mode(self.dim)
         self.clock = pygame.time.Clock()
-        self.drone = Drone2D(320, 240, 0)
+        self.drone = Drone2D(320, 240, 15)
         
     
     def step(self):
@@ -76,12 +68,22 @@ class Drone2DEnv(gym.Env):
         for i, agent in enumerate(self.agents):
             agent.velocity = new_vels[i]
             agent.position += agent.velocity * self.dt
-            real_pos = agent.position + (300,200)
-            if real_pos[0] < 0 or real_pos[0] > 600:
+            
+            # Turn around if out of boundary
+            if agent.position[0] < 0 or agent.position[0] > 640:
                 agent.velocity[0] = -agent.velocity[0]
-            if real_pos[1] < 0 or real_pos[1] > 400:
+            if agent.position[1] < 0 or agent.position[1] > 480:
                 agent.velocity[1] = -agent.velocity[1]
+                
+            # Check if the pedestrian is seen
+            vec_yaw = np.array([cos(math.radians(self.drone.yaw)), -sin(math.radians(self.drone.yaw))])
+            vec_agent = np.array([agent.position[0] - self.drone.x, agent.position[1] - self.drone.y])
+            if norm(agent.position - (self.drone.x, self.drone.y)) <= self.drone.yaw_depth and math.acos(vec_yaw.dot(vec_agent)/norm(vec_agent)) <= math.radians(self.drone.yaw_range / 2):
+                agent.seen = True
+            else:
+                agent.seen = False
         
+        self.drone.yaw += 2
         reward = 10
         
         done = False
@@ -93,16 +95,14 @@ class Drone2DEnv(gym.Env):
         return self.state
         
     def render(self, mode='human'):
-        
-        origin = array(self.dim) / 2  # Screen position of origin.
         scale = 1  # Drawing scale.
         self.screen.fill(pygame.Color(0, 0, 0))
         
         def draw_agent(agent, color):
-            pygame.draw.circle(self.screen, color, rint(agent.position * scale + origin).astype(int), int(round(agent.radius * scale)), 0)
+            pygame.draw.circle(self.screen, color, rint(agent.position * scale).astype(int), int(round(agent.radius * scale)), 0)
         
         def draw_velocity(a, color):
-            pygame.draw.line(self.screen, color, rint(a.position * scale + origin).astype(int), rint((a.position + a.velocity) * scale + origin).astype(int), 1)
+            pygame.draw.line(self.screen, color, rint(a.position * scale).astype(int), rint((a.position + a.velocity) * scale).astype(int), 1)
         
         def draw_drone(drone):
             pygame.draw.arc(self.screen, 
@@ -120,9 +120,11 @@ class Drone2DEnv(gym.Env):
             pygame.draw.line(self.screen, (255,255,255), (self.drone.x, self.drone.y), (self.drone.x + self.drone.yaw_depth * cos(angle2), self.drone.y - self.drone.yaw_depth * sin(angle2)), 2)
             
         
-        for agent, color in zip(self.agents, itertools.cycle(colors)):
-            draw_agent(agent, pygame.Color(0, 255, 255))
-            
+        for agent in self.agents:
+            if agent.seen:
+                draw_agent(agent, pygame.Color(0, 255, 255))
+            else:
+                draw_agent(agent, pygame.Color(255, 0, 0))
             draw_velocity(agent, pygame.Color(0, 255, 0))
         
         draw_drone(self.drone)
