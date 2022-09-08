@@ -10,7 +10,7 @@ import numpy as np
 from RVO import RVO_update, reach, compute_V_des, reach, Agent
 
 
-N_AGENTS = 8
+N_AGENTS = 5
 RADIUS = 8.
 MAX_SPEED = 30
 
@@ -51,7 +51,7 @@ class Drone2DEnv(gym.Env):
         ws_model = dict()
         #circular obstacles, format [x,y,rad]
         # no obstacles
-        ws_model['circular_obstacles'] = []
+        ws_model['circular_obstacles'] = [[10*i, 240, 40] for i in range(10)] + [[400, i*10, 40] for i in range(10)]
         # with obstacles
         # ws_model['circular_obstacles'] = [[-0.3, 2.5, 0.3], [1.5, 2.5, 0.3], [3.3, 2.5, 0.3], [5.1, 2.5, 0.3]]
         #rectangular boundary, format [x,y,width/2,heigth/2]
@@ -69,7 +69,7 @@ class Drone2DEnv(gym.Env):
         pygame.init()
         self.screen = pygame.display.set_mode(self.dim)
         self.clock = pygame.time.Clock()
-        self.drone = Drone2D(320, 240, 15)
+        self.drone = Drone2D(320, 0, 270)
         
     
     def step(self):
@@ -107,7 +107,6 @@ class Drone2DEnv(gym.Env):
         return self.state
         
     def render(self, mode='human'):
-        scale = 1  # Drawing scale.
         self.screen.fill(pygame.Color(0, 0, 0))
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]:
@@ -119,11 +118,15 @@ class Drone2DEnv(gym.Env):
             self.drone.y -= 5*sin(math.radians(self.drone.yaw))
         pygame.event.pump() # process event queue
         
+        def draw_static_obstacle(ws_model, color):
+            for obs in ws_model['circular_obstacles']:
+                pygame.draw.circle(self.screen, color, center=[obs[0], obs[1]], radius=obs[2])
+        
         def draw_agent(agent, color):
-            pygame.draw.circle(self.screen, color, rint(agent.position * scale).astype(int), int(round(agent.radius * scale)), 0)
+            pygame.draw.circle(self.screen, color, rint(agent.position).astype(int), int(round(agent.radius)), 0)
         
         def draw_velocity(a, color):
-            pygame.draw.line(self.screen, color, rint(a.position * scale).astype(int), rint((a.position + a.velocity) * scale).astype(int), 1)
+            pygame.draw.line(self.screen, color, rint(a.position).astype(int), rint((a.position + a.velocity)).astype(int), 1)
         
         def draw_drone(drone):
             pygame.draw.arc(self.screen, 
@@ -147,7 +150,7 @@ class Drone2DEnv(gym.Env):
             else:
                 draw_agent(agent, pygame.Color(255, 0, 0))
             draw_velocity(agent, pygame.Color(0, 255, 0))
-        
+        draw_static_obstacle(self.ws_model, (200, 200, 200))
         draw_drone(self.drone)
         pygame.display.update()
         self.clock.tick(60)
