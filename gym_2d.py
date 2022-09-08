@@ -1,6 +1,5 @@
 from __future__ import division
 import math
-from pyorca import Agent, orca, normalized
 from numpy import array, rint, pi, cos, sin
 from numpy.linalg import norm
 from time import sleep
@@ -8,11 +7,12 @@ import gym
 import pygame
 import random
 import numpy as np
+from RVO import RVO_update, reach, compute_V_des, reach, Agent
 
 
-N_AGENTS = 15
+N_AGENTS = 8
 RADIUS = 8.
-MAX_SPEED = 24
+MAX_SPEED = 30
 
 def check_collision(agents, agent):
     for agent_ in agents:
@@ -27,7 +27,7 @@ def init_agents():
     while(i <= N_AGENTS):
         theta = 2 * pi * i / N_AGENTS
         x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
-        vel = normalized(-x) * MAX_SPEED
+        vel = -x * MAX_SPEED
         pos = (random.uniform(200, 440), random.uniform(120, 360))
         new_agent = Agent(pos, (0., 0.), 6., MAX_SPEED, vel)
         if check_collision(agents, new_agent):
@@ -46,6 +46,19 @@ class Drone2D():
 class Drone2DEnv(gym.Env):
      
     def __init__(self):
+        
+        #define workspace model
+        ws_model = dict()
+        #circular obstacles, format [x,y,rad]
+        # no obstacles
+        ws_model['circular_obstacles'] = []
+        # with obstacles
+        # ws_model['circular_obstacles'] = [[-0.3, 2.5, 0.3], [1.5, 2.5, 0.3], [3.3, 2.5, 0.3], [5.1, 2.5, 0.3]]
+        #rectangular boundary, format [x,y,width/2,heigth/2]
+        ws_model['boundary'] = [] 
+        
+        self.ws_model = ws_model
+        
         self.dt = 1/20
         self.agents = init_agents()
         
@@ -60,21 +73,20 @@ class Drone2DEnv(gym.Env):
         
     
     def step(self):
-        new_vels = [None] * len(self.agents)
-        for i, agent in enumerate(self.agents):
-            candidates = self.agents[:i] + self.agents[i + 1:]
-            new_vels[i], _ = orca(agent, candidates, 1, self.dt)
 
+        RVO_update(self.agents, self.ws_model)
+        
         for i, agent in enumerate(self.agents):
-            agent.velocity = new_vels[i]
-            agent.position += agent.velocity * self.dt
+            new_position = agent.position + np.array(agent.velocity) * self.dt
             
-            # Turn around if out of boundary
-            if agent.position[0] < 0 or agent.position[0] > 640:
+            # Change reference velocity if reaching the boundary
+            if new_position[0] < 0 or new_position[0] > self.dim[0]:
                 agent.velocity[0] = -agent.velocity[0]
-            if agent.position[1] < 0 or agent.position[1] > 480:
+            if new_position[1] < 0 or new_position[1] > self.dim[1]:
                 agent.velocity[1] = -agent.velocity[1]
                 
+            agent.position += np.array(agent.velocity) * self.dt
+            
             # Check if the pedestrian is seen
             vec_yaw = np.array([cos(math.radians(self.drone.yaw)), -sin(math.radians(self.drone.yaw))])
             vec_agent = np.array([agent.position[0] - self.drone.x, agent.position[1] - self.drone.y])
@@ -82,6 +94,8 @@ class Drone2DEnv(gym.Env):
                 agent.seen = True
             else:
                 agent.seen = False
+                
+        
         reward = 10
         
         done = False
@@ -143,4 +157,3 @@ if __name__ == '__main__':
     while True:
         t.step()
         t.render()
-        sleep(1/50)
