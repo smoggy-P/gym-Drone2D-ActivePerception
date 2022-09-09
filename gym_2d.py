@@ -10,27 +10,30 @@ import numpy as np
 from RVO import RVO_update, reach, compute_V_des, reach, Agent
 
 
-N_AGENTS = 5
+N_AGENTS = 3
 RADIUS = 8.
 MAX_SPEED = 30
 
-def check_collision(agents, agent):
+def check_collision(agents, agent, ws_model):
     for agent_ in agents:
         if norm(agent_.position - agent.position) <= agent_.radius + agent.radius:
+            return False
+    for obs in ws_model['circular_obstacles']:
+        if norm(np.array([obs[0], obs[1]]) - agent.position) <= obs[2] + agent.radius:
             return False
     return True
     
 
-def init_agents():
+def init_agents(ws_model):
     agents = []
-    i = 0
+    i = 1
     while(i <= N_AGENTS):
         theta = 2 * pi * i / N_AGENTS
         x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
         vel = -x * MAX_SPEED
         pos = (random.uniform(200, 440), random.uniform(120, 360))
         new_agent = Agent(pos, (0., 0.), 6., MAX_SPEED, vel)
-        if check_collision(agents, new_agent):
+        if check_collision(agents, new_agent, ws_model):
             agents.append(new_agent)
             i += 1
     return agents
@@ -51,7 +54,10 @@ class Drone2DEnv(gym.Env):
         ws_model = dict()
         #circular obstacles, format [x,y,rad]
         # no obstacles
-        ws_model['circular_obstacles'] = [[10*i, 240, 40] for i in range(10)] + [[400, i*10, 40] for i in range(10)]
+        ws_model['circular_obstacles'] = [[50 + 10*i, 240, 5] for i in range(20)] + [[400, i*10, 5] for i in range(20)]
+        
+        ws_model['circular_obstacles'] += [[320, 240, 50]]
+        
         # with obstacles
         # ws_model['circular_obstacles'] = [[-0.3, 2.5, 0.3], [1.5, 2.5, 0.3], [3.3, 2.5, 0.3], [5.1, 2.5, 0.3]]
         #rectangular boundary, format [x,y,width/2,heigth/2]
@@ -60,7 +66,7 @@ class Drone2DEnv(gym.Env):
         self.ws_model = ws_model
         
         self.dt = 1/20
-        self.agents = init_agents()
+        self.agents = init_agents(self.ws_model)
         
         self.action_space = None
         self.observation_space = None
