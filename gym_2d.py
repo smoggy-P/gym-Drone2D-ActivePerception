@@ -1,13 +1,14 @@
-from __future__ import division
 import math
-from numpy import array, rint, pi, cos, sin
-from numpy.linalg import norm
-from time import sleep
 import gym
 import pygame
 import random
 import numpy as np
+
+from numpy import array, rint, pi, cos, sin
+from numpy.linalg import norm
+from time import sleep
 from RVO import RVO_update, reach, compute_V_des, reach, Agent
+from grid import OccupancyGridMap
 
 
 N_AGENTS = 3
@@ -22,6 +23,15 @@ def check_collision(agents, agent, ws_model):
         if norm(np.array([obs[0], obs[1]]) - agent.position) <= obs[2] + agent.radius:
             return False
     return True
+
+def check_in_view(drone, position):
+    # Check if the target point is seen
+    vec_yaw = np.array([cos(math.radians(drone.yaw)), -sin(math.radians(drone.yaw))])
+    vec_agent = np.array([position[0] - drone.x, position[1] - drone.y])
+    if norm(position - (drone.x, drone.y)) <= drone.yaw_depth and math.acos(vec_yaw.dot(vec_agent)/norm(vec_agent)) <= math.radians(drone.yaw_range / 2):
+        return True
+    else:
+        return False
     
 
 def init_agents(ws_model):
@@ -45,6 +55,22 @@ class Drone2D():
         self.yaw = init_yaw
         self.yaw_range = 120
         self.yaw_depth = 100
+        
+    def render(self, surface):
+        pygame.draw.arc(surface, 
+                        (255,255,255), 
+                        [self.x - self.yaw_depth,
+                            self.y - self.yaw_depth,
+                            2 * self.yaw_depth,
+                            2 * self.yaw_depth], 
+                        math.radians(self.yaw - self.yaw_range/2), 
+                        math.radians(self.yaw + self.yaw_range/2),
+                        2)
+        angle1 = math.radians(self.yaw + self.yaw_range/2)
+        angle2 = math.radians(self.yaw - self.yaw_range/2)
+        pygame.draw.line(surface, (255,255,255), (self.x, self.y), (self.x + self.yaw_depth * cos(angle1), self.y - self.yaw_depth * sin(angle1)), 2)
+        pygame.draw.line(surface, (255,255,255), (self.x, self.y), (self.x + self.yaw_depth * cos(angle2), self.y - self.yaw_depth * sin(angle2)), 2)
+        
 
 class Drone2DEnv(gym.Env):
      
@@ -54,9 +80,9 @@ class Drone2DEnv(gym.Env):
         ws_model = dict()
         #circular obstacles, format [x,y,rad]
         # no obstacles
-        ws_model['circular_obstacles'] = [[50 + 10*i, 240, 5] for i in range(20)] + [[400, i*10, 5] for i in range(20)]
+        # ws_model['circular_obstacles'] = [[50 + 10*i, 240, 5] for i in range(20)] + [[400, i*10, 5] for i in range(20)]
         
-        ws_model['circular_obstacles'] += [[320, 240, 50]]
+        ws_model['circular_obstacles'] = [[320, 240, 50]]
         
         # with obstacles
         # ws_model['circular_obstacles'] = [[-0.3, 2.5, 0.3], [1.5, 2.5, 0.3], [3.3, 2.5, 0.3], [5.1, 2.5, 0.3]]
@@ -76,7 +102,7 @@ class Drone2DEnv(gym.Env):
         self.screen = pygame.display.set_mode(self.dim)
         self.clock = pygame.time.Clock()
         self.drone = Drone2D(320, 0, 270)
-        
+        self.global_map = OccupancyGridMap(64, 48, self.dim)
     
     def step(self):
 
@@ -94,13 +120,16 @@ class Drone2DEnv(gym.Env):
             agent.position += np.array(agent.velocity) * self.dt
             
             # Check if the pedestrian is seen
-            vec_yaw = np.array([cos(math.radians(self.drone.yaw)), -sin(math.radians(self.drone.yaw))])
-            vec_agent = np.array([agent.position[0] - self.drone.x, agent.position[1] - self.drone.y])
-            if norm(agent.position - (self.drone.x, self.drone.y)) <= self.drone.yaw_depth and math.acos(vec_yaw.dot(vec_agent)/norm(vec_agent)) <= math.radians(self.drone.yaw_range / 2):
+            if check_in_view(self.drone, agent.position):
                 agent.seen = True
             else:
                 agent.seen = False
-                
+        
+        # Update grid map
+        for i in range(self.global_map.width):
+            for j in range(self.global_map.height):
+                if(check_in_view(self.drone, self.global_map.real_pos(i, j))):
+                    self.global_map.grid_map[i, j] = 2
         
         reward = 10
         
@@ -133,22 +162,15 @@ class Drone2DEnv(gym.Env):
         
         def draw_velocity(a, color):
             pygame.draw.line(self.screen, color, rint(a.position).astype(int), rint((a.position + a.velocity)).astype(int), 1)
-        
-        def draw_drone(drone):
-            pygame.draw.arc(self.screen, 
-                            (255,255,255), 
-                            [drone.x - drone.yaw_depth,
-                             drone.y - drone.yaw_depth,
-                             2 * drone.yaw_depth,
-                             2 * drone.yaw_depth], 
-                            math.radians(drone.yaw - drone.yaw_range/2), 
-                            math.radians(drone.yaw + drone.yaw_range/2),
-                            2)
-            angle1 = math.radians(drone.yaw + drone.yaw_range/2)
-            angle2 = math.radians(drone.yaw - drone.yaw_range/2)
-            pygame.draw.line(self.screen, (255,255,255), (self.drone.x, self.drone.y), (self.drone.x + self.drone.yaw_depth * cos(angle1), self.drone.y - self.drone.yaw_depth * sin(angle1)), 2)
-            pygame.draw.line(self.screen, (255,255,255), (self.drone.x, self.drone.y), (self.drone.x + self.drone.yaw_depth * cos(angle2), self.drone.y - self.drone.yaw_depth * sin(angle2)), 2)
             
+        color_dict = {
+            'OCCUPIED'   : (150, 150, 150),
+            'UNOCCUPIED' : (200, 200, 200),
+            'UNEXPLORED' : (255, 255, 255)
+        }
+        
+        self.global_map.render(self.screen, color_dict)
+        self.drone.render(self.screen)
         
         for agent in self.agents:
             if agent.seen:
@@ -156,8 +178,9 @@ class Drone2DEnv(gym.Env):
             else:
                 draw_agent(agent, pygame.Color(255, 0, 0))
             draw_velocity(agent, pygame.Color(0, 255, 0))
+        
         draw_static_obstacle(self.ws_model, (200, 200, 200))
-        draw_drone(self.drone)
+        
         pygame.display.update()
         self.clock.tick(60)
     
