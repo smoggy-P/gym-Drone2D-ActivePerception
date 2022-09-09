@@ -165,8 +165,8 @@ class Drone2DEnv(gym.Env):
             
         color_dict = {
             'OCCUPIED'   : (150, 150, 150),
-            'UNOCCUPIED' : (200, 200, 200),
-            'UNEXPLORED' : (255, 255, 255)
+            'UNOCCUPIED' : (50, 50, 50),
+            'UNEXPLORED' : (0, 0, 0)
         }
         
         self.global_map.render(self.screen, color_dict)

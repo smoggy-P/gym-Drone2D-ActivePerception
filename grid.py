@@ -28,6 +28,8 @@ class OccupancyGridMap:
                     pygame.draw.rect(surface, color_dict['OCCUPIED'], (self.x_scale * i, self.y_scale * j, self.x_scale, self.y_scale), 0)
                 elif(self.grid_map[i,j] == grid_type['UNOCCUPIED']):
                     pygame.draw.rect(surface, color_dict['UNOCCUPIED'], (self.x_scale * i, self.y_scale * j, self.x_scale, self.y_scale), 0)
+                elif(self.grid_map[i,j] == grid_type['UNEXPLORED']):
+                    pygame.draw.rect(surface, color_dict['UNEXPLORED'], (self.x_scale * i, self.y_scale * j, self.x_scale, self.y_scale), 0)
                 
         
     
