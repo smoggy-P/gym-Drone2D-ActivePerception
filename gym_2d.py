@@ -85,7 +85,7 @@ class Drone2DEnv(gym.Env):
         # Define physical setup
         self.agents = init_agents(self.ws_model)
         self.drone = Drone2D(320, 0, 270)
-        self.global_map = OccupancyGridMap(64, 48, self.dim)
+        self.global_map = OccupancyGridMap(64, 48, self.dim, self.obstacles)
     
     def step(self):
 
