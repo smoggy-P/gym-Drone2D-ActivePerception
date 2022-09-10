@@ -1,8 +1,6 @@
-from math import ceil, floor, sqrt
-import copy
-import numpy
 import numpy as np
-from math import cos, sin, tan, atan2, asin
+import pygame
+from math import cos, sin, atan2, asin, sqrt
 
 from math import pi as PI
 
@@ -16,6 +14,12 @@ class Agent(object):
         self.max_speed = max_speed
         self.pref_velocity = np.array(pref_velocity)
         self.seen = False
+    def render(self, surface):
+        if self.seen:
+            pygame.draw.circle(surface, pygame.Color(0, 250, 250), np.rint(self.position).astype(int), int(round(self.radius)), 0)
+        else:
+            pygame.draw.circle(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), int(round(self.radius)), 0)
+        pygame.draw.line(surface, pygame.Color(0, 255, 0), np.rint(self.position).astype(int), np.rint((self.position + self.velocity)).astype(int), 1)
 
 def distance(pose1, pose2):
     """ compute Euclidean distance for 2D """
@@ -86,8 +90,8 @@ def intersect(pA, vA, RVO_BA_all):
     norm_v = distance(vA, [0, 0])
     suitable_V = []
     unsuitable_V = []
-    for theta in numpy.arange(0, 2*PI, 0.1):
-        for rad in numpy.arange(0.02, norm_v+0.02, norm_v/5.0):
+    for theta in np.arange(0, 2*PI, 0.1):
+        for rad in np.arange(0.02, norm_v+0.02, norm_v/5.0):
             new_v = [rad*cos(theta), rad*sin(theta)]
             suit = True
             for RVO_BA in RVO_BA_all:

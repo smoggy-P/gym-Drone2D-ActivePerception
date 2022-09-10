@@ -4,35 +4,16 @@ import pygame
 import random
 import numpy as np
 
-from numpy import array, rint, pi, cos, sin
-from numpy.linalg import norm
-from time import sleep
-from RVO import RVO_update, reach, compute_V_des, reach, Agent
+from numpy import array, pi, cos, sin
+from RVO import RVO_update, Agent
 from grid import OccupancyGridMap
+from utils import *
 
 
-N_AGENTS = 3
-RADIUS = 8.
+N_AGENTS = 4
 MAX_SPEED = 30
-
-def check_collision(agents, agent, ws_model):
-    for agent_ in agents:
-        if norm(agent_.position - agent.position) <= agent_.radius + agent.radius:
-            return False
-    for obs in ws_model['circular_obstacles']:
-        if norm(np.array([obs[0], obs[1]]) - agent.position) <= obs[2] + agent.radius:
-            return False
-    return True
-
-def check_in_view(drone, position):
-    # Check if the target point is seen
-    vec_yaw = np.array([cos(math.radians(drone.yaw)), -sin(math.radians(drone.yaw))])
-    vec_agent = np.array([position[0] - drone.x, position[1] - drone.y])
-    if norm(position - (drone.x, drone.y)) <= drone.yaw_depth and math.acos(vec_yaw.dot(vec_agent)/norm(vec_agent)) <= math.radians(drone.yaw_range / 2):
-        return True
-    else:
-        return False
-    
+PEDESTRIAN_RADIUS = 8
+DRONE_RADIUS = 12
 
 def init_agents(ws_model):
     agents = []
@@ -42,11 +23,13 @@ def init_agents(ws_model):
         x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
         vel = -x * MAX_SPEED
         pos = (random.uniform(200, 440), random.uniform(120, 360))
-        new_agent = Agent(pos, (0., 0.), 6., MAX_SPEED, vel)
+        new_agent = Agent(pos, (0., 0.), PEDESTRIAN_RADIUS, MAX_SPEED, vel)
         if check_collision(agents, new_agent, ws_model):
             agents.append(new_agent)
             i += 1
     return agents
+
+
 
 class Drone2D():
     def __init__(self, init_x, init_y, init_yaw):
@@ -55,6 +38,7 @@ class Drone2D():
         self.yaw = init_yaw
         self.yaw_range = 120
         self.yaw_depth = 100
+        self.radius = DRONE_RADIUS
         
     def render(self, surface):
         pygame.draw.arc(surface, 
@@ -70,37 +54,36 @@ class Drone2D():
         angle2 = math.radians(self.yaw - self.yaw_range/2)
         pygame.draw.line(surface, (255,255,255), (self.x, self.y), (self.x + self.yaw_depth * cos(angle1), self.y - self.yaw_depth * sin(angle1)), 2)
         pygame.draw.line(surface, (255,255,255), (self.x, self.y), (self.x + self.yaw_depth * cos(angle2), self.y - self.yaw_depth * sin(angle2)), 2)
+        pygame.draw.circle(surface, (255,255,255), (self.x, self.y), self.radius)
         
 
 class Drone2DEnv(gym.Env):
      
     def __init__(self):
         
-        #define workspace model
-        ws_model = dict()
-        #circular obstacles, format [x,y,rad]
-        # no obstacles
-        # ws_model['circular_obstacles'] = [[50 + 10*i, 240, 5] for i in range(20)] + [[400, i*10, 5] for i in range(20)]
-        
-        ws_model['circular_obstacles'] = [[320, 240, 50]]
-        
-        # with obstacles
-        # ws_model['circular_obstacles'] = [[-0.3, 2.5, 0.3], [1.5, 2.5, 0.3], [3.3, 2.5, 0.3], [5.1, 2.5, 0.3]]
-        #rectangular boundary, format [x,y,width/2,heigth/2]
-        ws_model['boundary'] = [] 
-        
-        self.ws_model = ws_model
-        
         self.dt = 1/20
-        self.agents = init_agents(self.ws_model)
         
-        self.action_space = None
-        self.observation_space = None
+        self.obstacles = {
+            'circular_obstacles'  : [[320, 240, 50]],
+            'rectangle_obstacles' : [[100, 100, 100, 40], [400, 300, 100, 30]]
+        }
         
+        # Define workspace model for RVO model (approximate using circles)
+        self.ws_model = obs_dict_to_ws_model(self.obstacles)
+        print(self.ws_model['circular_obstacles'])
+        
+        # Setup pygame environment
         self.dim = (640, 480)
         pygame.init()
         self.screen = pygame.display.set_mode(self.dim)
         self.clock = pygame.time.Clock()
+        
+        # Define action and observation space
+        self.action_space = None
+        self.observation_space = None
+        
+        # Define physical setup
+        self.agents = init_agents(self.ws_model)
         self.drone = Drone2D(320, 0, 270)
         self.global_map = OccupancyGridMap(64, 48, self.dim)
     
@@ -142,7 +125,6 @@ class Drone2DEnv(gym.Env):
         return self.state
         
     def render(self, mode='human'):
-        self.screen.fill(pygame.Color(0, 0, 0))
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]:
             self.drone.yaw += 2
@@ -153,15 +135,12 @@ class Drone2DEnv(gym.Env):
             self.drone.y -= 5*sin(math.radians(self.drone.yaw))
         pygame.event.pump() # process event queue
         
-        def draw_static_obstacle(ws_model, color):
-            for obs in ws_model['circular_obstacles']:
+        def draw_static_obstacle(obs_dict, color):
+            for obs in obs_dict['circular_obstacles']:
                 pygame.draw.circle(self.screen, color, center=[obs[0], obs[1]], radius=obs[2])
-        
-        def draw_agent(agent, color):
-            pygame.draw.circle(self.screen, color, rint(agent.position).astype(int), int(round(agent.radius)), 0)
-        
-        def draw_velocity(a, color):
-            pygame.draw.line(self.screen, color, rint(a.position).astype(int), rint((a.position + a.velocity)).astype(int), 1)
+            if 'rectangle_obstacles' in obs_dict:
+                for obs in obs_dict['rectangle_obstacles']:
+                    pygame.draw.rect(self.screen, color, obs)
             
         color_dict = {
             'OCCUPIED'   : (150, 150, 150),
@@ -171,15 +150,11 @@ class Drone2DEnv(gym.Env):
         
         self.global_map.render(self.screen, color_dict)
         self.drone.render(self.screen)
-        
         for agent in self.agents:
-            if agent.seen:
-                draw_agent(agent, pygame.Color(0, 255, 255))
-            else:
-                draw_agent(agent, pygame.Color(255, 0, 0))
-            draw_velocity(agent, pygame.Color(0, 255, 0))
+            agent.render(self.screen)
         
-        draw_static_obstacle(self.ws_model, (200, 200, 200))
+        draw_static_obstacle(self.obstacles, (200, 200, 200))
+        
         
         pygame.display.update()
         self.clock.tick(60)
