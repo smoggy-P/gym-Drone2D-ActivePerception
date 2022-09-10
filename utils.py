@@ -1,4 +1,5 @@
 import math
+import pygame
 import numpy as np
 from math import sin, cos
 from numpy.linalg import norm
@@ -50,3 +51,9 @@ def obs_dict_to_ws_model(obs_dict):
     
     return ws_model
     
+def draw_static_obstacle(surface, obs_dict, color):
+    for obs in obs_dict['circular_obstacles']:
+        pygame.draw.circle(surface, color, center=[obs[0], obs[1]], radius=obs[2])
+    if 'rectangle_obstacles' in obs_dict:
+        for obs in obs_dict['rectangle_obstacles']:
+            pygame.draw.rect(surface, color, obs)

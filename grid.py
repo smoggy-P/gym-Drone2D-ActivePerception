@@ -19,20 +19,27 @@ class OccupancyGridMap:
         # Define Grid Map
         self.grid_map = np.zeros((self.width, self.height), dtype=np.uint8)
         
-        # Mark obstacles in Grid Map
+        # Mark edges in Grid Map
+        self.grid_map[0,:] = grid_type['OCCUPIED']
+        self.grid_map[-1,:] = grid_type['OCCUPIED']
+        self.grid_map[:,0] = grid_type['OCCUPIED']
+        self.grid_map[:,-1] = grid_type['OCCUPIED']
+        
+        # Mark static obstacles in Grid Map
         for i in range(self.grid_map.shape[0]):
             for j in range(self.grid_map.shape[1]):
+                
                 for circle in obstacles_dict['circular_obstacles']:
-                    if norm(self.real_pos(i,j) - np.array([circle[0], circle[1]])) <= circle[2]:
+                    if norm(self.get_real_pos(i,j) - np.array([circle[0], circle[1]])) <= circle[2]:
                         self.grid_map[i,j] = grid_type['OCCUPIED']
                 for rect in obstacles_dict['rectangle_obstacles']:
-                    if rect[0] <= self.real_pos(i,j)[0] <= rect[0] + rect[2] and rect[1] <= self.real_pos(i,j)[1] <= rect[1] + rect[3]:
+                    if rect[0] <= self.get_real_pos(i,j)[0] <= rect[0] + rect[2] and rect[1] <= self.get_real_pos(i,j)[1] <= rect[1] + rect[3]:
                         self.grid_map[i,j] = grid_type['OCCUPIED']
             
         
         
     
-    def real_pos(self, i, j):
+    def get_real_pos(self, i, j):
         return np.array([self.x_scale * (i+0.5), self.y_scale * (j+0.5)])
     
     

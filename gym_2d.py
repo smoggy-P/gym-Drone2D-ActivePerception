@@ -9,11 +9,24 @@ from RVO import RVO_update, Agent
 from grid import OccupancyGridMap
 from utils import *
 
+grid_type = {
+    'OCCUPIED' : 1,
+    'UNOCCUPIED' : 2,
+    'UNEXPLORED' : 0
+}
 
-N_AGENTS = 4
-MAX_SPEED = 30
+color_dict = {
+    'OCCUPIED'   : (150, 150, 150),
+    'UNOCCUPIED' : (50, 50, 50),
+    'UNEXPLORED' : (0, 0, 0)
+}
+
+N_AGENTS = 6
+PEDESTRIAN_MAX_SPEED = 30
 PEDESTRIAN_RADIUS = 8
-DRONE_RADIUS = 12
+
+DRONE_RADIUS = 4
+DRONE_MAX_SPEED = 20
 
 def init_agents(ws_model):
     agents = []
@@ -21,9 +34,9 @@ def init_agents(ws_model):
     while(i <= N_AGENTS):
         theta = 2 * pi * i / N_AGENTS
         x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
-        vel = -x * MAX_SPEED
+        vel = -x * PEDESTRIAN_MAX_SPEED
         pos = (random.uniform(200, 440), random.uniform(120, 360))
-        new_agent = Agent(pos, (0., 0.), PEDESTRIAN_RADIUS, MAX_SPEED, vel)
+        new_agent = Agent(pos, (0., 0.), PEDESTRIAN_RADIUS, PEDESTRIAN_MAX_SPEED, vel)
         if check_collision(agents, new_agent, ws_model):
             agents.append(new_agent)
             i += 1
@@ -37,7 +50,7 @@ class Drone2D():
         self.y = init_y
         self.yaw = init_yaw
         self.yaw_range = 120
-        self.yaw_depth = 100
+        self.yaw_depth = 150
         self.radius = DRONE_RADIUS
         
     def render(self, surface):
@@ -83,9 +96,10 @@ class Drone2DEnv(gym.Env):
         self.observation_space = None
         
         # Define physical setup
-        self.agents = init_agents(self.ws_model)
-        self.drone = Drone2D(320, 0, 270)
         self.global_map = OccupancyGridMap(64, 48, self.dim, self.obstacles)
+        self.agents = init_agents(self.ws_model)
+        self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.global_map.x_scale, 270)
+        
     
     def step(self):
 
@@ -95,9 +109,9 @@ class Drone2DEnv(gym.Env):
             new_position = agent.position + np.array(agent.velocity) * self.dt
             
             # Change reference velocity if reaching the boundary
-            if new_position[0] < 0 or new_position[0] > self.dim[0]:
+            if new_position[0] < self.global_map.x_scale + agent.radius or new_position[0] > self.dim[0] - self.global_map.x_scale - agent.radius:
                 agent.velocity[0] = -agent.velocity[0]
-            if new_position[1] < 0 or new_position[1] > self.dim[1]:
+            if new_position[1] < self.global_map.y_scale + agent.radius or new_position[1] > self.dim[1] - self.global_map.y_scale - agent.radius:
                 agent.velocity[1] = -agent.velocity[1]
                 
             agent.position += np.array(agent.velocity) * self.dt
@@ -111,8 +125,8 @@ class Drone2DEnv(gym.Env):
         # Update grid map
         for i in range(self.global_map.width):
             for j in range(self.global_map.height):
-                if(check_in_view(self.drone, self.global_map.real_pos(i, j))):
-                    self.global_map.grid_map[i, j] = 2
+                if check_in_view(self.drone, self.global_map.get_real_pos(i, j)) and self.global_map.grid_map[i, j]==grid_type['UNEXPLORED']:
+                    self.global_map.grid_map[i, j] = grid_type['UNOCCUPIED']
         
         reward = 10
         
@@ -135,25 +149,12 @@ class Drone2DEnv(gym.Env):
             self.drone.y -= 5*sin(math.radians(self.drone.yaw))
         pygame.event.pump() # process event queue
         
-        def draw_static_obstacle(obs_dict, color):
-            for obs in obs_dict['circular_obstacles']:
-                pygame.draw.circle(self.screen, color, center=[obs[0], obs[1]], radius=obs[2])
-            if 'rectangle_obstacles' in obs_dict:
-                for obs in obs_dict['rectangle_obstacles']:
-                    pygame.draw.rect(self.screen, color, obs)
-            
-        color_dict = {
-            'OCCUPIED'   : (150, 150, 150),
-            'UNOCCUPIED' : (50, 50, 50),
-            'UNEXPLORED' : (0, 0, 0)
-        }
-        
         self.global_map.render(self.screen, color_dict)
         self.drone.render(self.screen)
         for agent in self.agents:
             agent.render(self.screen)
         
-        draw_static_obstacle(self.obstacles, (200, 200, 200))
+        draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
         
         pygame.display.update()
