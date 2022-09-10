@@ -8,25 +8,7 @@ from numpy import array, pi, cos, sin
 from RVO import RVO_update, Agent
 from grid import OccupancyGridMap
 from utils import *
-
-grid_type = {
-    'OCCUPIED' : 1,
-    'UNOCCUPIED' : 2,
-    'UNEXPLORED' : 0
-}
-
-color_dict = {
-    'OCCUPIED'   : (150, 150, 150),
-    'UNOCCUPIED' : (50, 50, 50),
-    'UNEXPLORED' : (0, 0, 0)
-}
-
-N_AGENTS = 6
-PEDESTRIAN_MAX_SPEED = 30
-PEDESTRIAN_RADIUS = 8
-
-DRONE_RADIUS = 4
-DRONE_MAX_SPEED = 20
+from config import *
 
 def init_agents(ws_model):
     agents = []
@@ -97,30 +79,19 @@ class Drone2DEnv(gym.Env):
         
         # Define physical setup
         self.global_map = OccupancyGridMap(64, 48, self.dim, self.obstacles)
-        self.agents = init_agents(self.ws_model)
+        
+        if ENABLE_DYNAMIC:
+            self.agents = init_agents(self.ws_model)
+            
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.global_map.x_scale, 270)
         
     
     def step(self):
-
-        RVO_update(self.agents, self.ws_model)
-        
-        for i, agent in enumerate(self.agents):
-            new_position = agent.position + np.array(agent.velocity) * self.dt
-            
-            # Change reference velocity if reaching the boundary
-            if new_position[0] < self.global_map.x_scale + agent.radius or new_position[0] > self.dim[0] - self.global_map.x_scale - agent.radius:
-                agent.velocity[0] = -agent.velocity[0]
-            if new_position[1] < self.global_map.y_scale + agent.radius or new_position[1] > self.dim[1] - self.global_map.y_scale - agent.radius:
-                agent.velocity[1] = -agent.velocity[1]
-                
-            agent.position += np.array(agent.velocity) * self.dt
-            
-            # Check if the pedestrian is seen
-            if check_in_view(self.drone, agent.position):
-                agent.seen = True
-            else:
-                agent.seen = False
+        if ENABLE_DYNAMIC:
+            # Update moving agent position
+            RVO_update(self.agents, self.ws_model)
+            for agent in self.agents:
+                agent.step(self.global_map.x_scale, self.global_map.y_scale, self.dim[0], self.dim[1], self.drone, self.dt)
         
         # Update grid map
         for i in range(self.global_map.width):
@@ -132,10 +103,11 @@ class Drone2DEnv(gym.Env):
         
         done = False
         
-        return self.agents, reward, done, {}
+        return reward, done, {}
     
     def reset(self):
-        self.agents = init_agents()
+        if ENABLE_DYNAMIC:
+            self.agents = init_agents()
         return self.state
         
     def render(self, mode='human'):
@@ -151,11 +123,12 @@ class Drone2DEnv(gym.Env):
         
         self.global_map.render(self.screen, color_dict)
         self.drone.render(self.screen)
-        for agent in self.agents:
-            agent.render(self.screen)
         
         draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
+        if ENABLE_DYNAMIC:
+            for agent in self.agents:
+                agent.render(self.screen)
         
         pygame.display.update()
         self.clock.tick(60)

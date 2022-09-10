@@ -1,7 +1,7 @@
 import numpy as np
 import pygame
 from math import cos, sin, atan2, asin, sqrt
-
+from utils import check_in_view
 from math import pi as PI
 
 class Agent(object):
@@ -14,6 +14,24 @@ class Agent(object):
         self.max_speed = max_speed
         self.pref_velocity = np.array(pref_velocity)
         self.seen = False
+        
+    def step(self, edge_size_x, edge_size_y, map_width, map_height, drone, dt):
+        new_position = self.position + np.array(self.velocity) * dt
+            
+        # Change reference velocity if reaching the boundary
+        if new_position[0] < edge_size_x + self.radius or new_position[0] > map_width - edge_size_x - self.radius:
+            self.velocity[0] = -self.velocity[0]
+        if new_position[1] < edge_size_y + self.radius or new_position[1] > map_height - edge_size_y - self.radius:
+            self.velocity[1] = -self.velocity[1]
+            
+        self.position += np.array(self.velocity) * dt
+        
+        # Check if the pedestrian is seen
+        if check_in_view(drone, self.position):
+            self.seen = True
+        else:
+            self.seen = False
+        
     def render(self, surface):
         if self.seen:
             pygame.draw.circle(surface, pygame.Color(0, 250, 250), np.rint(self.position).astype(int), int(round(self.radius)), 0)
