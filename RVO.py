@@ -54,51 +54,16 @@ def RVO_update(agents, ws_model):
     ROB_RAD = agents[0].radius+0.1
        
     for i in range(len(X)):
-        vA = [V_current[i][0], V_current[i][1]]
-        pA = [X[i][0], X[i][1]]
-        RVO_BA_all = []
-        for j in range(len(X)):
-            if i!=j:
-                vB = [V_current[j][0], V_current[j][1]]
-                pB = [X[j][0], X[j][1]]
-                # use RVO
-                transl_vB_vA = [pA[0]+0.5*(vB[0]+vA[0]), pA[1]+0.5*(vB[1]+vA[1])]
-                # use VO
-                #transl_vB_vA = [pA[0]+vB[0], pA[1]+vB[1]]
-                dist_BA = distance(pA, pB)
-                theta_BA = atan2(pB[1]-pA[1], pB[0]-pA[0])
-                if 2*ROB_RAD > dist_BA:
-                    dist_BA = 2*ROB_RAD
-                theta_BAort = asin(2*ROB_RAD/dist_BA)
-                theta_ort_left = theta_BA+theta_BAort
-                bound_left = [cos(theta_ort_left), sin(theta_ort_left)]
-                theta_ort_right = theta_BA-theta_BAort
-                bound_right = [cos(theta_ort_right), sin(theta_ort_right)]
-                # use HRVO
-                # dist_dif = distance([0.5*(vB[0]-vA[0]),0.5*(vB[1]-vA[1])],[0,0])
-                # transl_vB_vA = [pA[0]+vB[0]+cos(theta_ort_left)*dist_dif, pA[1]+vB[1]+sin(theta_ort_left)*dist_dif]
-                RVO_BA = [transl_vB_vA, bound_left, bound_right, dist_BA, 2*ROB_RAD]
-                RVO_BA_all.append(RVO_BA)                
-        for hole in ws_model['circular_obstacles']:
-            # hole = [x, y, rad]
-            vB = [0, 0]
-            pB = hole[0:2]
-            transl_vB_vA = [pA[0]+vB[0], pA[1]+vB[1]]
-            dist_BA = distance(pA, pB)
-            theta_BA = atan2(pB[1]-pA[1], pB[0]-pA[0])
-            # over-approximation of square to circular
-            OVER_APPROX_C2S = 1.5
-            rad = hole[2]*OVER_APPROX_C2S
-            if (rad+ROB_RAD) > dist_BA:
-                dist_BA = rad+ROB_RAD
-            theta_BAort = asin((rad+ROB_RAD)/dist_BA)
-            theta_ort_left = theta_BA+theta_BAort
-            bound_left = [cos(theta_ort_left), sin(theta_ort_left)]
-            theta_ort_right = theta_BA-theta_BAort
-            bound_right = [cos(theta_ort_right), sin(theta_ort_right)]
-            RVO_BA = [transl_vB_vA, bound_left, bound_right, dist_BA, rad+ROB_RAD]
-            RVO_BA_all.append(RVO_BA)
-        vA_post = intersect(pA, V_des[i], RVO_BA_all)
+        RVO_BA_all = [[[X[i][0]+0.5*(V_current[j][0]+V_current[i][0]), X[i][1]+0.5*(V_current[j][1]+V_current[i][1])], 
+                      [cos(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) + asin(2*ROB_RAD/distance(X[i], X[j]))), sin(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) + asin(2*ROB_RAD/distance(X[i], X[j])))],
+                      [cos(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) - asin(2*ROB_RAD/distance(X[i], X[j]))), sin(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) - asin(2*ROB_RAD/distance(X[i], X[j])))],
+                      distance(X[i], X[j]),
+                      2*ROB_RAD] for j in range(len(X)) if j != i] + [[X[i], 
+                                                                        [cos(atan2(hole[1]-X[i][1], hole[0]-X[i][0]) + asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2]))), sin(atan2(hole[1]-X[i][1], hole[0]-X[i][0]) + asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2])))], 
+                                                                        [cos(atan2(hole[1]-X[i][1], hole[0]-X[i][0])-asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2]))), sin(atan2(hole[1]-X[i][1], hole[0]-X[i][0])-asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2])))], 
+                                                                        distance(X[i], hole[0:2]), 
+                                                                        hole[2]*1.5+ROB_RAD] for hole in ws_model['circular_obstacles']]
+        vA_post = intersect(X[i], V_des[i], RVO_BA_all)
         agents[i].velocity = vA_post[:]
 
 
@@ -108,7 +73,7 @@ def intersect(pA, vA, RVO_BA_all):
     norm_v = distance(vA, [0, 0])
     suitable_V = []
     unsuitable_V = []
-    for theta in np.arange(0, 2*PI, 0.1):
+    for theta in np.arange(0, 2*PI, 0.5):
         for rad in np.arange(0.02, norm_v+0.02, norm_v/5.0):
             new_v = [rad*cos(theta), rad*sin(theta)]
             suit = True

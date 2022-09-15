@@ -12,7 +12,7 @@ color_dict = {
 
 # Dynamic Obstacle Settings
 ENABLE_DYNAMIC = True
-N_AGENTS = 6
+N_AGENTS = 10
 PEDESTRIAN_MAX_SPEED = 30
 PEDESTRIAN_RADIUS = 8
 
