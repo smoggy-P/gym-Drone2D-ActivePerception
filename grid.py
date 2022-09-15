@@ -29,13 +29,14 @@ class OccupancyGridMap:
         # Mark static obstacles in Grid Map
         for i in range(self.grid_map.shape[0]):
             for j in range(self.grid_map.shape[1]):
-                
-                for circle in obstacles_dict['circular_obstacles']:
-                    if norm(self.get_real_pos(i,j) - np.array([circle[0], circle[1]])) <= circle[2]:
-                        self.grid_map[i,j] = grid_type['OCCUPIED']
-                for rect in obstacles_dict['rectangle_obstacles']:
-                    if rect[0] <= self.get_real_pos(i,j)[0] <= rect[0] + rect[2] and rect[1] <= self.get_real_pos(i,j)[1] <= rect[1] + rect[3]:
-                        self.grid_map[i,j] = grid_type['OCCUPIED']
+                if 'circular_obstacles' in obstacles_dict:
+                    for circle in obstacles_dict['circular_obstacles']:
+                        if norm(self.get_real_pos(i,j) - np.array([circle[0], circle[1]])) <= circle[2]:
+                            self.grid_map[i,j] = grid_type['OCCUPIED']
+                if 'rectangle_obstacles' in obstacles_dict:
+                    for rect in obstacles_dict['rectangle_obstacles']:
+                        if rect[0] <= self.get_real_pos(i,j)[0] <= rect[0] + rect[2] and rect[1] <= self.get_real_pos(i,j)[1] <= rect[1] + rect[3]:
+                            self.grid_map[i,j] = grid_type['OCCUPIED']
             
         
         

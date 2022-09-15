@@ -41,20 +41,20 @@ class Raycast:
         self.half_rays_number = self.rays_number//2
 
 
-    def castRays(self, player, grid_map):
+    def castRays(self, player, truth_grid_map, updated_grid_map):
         rays = []
         player_angle = math.pi*2 - math.radians(player.yaw)
         for i in range(self.rays_number):
             ray_screen_pos = (-self.half_rays_number+i) * self.strip_width
             ray_angle = math.atan(ray_screen_pos / self.distance_to_plane)
-            ray = self.castRay(player, player_angle, ray_angle, grid_map)
+            ray = self.castRay(player, player_angle, ray_angle, truth_grid_map, updated_grid_map)
             rays.append(ray)
         return rays
 
 
-    def castRay(self, player_coords, player_angle, ray_angle, grid_map):   
-        x_step_size = grid_map.x_scale - 1
-        y_step_size = grid_map.y_scale - 1
+    def castRay(self, player_coords, player_angle, ray_angle, truth_grid_map, updated_grid_map):   
+        x_step_size = truth_grid_map.x_scale - 1
+        y_step_size = truth_grid_map.y_scale - 1
         
         ray_angle = player_angle + ray_angle
 
@@ -83,18 +83,22 @@ class Raycast:
             y = player_coords.y
             x = player_coords.x 
 
-            while (0 < x < grid_map.dim[0] and 0 < y < grid_map.dim[1]):
-                wall = grid_map.get_grid(x,y)
+            while (0 < x < truth_grid_map.dim[0] and 0 < y < truth_grid_map.dim[1]):
+                wall = truth_grid_map.get_grid(x,y)
                 dist = (x - player_coords.x)**2 + (y - player_coords.y)**2
                 if wall == 1 or dist >= self.depth**2:
                     x_hit = x
                     y_hit = y
                     wall_hit = wall
+                    if wall == grid_type['OCCUPIED']:
+                        i = int(x // updated_grid_map.x_scale)
+                        j = int(y // updated_grid_map.y_scale)
+                        updated_grid_map.grid_map[i, j] = grid_type['OCCUPIED']
                     break
                 else:
-                    i = int(x // grid_map.x_scale)
-                    j = int(y // grid_map.y_scale)
-                    grid_map.grid_map[i, j] = grid_type['UNOCCUPIED']
+                    i = int(x // updated_grid_map.x_scale)
+                    j = int(y // updated_grid_map.y_scale)
+                    updated_grid_map.grid_map[i, j] = grid_type['UNOCCUPIED']
                 x = x + x_step
                 y = y + y_step
         
@@ -102,18 +106,22 @@ class Raycast:
             x_step = x_step_size if faced_right else -x_step_size
             y_step = x_step * slope
             
-            while (0 < x < grid_map.dim[0] and 0 < y < grid_map.dim[1]):
-                wall = grid_map.get_grid(x,y)
+            while (0 < x < truth_grid_map.dim[0] and 0 < y < truth_grid_map.dim[1]):
+                wall = truth_grid_map.get_grid(x,y)
                 dist = (x-player_coords.x)**2 + (y-player_coords.y)**2
                 if wall == 1 or dist >= self.depth**2:
                     x_hit = x
                     y_hit = y
                     wall_hit = wall
+                    if wall == grid_type['OCCUPIED']:
+                        i = int(x // updated_grid_map.x_scale)
+                        j = int(y // updated_grid_map.y_scale)
+                        updated_grid_map.grid_map[i, j] = grid_type['OCCUPIED']
                     break
                 else:
-                    i = int(x // grid_map.x_scale)
-                    j = int(y // grid_map.y_scale)
-                    grid_map.grid_map[i, j] = grid_type['UNOCCUPIED']
+                    i = int(x // updated_grid_map.x_scale)
+                    j = int(y // updated_grid_map.y_scale)
+                    updated_grid_map.grid_map[i, j] = grid_type['UNOCCUPIED']
 
                 x = x + x_step
                 y = y + y_step

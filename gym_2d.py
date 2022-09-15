@@ -36,6 +36,7 @@ class Drone2D():
         self.yaw_range = 120
         self.yaw_depth = 150
         self.radius = DRONE_RADIUS
+        self.map = OccupancyGridMap(64, 48, (640, 480), {})
         
     def render(self, surface):
         pygame.draw.arc(surface, 
@@ -89,7 +90,7 @@ class Drone2DEnv(gym.Env):
         
     
     def step(self):
-        self.rays = self.raycast.castRays(self.drone, self.global_map)
+        self.rays = self.raycast.castRays(self.drone, self.global_map, self.drone.map)
         if ENABLE_DYNAMIC:
             # Update moving agent position
             RVO_update(self.agents, self.ws_model)
@@ -114,11 +115,16 @@ class Drone2DEnv(gym.Env):
         if keys[pygame.K_RIGHT]:
             self.drone.yaw -= 2
         if keys[pygame.K_UP]:
-            self.drone.x += 5*cos(math.radians(self.drone.yaw))
-            self.drone.y -= 5*sin(math.radians(self.drone.yaw))
+            new_x = self.drone.x + 5*cos(math.radians(self.drone.yaw))
+            new_y = self.drone.y - 5*sin(math.radians(self.drone.yaw))
+            if self.global_map.get_grid(new_x, new_y) != grid_type['OCCUPIED']:
+                self.drone.x = new_x
+                self.drone.y = new_y
+            
         pygame.event.pump() # process event queue
         
-        self.global_map.render(self.screen, color_dict)
+        # self.global_map.render(self.screen, color_dict)
+        self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
         for ray in self.rays:
             pygame.draw.line(
@@ -127,7 +133,7 @@ class Drone2DEnv(gym.Env):
                 (self.drone.x, self.drone.y),
                 ((ray['coords'][0]), (ray['coords'][1]))
         )
-        draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
+        # draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
         
         if ENABLE_DYNAMIC:
