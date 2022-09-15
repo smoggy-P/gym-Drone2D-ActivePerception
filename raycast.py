@@ -48,113 +48,79 @@ class Raycast:
             ray_screen_pos = (-self.half_rays_number+i) * self.strip_width
             ray_angle = math.atan(ray_screen_pos / self.distance_to_plane)
             ray = self.castRay(player, player_angle, ray_angle, grid_map)
-            if ray['distance'] >= 0:
-                rays.append(ray)
-            else:
-                raise Exception('OMFG!')
+            rays.append(ray)
         return rays
 
 
     def castRay(self, player_coords, player_angle, ray_angle, grid_map):
-        fishbowl_fix = math.cos(ray_angle)
-        # x_step_size = grid_map.x_scale - 1
-        # y_step_size = grid_map.y_scale - 1
-        
+        fishbowl_fix = math.cos(ray_angle)     
         x_step_size = 1
         y_step_size = 1
         
         ray_angle = player_angle + ray_angle
 
-        dist = 0
-        texture_x = -1
+        dist = -1
         x_hit = -1
         y_hit = -1
         wall_hit = 0
 
         #Make shure angle between 0 and 2PI
         ray_angle = Vector.get_positive_angle(None, ray_angle)
-        #ray_angle = math.copysign((abs(ray_angle) % self.twoPI), ray_angle)
-        #if (ray_angle < 0):
-        #    ray_angle += self.twoPI
-
         #Get directions which ray is faced
-        # faced_right = Vector.faced_right(None, ray_angle)
-        # faced_up = not Vector.faced_up(None, ray_angle) #Becouse screen coords and math coords inversive
         faced_right = (ray_angle < self.rad90deg or ray_angle > self.rad270deg)
         faced_up = (ray_angle > math.pi)
 
-        #Vertical colission
+        #Find Collision
         slope = math.tan(ray_angle)
+        x = player_coords.x
+        y = player_coords.y
 
-        x_step = x_step_size if faced_right else -x_step_size
-        y_step = x_step * slope
-
-        x = math.ceil(player_coords.x) if faced_right else math.floor(player_coords.x)
-        y = player_coords.y + ((x - player_coords.x) * slope)
-        while (0 < x < grid_map.dim[0] and 0 < y < grid_map.dim[1]):
-            wall_x = math.floor(x)
-            if not faced_right:
-                wall_x = wall_x - 1
-            wall_y = math.floor(y)
-
-            wall = grid_map.get_grid(x,y)
-            if wall == 1 or (x-player_coords.x)**2 + (y-player_coords.y)**2 >= self.depth**2:
-                dist_x = x - player_coords.x
-                dist_y = y - player_coords.y
-                dist = dist_x**2 + dist_y**2 # the distance from the player to this point, squared.
-                texture_x = y % 1
-                if (not faced_right): #if we're looking to the left side of the map, the texture should be reversed
-                    texture_x = 1 - texture_x
-                x_hit = x
-                y_hit = y
-                wall_hit = wall
-                break
-            else:
-                i = int(x // grid_map.x_scale)
-                j = int(y // grid_map.y_scale)
-                grid_map.grid_map[i, j] = grid_type['UNOCCUPIED']
-
-            x = x + x_step
-            y = y + y_step
-
-
-        #Horizontal colission
-        if slope != 0:
+        if abs(slope) > 1:
             slope = 1 / slope
-        else:
-            slope = 0
 
-        y_step = -y_step_size if faced_up else y_step_size
-        x_step = y_step * slope
+            y_step = -y_step_size if faced_up else y_step_size
+            x_step = y_step * slope
 
-        y = math.floor(player_coords.y) if faced_up else math.ceil(player_coords.y)
-        x = player_coords.x + ((y - player_coords.y) * slope)
+            y = player_coords.y
+            x = player_coords.x 
 
-        while (0 < x < grid_map.dim[0] and 0 < y < grid_map.dim[1]):
-            wall_y = math.floor(y)
-            if faced_up:
-                wall_y = wall_y - 1
-            wall_x = math.floor(x)
-
-            wall = grid_map.get_grid(x,y)
-            if wall == 1 or (x-player_coords.x)**2 + (y-player_coords.y)**2 >= self.depth**2:
-                dist_x = x - player_coords.x
-                dist_y = y - player_coords.y
-                hor_dist = dist_x**2 + dist_y**2 # the distance from the player to this point, squared.
-                if (dist == None or hor_dist < dist):
-                    dist = hor_dist
-                    texture_x = x % 1
-                    if (faced_up): #if we're looking to the left side of the map, the texture should be reversed
-                        texture_x = 1 - texture_x
+            while (0 < x < grid_map.dim[0] and 0 < y < grid_map.dim[1]):
+                wall = grid_map.get_grid(x,y)
+                dist = (x - player_coords.x)**2 + (y - player_coords.y)**2
+                if wall == 1 or dist >= self.depth**2:
                     x_hit = x
                     y_hit = y
                     wall_hit = wall
-                break
+                    break
+                else:
+                    i = int(x // grid_map.x_scale)
+                    j = int(y // grid_map.y_scale)
+                    grid_map.grid_map[i, j] = grid_type['UNOCCUPIED']
+                x = x + x_step
+                y = y + y_step
+        
+        else:
+            x_step = x_step_size if faced_right else -x_step_size
+            y_step = x_step * slope
+            
+            while (0 < x < grid_map.dim[0] and 0 < y < grid_map.dim[1]):
+                wall = grid_map.get_grid(x,y)
+                dist = (x-player_coords.x)**2 + (y-player_coords.y)**2
+                if wall == 1 or dist >= self.depth**2:
+                    x_hit = x
+                    y_hit = y
+                    wall_hit = wall
+                    break
+                else:
+                    i = int(x // grid_map.x_scale)
+                    j = int(y // grid_map.y_scale)
+                    grid_map.grid_map[i, j] = grid_type['UNOCCUPIED']
 
-            x = x + x_step
-            y = y + y_step
-        # print(dist)
-        # dist = math.sqrt(dist)*fishbowl_fix
+                x = x + x_step
+                y = y + y_step
 
-        result = {'distance':dist, 'texture_x':texture_x, 'coords':(x_hit,y_hit), 'wall':wall_hit}
+        if x_hit <= 10 and y_hit <= 10:
+            print("wtf")
+        
+        result = {'coords':(x_hit,y_hit), 'wall':wall_hit}
         return result

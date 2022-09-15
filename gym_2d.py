@@ -95,12 +95,6 @@ class Drone2DEnv(gym.Env):
             for agent in self.agents:
                 agent.step(self.global_map.x_scale, self.global_map.y_scale, self.dim[0], self.dim[1], self.drone, self.dt)
         
-        # Update grid map
-        # for i in range(self.global_map.width):
-        #     for j in range(self.global_map.height):
-        #         if check_in_view(self.drone, self.global_map.get_real_pos(i, j)) and self.global_map.grid_map[i, j]==grid_type['UNEXPLORED']:
-        #             self.global_map.grid_map[i, j] = grid_type['UNOCCUPIED']
-        
         reward = 10
         
         done = False
@@ -132,15 +126,16 @@ class Drone2DEnv(gym.Env):
                 self.screen,
                 (100,100,100),
                 (self.drone.x, self.drone.y),
-                ((ray['coords'][0]+1), (ray['coords'][1]+1))
+                ((ray['coords'][0]), (ray['coords'][1]))
         )
-        draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
+        # draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
         if ENABLE_DYNAMIC:
             for agent in self.agents:
                 agent.render(self.screen)
         
         pygame.display.update()
+        print(self.clock.get_fps())
         self.clock.tick(60)
     
 if __name__ == '__main__':
