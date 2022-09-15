@@ -10,6 +10,7 @@ grid_type = {
 
 class OccupancyGridMap:
     def __init__(self, width, height, dim, obstacles_dict):
+        self.dim = dim
         self.width = width
         self.height = height
         
@@ -41,6 +42,9 @@ class OccupancyGridMap:
     
     def get_real_pos(self, i, j):
         return np.array([self.x_scale * (i+0.5), self.y_scale * (j+0.5)])
+    
+    def get_grid(self, x, y):
+        return self.grid_map[int(x // self.x_scale), int(y // self.y_scale)]
     
     
     def render(self, surface, color_dict):

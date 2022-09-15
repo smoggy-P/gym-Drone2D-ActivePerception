@@ -1,4 +1,5 @@
 import math
+from turtle import Screen
 import gym
 import pygame
 import random
@@ -7,6 +8,7 @@ import numpy as np
 from numpy import array, pi, cos, sin
 from RVO import RVO_update, Agent
 from grid import OccupancyGridMap
+from raycast import Raycast
 from utils import *
 from config import *
 
@@ -65,11 +67,10 @@ class Drone2DEnv(gym.Env):
         
         # Define workspace model for RVO model (approximate using circles)
         self.ws_model = obs_dict_to_ws_model(self.obstacles)
-        print(self.ws_model['circular_obstacles'])
         
         # Setup pygame environment
-        self.dim = (640, 480)
         pygame.init()
+        self.dim = (640, 480)
         self.screen = pygame.display.set_mode(self.dim)
         self.clock = pygame.time.Clock()
         
@@ -84,6 +85,7 @@ class Drone2DEnv(gym.Env):
             self.agents = init_agents(self.ws_model)
             
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.global_map.x_scale, 270)
+        self.raycast = Raycast(self.dim, self.drone)
         
     
     def step(self):
@@ -94,10 +96,10 @@ class Drone2DEnv(gym.Env):
                 agent.step(self.global_map.x_scale, self.global_map.y_scale, self.dim[0], self.dim[1], self.drone, self.dt)
         
         # Update grid map
-        for i in range(self.global_map.width):
-            for j in range(self.global_map.height):
-                if check_in_view(self.drone, self.global_map.get_real_pos(i, j)) and self.global_map.grid_map[i, j]==grid_type['UNEXPLORED']:
-                    self.global_map.grid_map[i, j] = grid_type['UNOCCUPIED']
+        # for i in range(self.global_map.width):
+        #     for j in range(self.global_map.height):
+        #         if check_in_view(self.drone, self.global_map.get_real_pos(i, j)) and self.global_map.grid_map[i, j]==grid_type['UNEXPLORED']:
+        #             self.global_map.grid_map[i, j] = grid_type['UNOCCUPIED']
         
         reward = 10
         
@@ -124,6 +126,14 @@ class Drone2DEnv(gym.Env):
         self.global_map.render(self.screen, color_dict)
         self.drone.render(self.screen)
         
+        rays = self.raycast.castRays(self.drone, self.global_map)
+        for ray in rays:
+            pygame.draw.line(
+                self.screen,
+                (100,100,100),
+                (self.drone.x, self.drone.y),
+                ((ray['coords'][0]+1), (ray['coords'][1]+1))
+        )
         draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
         if ENABLE_DYNAMIC:
