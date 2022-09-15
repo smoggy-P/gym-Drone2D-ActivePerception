@@ -10,10 +10,14 @@ color_dict = {
     'UNEXPLORED' : (0, 0, 0)
 }
 
-ENABLE_DYNAMIC = False
+# Dynamic Obstacle Settings
+ENABLE_DYNAMIC = True
 N_AGENTS = 6
 PEDESTRIAN_MAX_SPEED = 30
 PEDESTRIAN_RADIUS = 8
 
+# Drone Settings
 DRONE_RADIUS = 4
 DRONE_MAX_SPEED = 20
+
+# Ray Casting Settings
