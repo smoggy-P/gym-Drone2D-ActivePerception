@@ -15,7 +15,7 @@ class Raycast:
     center_x = None
     center_y = None
 
-    strip_width = 5
+    strip_width = 10
     rays_number = None
     rays_angle = None
 
@@ -52,10 +52,9 @@ class Raycast:
         return rays
 
 
-    def castRay(self, player_coords, player_angle, ray_angle, grid_map):
-        fishbowl_fix = math.cos(ray_angle)     
-        x_step_size = 1
-        y_step_size = 1
+    def castRay(self, player_coords, player_angle, ray_angle, grid_map):   
+        x_step_size = grid_map.x_scale - 1
+        y_step_size = grid_map.y_scale - 1
         
         ray_angle = player_angle + ray_angle
 
@@ -118,9 +117,6 @@ class Raycast:
 
                 x = x + x_step
                 y = y + y_step
-
-        if x_hit <= 10 and y_hit <= 10:
-            print("wtf")
         
         result = {'coords':(x_hit,y_hit), 'wall':wall_hit}
         return result

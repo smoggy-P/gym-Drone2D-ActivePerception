@@ -89,6 +89,7 @@ class Drone2DEnv(gym.Env):
         
     
     def step(self):
+        self.rays = self.raycast.castRays(self.drone, self.global_map)
         if ENABLE_DYNAMIC:
             # Update moving agent position
             RVO_update(self.agents, self.ws_model)
@@ -119,23 +120,34 @@ class Drone2DEnv(gym.Env):
         
         self.global_map.render(self.screen, color_dict)
         self.drone.render(self.screen)
-        
-        rays = self.raycast.castRays(self.drone, self.global_map)
-        for ray in rays:
+        for ray in self.rays:
             pygame.draw.line(
                 self.screen,
                 (100,100,100),
                 (self.drone.x, self.drone.y),
                 ((ray['coords'][0]), (ray['coords'][1]))
         )
-        # draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
+        draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
+        
         
         if ENABLE_DYNAMIC:
             for agent in self.agents:
                 agent.render(self.screen)
         
+        fps = round(self.clock.get_fps())
+        if (fps >= 40):
+            fps_color = (0,102,0)
+        elif(fps >= 20):
+            fps_color = (255, 153, 0)
+        else:
+            fps_color = (204, 0, 0)
+        default_font = pygame.font.SysFont('Arial', 15)
+        pygame.Surface.blit(self.screen,
+            default_font.render('FPS: '+str(fps), False, fps_color),
+            (0, 0)
+        )
+        
         pygame.display.update()
-        print(self.clock.get_fps())
         self.clock.tick(60)
     
 if __name__ == '__main__':
