@@ -10,8 +10,11 @@ color_dict = {
     'UNEXPLORED' : (0, 0, 0)
 }
 
+# Map Settings
+MAP_SIZE = (640, 480)
+
 # Dynamic Obstacle Settings
-ENABLE_DYNAMIC = True
+ENABLE_DYNAMIC = False
 N_AGENTS = 10
 PEDESTRIAN_MAX_SPEED = 30
 PEDESTRIAN_RADIUS = 8

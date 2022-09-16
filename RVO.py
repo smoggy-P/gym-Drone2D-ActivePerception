@@ -58,7 +58,7 @@ def RVO_update(agents, ws_model):
                       [cos(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) + asin(2*ROB_RAD/distance(X[i], X[j]))), sin(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) + asin(2*ROB_RAD/distance(X[i], X[j])))],
                       [cos(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) - asin(2*ROB_RAD/distance(X[i], X[j]))), sin(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) - asin(2*ROB_RAD/distance(X[i], X[j])))],
                       distance(X[i], X[j]),
-                      2*ROB_RAD] for j in range(len(X)) if j != i] + [[X[i], 
+                      2.2*ROB_RAD] for j in range(len(X)) if j != i] + [[X[i], 
                                                                         [cos(atan2(hole[1]-X[i][1], hole[0]-X[i][0]) + asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2]))), sin(atan2(hole[1]-X[i][1], hole[0]-X[i][0]) + asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2])))], 
                                                                         [cos(atan2(hole[1]-X[i][1], hole[0]-X[i][0])-asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2]))), sin(atan2(hole[1]-X[i][1], hole[0]-X[i][0])-asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2])))], 
                                                                         distance(X[i], hole[0:2]), 

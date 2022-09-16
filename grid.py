@@ -9,7 +9,7 @@ grid_type = {
 }
 
 class OccupancyGridMap:
-    def __init__(self, width, height, dim, obstacles_dict):
+    def __init__(self, width, height, dim):
         self.dim = dim
         self.width = width
         self.height = height
@@ -20,6 +20,7 @@ class OccupancyGridMap:
         # Define Grid Map
         self.grid_map = np.zeros((self.width, self.height), dtype=np.uint8)
         
+    def add_obstacles(self, obstacles_dict):
         # Mark edges in Grid Map
         self.grid_map[0,:] = grid_type['OCCUPIED']
         self.grid_map[-1,:] = grid_type['OCCUPIED']
@@ -37,8 +38,6 @@ class OccupancyGridMap:
                     for rect in obstacles_dict['rectangle_obstacles']:
                         if rect[0] <= self.get_real_pos(i,j)[0] <= rect[0] + rect[2] and rect[1] <= self.get_real_pos(i,j)[1] <= rect[1] + rect[3]:
                             self.grid_map[i,j] = grid_type['OCCUPIED']
-            
-        
         
     
     def get_real_pos(self, i, j):

@@ -36,7 +36,7 @@ class Drone2D():
         self.yaw_range = 120
         self.yaw_depth = 150
         self.radius = DRONE_RADIUS
-        self.map = OccupancyGridMap(64, 48, (640, 480), {})
+        self.map = OccupancyGridMap(64, 48, MAP_SIZE)
         
     def render(self, surface):
         pygame.draw.arc(surface, 
@@ -71,7 +71,7 @@ class Drone2DEnv(gym.Env):
         
         # Setup pygame environment
         pygame.init()
-        self.dim = (640, 480)
+        self.dim = MAP_SIZE
         self.screen = pygame.display.set_mode(self.dim)
         self.clock = pygame.time.Clock()
         
@@ -80,7 +80,8 @@ class Drone2DEnv(gym.Env):
         self.observation_space = None
         
         # Define physical setup
-        self.global_map = OccupancyGridMap(64, 48, self.dim, self.obstacles)
+        self.global_map = OccupancyGridMap(64, 48, self.dim)
+        self.global_map.add_obstacles(self.obstacles)
         
         if ENABLE_DYNAMIC:
             self.agents = init_agents(self.ws_model)
