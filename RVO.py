@@ -40,21 +40,20 @@ class Agent(object):
         
         # Check if the pedestrian is seen
         if check_in_view(drone, self.position):
-            if self.seen:
-                self.var = 0
-                self.estimate_vel = self.velocity
-                self.estimate_pos = self.position
-            else:
+            if not self.seen:
                 self.seen = True
+            self.var = 0
+            self.estimate_vel = self.velocity
+            self.estimate_pos = self.position
         else:
             if self.seen:
                 self.var += self.dt*10
 
-        if not self.estimate_pos is None:
+        if self.seen:
             self.estimate_pos = self.estimate_pos + self.estimate_vel * dt
         
     def render(self, surface):
-        if self.seen and not self.estimate_pos is None:
+        if self.seen:
             pygame.draw.circle(surface, pygame.Color(0, 250, 250), np.rint(self.position).astype(int), int(round(self.radius)), 0)
             pygame.draw.circle(surface, pygame.Color(250, 0, 0), np.rint(self.estimate_pos).astype(int), int(round(self.radius+self.var)), 1)
             pygame.draw.line(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), np.rint(self.estimate_pos).astype(int), 1)
