@@ -20,7 +20,7 @@ class OccupancyGridMap:
         # Define Grid Map
         self.grid_map = np.zeros((self.width, self.height), dtype=np.uint8)
         
-    def add_obstacles(self, obstacles_dict):
+    def init_obstacles(self, obstacles_dict):
         # Mark edges in Grid Map
         self.grid_map[0,:] = grid_type['OCCUPIED']
         self.grid_map[-1,:] = grid_type['OCCUPIED']

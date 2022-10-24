@@ -52,10 +52,10 @@ class Raycast:
 
 
     def castRay(self, player_coords, player_angle, ray_angle, truth_grid_map, updated_grid_map):   
-        # x_step_size = truth_grid_map.x_scale - 1
-        # y_step_size = truth_grid_map.y_scale - 1
-        x_step_size = 1
-        y_step_size = 1
+        x_step_size = truth_grid_map.x_scale - 1
+        y_step_size = truth_grid_map.y_scale - 1
+        # x_step_size = 1
+        # y_step_size = 1
         
         ray_angle = player_angle + ray_angle
 

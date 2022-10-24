@@ -6,35 +6,58 @@ from math import pi as PI
 
 class Agent(object):
     """A disk-shaped agent."""
-    def __init__(self, position, velocity, radius, max_speed, pref_velocity):
+    def __init__(self, position, velocity, radius, max_speed, pref_velocity, dt):
         super(Agent, self).__init__()
-        self.position = np.array(position)
-        self.velocity = np.array(velocity)
+        self.dt = dt
+        self.position = np.array(position, dtype=np.float)
+        self.velocity = np.array(velocity, dtype=np.float)
         self.radius = radius
         self.max_speed = max_speed
         self.pref_velocity = np.array(pref_velocity)
         self.seen = False
+        self.var = None
+        self.estimate_vel = None
+        self.estimate_pos = None
         
     def step(self, edge_size_x, edge_size_y, map_width, map_height, drone, dt):
         new_position = self.position + np.array(self.velocity) * dt
             
         # Change reference velocity if reaching the boundary
-        if new_position[0] < edge_size_x + self.radius or new_position[0] > map_width - edge_size_x - self.radius:
-            self.velocity[0] = -self.velocity[0]
-        if new_position[1] < edge_size_y + self.radius or new_position[1] > map_height - edge_size_y - self.radius:
-            self.velocity[1] = -self.velocity[1]
+        if new_position[0] < edge_size_x + self.radius:
+            self.pref_velocity[0] = abs(self.pref_velocity[0])
+            self.seen = False
+        elif new_position[0] > map_width - edge_size_x - self.radius:
+            self.pref_velocity[0] = -abs(self.pref_velocity[0])
+            self.seen = False
+        if new_position[1] < edge_size_y + self.radius:
+            self.pref_velocity[1] = abs(self.pref_velocity[1])
+            self.seen = False
+        elif new_position[1] > map_height - edge_size_y - self.radius:
+            self.pref_velocity[1] = -abs(self.pref_velocity[1])
+            self.seen = False
             
         self.position += np.array(self.velocity) * dt
         
         # Check if the pedestrian is seen
         if check_in_view(drone, self.position):
-            self.seen = True
+            if self.seen:
+                self.var = 0
+                self.estimate_vel = self.velocity
+                self.estimate_pos = self.position
+            else:
+                self.seen = True
         else:
-            self.seen = False
+            if self.seen:
+                self.var += self.dt*10
+
+        if not self.estimate_pos is None:
+            self.estimate_pos = self.estimate_pos + self.estimate_vel * dt
         
     def render(self, surface):
-        if self.seen:
+        if self.seen and not self.estimate_pos is None:
             pygame.draw.circle(surface, pygame.Color(0, 250, 250), np.rint(self.position).astype(int), int(round(self.radius)), 0)
+            pygame.draw.circle(surface, pygame.Color(250, 0, 0), np.rint(self.estimate_pos).astype(int), int(round(self.radius+self.var)), 1)
+            pygame.draw.line(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), np.rint(self.estimate_pos).astype(int), 1)
         else:
             pygame.draw.circle(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), int(round(self.radius)), 0)
         pygame.draw.line(surface, pygame.Color(0, 255, 0), np.rint(self.position).astype(int), np.rint((self.position + self.velocity)).astype(int), 1)
@@ -64,7 +87,7 @@ def RVO_update(agents, ws_model):
                                                                         distance(X[i], hole[0:2]), 
                                                                         hole[2]*1.5+ROB_RAD] for hole in ws_model['circular_obstacles']]
         vA_post = intersect(X[i], V_des[i], RVO_BA_all)
-        agents[i].velocity = vA_post[:]
+        agents[i].velocity = np.array(vA_post[:])
 
 
 def intersect(pA, vA, RVO_BA_all):

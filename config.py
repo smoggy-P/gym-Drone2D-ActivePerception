@@ -14,8 +14,8 @@ color_dict = {
 MAP_SIZE = (640, 480)
 
 # Dynamic Obstacle Settings
-ENABLE_DYNAMIC = False
-N_AGENTS = 10
+ENABLE_DYNAMIC = True
+N_AGENTS = 5
 PEDESTRIAN_MAX_SPEED = 30
 PEDESTRIAN_RADIUS = 8
 
