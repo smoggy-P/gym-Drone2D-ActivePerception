@@ -56,13 +56,15 @@ class Drone2DEnv(gym.Env):
                     i += 1
 
         self.map_gt = OccupancyGridMap(64, 48, self.dim)
-        self.map_gt.init_obstacles(self.obstacles)
+        self.map_gt.init_obstacles(self.obstacles, self.agents)
             
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270)
-        self.raycast = Raycast(self.dim, self.drone)
-        
+        self.raycast = Raycast(self.dim, self.drone)  
     
     def step(self):
+
+        self.map_gt.update_dynamic_grid(self.agents)
+
         self.rays = self.raycast.castRays(self.drone, self.map_gt, self.drone.map)
         if ENABLE_DYNAMIC:
             # Update moving agent position
@@ -94,8 +96,8 @@ class Drone2DEnv(gym.Env):
             
         pygame.event.pump() # process event queue
         
-        # self.map_gt.render(self.screen, color_dict)
-        self.drone.map.render(self.screen, color_dict)
+        self.map_gt.render(self.screen, color_dict)
+        # self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
         for ray in self.rays:
             pygame.draw.line(
