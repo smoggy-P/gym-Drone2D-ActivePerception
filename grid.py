@@ -52,10 +52,13 @@ class OccupancyGridMap:
         for dynamic_idx in self.dynamic_idx:
             self.grid_map[dynamic_idx[0], dynamic_idx[1]] = grid_type['UNEXPLORED']
         self.dynamic_idx = []
+        
         for agent in agents:
+            unit_x = int(agent.radius // self.x_scale)
+            unit_y = int(agent.radius // self.y_scale)
             pos = [int(agent.position[0] // self.x_scale), int(agent.position[1] // self.y_scale)]
-            for i in range(max(pos[0] - 1, 0), min(pos[0] + 2, self.grid_map.shape[0])):
-                for j in range(max(pos[1] - 1, 0), min(pos[1] + 2, self.grid_map.shape[1])):
+            for i in range(max(pos[0] - unit_x, 0), min(pos[0] + unit_x + 1, self.grid_map.shape[0])):
+                for j in range(max(pos[1] - unit_y, 0), min(pos[1] + unit_y + 1, self.grid_map.shape[1])):
                     if self.grid_map[i,j] != grid_type['OCCUPIED']:
                         self.grid_map[i,j] = grid_type['DYNAMIC_OCCUPIED']
                         self.dynamic_idx.append([i,j])

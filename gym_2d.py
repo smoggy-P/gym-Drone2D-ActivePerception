@@ -1,17 +1,14 @@
-import imp
 import math
-from time import sleep
-from turtle import Screen
 import gym
 import pygame
 import random
-import numpy as np
 
 from numpy import array, pi, cos, sin
 from RVO import RVO_update, Agent
 from grid import OccupancyGridMap
 from raycast import Raycast
 from drone import Drone2D
+from time import sleep
 
 
 from utils import *
@@ -133,4 +130,4 @@ if __name__ == '__main__':
     while True:
         t.step()
         t.render()
-        # sleep(0.2)
+        sleep(t.dt)

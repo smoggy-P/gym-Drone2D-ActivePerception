@@ -1,7 +1,14 @@
-import time
+import math
 from math import pi, radians, tan, ceil, atan
-from vector import Vector
 from config import *
+
+def get_positive_angle(angle = None):
+
+        angle = math.copysign((abs(angle) % (math.pi*2)), angle)
+        if (angle < 0):
+            angle += (math.pi*2)
+
+        return angle
 
 class Raycast:
     #Pre-calculated values
@@ -65,7 +72,7 @@ class Raycast:
         wall_hit = 0
 
         #Make shure angle between 0 and 2PI
-        ray_angle = Vector.get_positive_angle(None, ray_angle)
+        ray_angle = get_positive_angle(ray_angle)
         #Get directions which ray is faced
         faced_right = (ray_angle < self.rad90deg or ray_angle > self.rad270deg)
         faced_up = (ray_angle > pi)
