@@ -9,6 +9,7 @@ from grid import OccupancyGridMap
 from raycast import Raycast
 from drone import Drone2D
 from time import sleep
+from primitive import Primitive
 
 
 from utils import *
@@ -63,6 +64,10 @@ class Drone2DEnv(gym.Env):
         self.map_gt.update_dynamic_grid(self.agents)
 
         self.rays = self.raycast.castRays(self.drone, self.map_gt, self.drone.map)
+
+        mp = Primitive()
+        mp.get_successor(start_position=np.array([370, 240]), start_velocity=np.zeros(2), occupancy_map=self.map_gt, agents=self.agents)
+
         if ENABLE_DYNAMIC:
             # Update moving agent position
             RVO_update(self.agents, self.ws_model)
