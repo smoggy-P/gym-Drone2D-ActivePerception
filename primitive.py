@@ -1,3 +1,5 @@
+from numpy.linalg import norm
+import pygame
 import numpy as np
 
 class Waypoint2D(object):
@@ -20,37 +22,132 @@ def waypoint_from_traj(coeff, t):
     waypoint.velocity = np.array([1, 2*t]) @ coeff[:, 1:].T
     return waypoint
 
-class Primitive(object):
-    def __init__(self):
-        self.u_space = np.array([-1, 0, 1])
-        self.dt = 1
-        self.sample_num = 10 # sampling number for collision check
+def waypoint_to_index(position, velocity):
+    return (round(position[0]), round(position[1]), round(velocity[0]), round(velocity[1]))
 
-    def get_successor(self, start_position, start_velocity, occupancy_map, agents):
+class Primitive(object):
+    class Node:
+        def __init__(self, pos, vel, cost, idx, parent_index, action_idx):
+            self.position = pos  
+            self.velocity = vel 
+            self.cost = cost
+            self.index = idx
+            self.parent_index = parent_index
+            self.action_idx = action_idx
+
+    def __init__(self, screen):
+        self.u_space = np.array([-1, -0.5, 0, 0.5, 1])
+        self.dt = 2
+        self.sample_num = 5 # sampling number for collision check
+        self.target = np.array([0,0])
+        self.search_threshold = 10
+        self.screen = screen
+
+    def set_target(self, target_pos):
+        self.target = target_pos
+
+    def get_successor(self, start_node, occupancy_map, agents):
         """Generate next primitive from start position and check collision
 
         Args:
             start (int): position of starting point
             occupancy_map (_type_): _description_
         """
-        successor_list = []
-        coeff_list = []
-        for x_acc in self.u_space:
-            for y_acc in self.u_space:
+        start_position = start_node.position
+        start_velocity = start_node.velocity
+
+        suc_node_list = []
+        valid_target_num = 0
+        for i, x_acc in enumerate(self.u_space):
+            for j, y_acc in enumerate(self.u_space):
                 coeff = np.array([[start_position[0], start_velocity[0], x_acc / 2], 
                                   [start_position[1], start_velocity[1], y_acc / 2]])
                 
                 # Collision check
-                if self.is_free(coeff, occupancy_map, agents):
-                    coeff_list.append(coeff) # x(t) = a1 + b1 * t + c1 * t^2
-                    successor_list.append(waypoint_from_traj(coeff, self.dt))
-                    print("  valid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
+                waypoint = waypoint_from_traj(coeff, self.dt)
+                if self.is_free(coeff, occupancy_map, agents) and norm(waypoint.velocity) < 10:
+                    valid_target_num += 1
+                    suc_node_list.append(self.Node(pos=waypoint.position, 
+                                                   vel=waypoint.velocity, 
+                                                   cost=start_node.cost + 1, 
+                                                   idx=waypoint_to_index(waypoint.position, waypoint.velocity),
+                                                   parent_index=start_node.index,
+                                                   action_idx=i*self.u_space.shape[0] + j))
+                #     print("  valid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
+                # else:
+                #     print("invalid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
+        return suc_node_list
+
+    def planning(self, sx, sy, occupancy_map, agents):
+        """
+        A star path search
+        input:
+            s_x: start x position 
+            s_y: start y position 
+            gx: goal x position 
+            gy: goal y position
+        output:
+            rx: x position list of the final path
+            ry: y position list of the final path
+        """
+        gx, gy = self.target[0], self.target[1]
+        start_node = self.Node(pos=np.array([sx, sy]), 
+                               vel=np.array([0, 0]),
+                               cost=0.0, 
+                               idx=(sx, sy, 0, 0),
+                               parent_index=-1,
+                               action_idx=-1)
+
+        open_set, closed_set = dict(), dict()
+        open_set[waypoint_to_index(start_node.position, start_node.velocity)] = start_node
+
+        while 1:
+            if len(open_set) == 0:
+                print("Open set is empty..")
+                break
+
+            c_id = min(
+                open_set,
+                key=lambda o: (open_set[o].cost)/2 + norm(open_set[o].position - np.array([gx, gy])))
+            current = open_set[c_id]
+
+            if norm(current.position - np.array([gx, gy])) <= self.search_threshold:
+                print("Find goal")
+                goal_node = current
+                break
+
+            # Remove the item from the open set
+            del open_set[c_id]
+
+            # Add it to the closed set
+            closed_set[c_id] = current
+
+            # expand_grid search grid based on motion model
+            sub_node_list = self.get_successor(current, occupancy_map, agents)
+            for next_node in sub_node_list:
+                if next_node.index in closed_set:
+                    continue
+
+                if next_node.index not in open_set:
+                    open_set[next_node.index] = next_node  # discovered a new node
                 else:
-                    print("invalid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
-        return coeff_list, successor_list
+                    if open_set[next_node.index].cost > next_node.cost:
+                        # This path is the best until now. record it
+                        open_set[next_node.index] = next_node
 
+
+        cur_node = goal_node
+        while(cur_node!=start_node): 
+            pre_node = closed_set[cur_node.parent_index]
+            pygame.draw.line(surface=self.screen, 
+                             color=(100,100,100), 
+                             start_pos=(pre_node.position[0], pre_node.position[1]), 
+                             end_pos=(cur_node.position[0], cur_node.position[1]), 
+                             width=5)
+            cur_node = pre_node
+
+        return goal_node
     
-
     def is_free(self, coeff, occupancy_map, agents):
         """Check if there is collision with the trajectory using sampling method
 
@@ -66,6 +163,3 @@ class Primitive(object):
         return True
 
 
-if __name__ == '__main__': 
-    w = Primitive()
-    a = w.get_successor(start_position=np.array([0,0]), start_velocity=np.array([0,0]))
