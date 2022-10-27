@@ -7,6 +7,7 @@ class Waypoint2D(object):
         self.position = pos
         self.velocity = vel
 
+
 def waypoint_from_traj(coeff, t):
     """Get the waypoint in trajectory with coefficient at time t
 
@@ -27,17 +28,18 @@ def waypoint_to_index(position, velocity):
 
 class Primitive(object):
     class Node:
-        def __init__(self, pos, vel, cost, idx, parent_index, action_idx):
+        def __init__(self, pos, vel, cost, idx, parent_index, action_idx, coeff):
             self.position = pos  
             self.velocity = vel 
             self.cost = cost
             self.index = idx
             self.parent_index = parent_index
             self.action_idx = action_idx
+            self.coeff = coeff
 
     def __init__(self, screen):
         self.u_space = np.array([-1, -0.5, 0, 0.5, 1])
-        self.dt = 2
+        self.dt = 4
         self.sample_num = 5 # sampling number for collision check
         self.target = np.array([0,0])
         self.search_threshold = 10
@@ -65,14 +67,15 @@ class Primitive(object):
                 
                 # Collision check
                 waypoint = waypoint_from_traj(coeff, self.dt)
-                if self.is_free(coeff, occupancy_map, agents) and norm(waypoint.velocity) < 10:
+                if self.is_free(coeff, occupancy_map, agents) and norm(waypoint.velocity) < 20:
                     valid_target_num += 1
                     suc_node_list.append(self.Node(pos=waypoint.position, 
                                                    vel=waypoint.velocity, 
-                                                   cost=start_node.cost + 1, 
+                                                   cost=start_node.cost + x_acc**2 + y_acc**2, 
                                                    idx=waypoint_to_index(waypoint.position, waypoint.velocity),
                                                    parent_index=start_node.index,
-                                                   action_idx=i*self.u_space.shape[0] + j))
+                                                   action_idx=i*self.u_space.shape[0] + j,
+                                                   coeff=coeff))
                 #     print("  valid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
                 # else:
                 #     print("invalid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
@@ -94,9 +97,10 @@ class Primitive(object):
         start_node = self.Node(pos=np.array([sx, sy]), 
                                vel=np.array([0, 0]),
                                cost=0.0, 
-                               idx=(sx, sy, 0, 0),
+                               idx=(round(sx), round(sy), 0, 0),
                                parent_index=-1,
-                               action_idx=-1)
+                               action_idx=-1,
+                               coeff=None)
 
         open_set, closed_set = dict(), dict()
         open_set[waypoint_to_index(start_node.position, start_node.velocity)] = start_node
@@ -137,16 +141,12 @@ class Primitive(object):
 
 
         cur_node = goal_node
+        waypoints = []
         while(cur_node!=start_node): 
-            pre_node = closed_set[cur_node.parent_index]
-            pygame.draw.line(surface=self.screen, 
-                             color=(100,100,100), 
-                             start_pos=(pre_node.position[0], pre_node.position[1]), 
-                             end_pos=(cur_node.position[0], cur_node.position[1]), 
-                             width=5)
-            cur_node = pre_node
-
-        return goal_node
+            waypoints.extend([waypoint_from_traj(cur_node.coeff, t).position for t in np.arange(self.dt, 0, -0.2)])
+            cur_node = closed_set[cur_node.parent_index]
+        waypoints.reverse()
+        return waypoints
     
     def is_free(self, coeff, occupancy_map, agents):
         """Check if there is collision with the trajectory using sampling method

@@ -68,6 +68,8 @@ class OccupancyGridMap:
         return np.array([self.x_scale * (i+0.5), self.y_scale * (j+0.5)])
     
     def get_grid(self, x, y):
+        if x >= self.dim[0] or x < 0 or y >= self.dim[1] or y < 0:
+            return 1
         return self.grid_map[int(x // self.x_scale), int(y // self.y_scale)]
     
     

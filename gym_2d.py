@@ -40,8 +40,8 @@ class Drone2DEnv(gym.Env):
         self.observation_space = None
         
         # Define physical setup
+        self.agents = []
         if ENABLE_DYNAMIC:
-            self.agents = []
             i = 1
             while(i <= N_AGENTS):
                 theta = 2 * pi * i / N_AGENTS
@@ -59,6 +59,7 @@ class Drone2DEnv(gym.Env):
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270)
         self.raycast = Raycast(self.dim, self.drone)  
         self.mp = Primitive(self.screen)
+        self.waypoints = []
     
     def step(self):
 
@@ -72,8 +73,14 @@ class Drone2DEnv(gym.Env):
             mp = Primitive(self.screen)
             mp.set_target(np.array([x, y]))
             print("target set as:", x, y)
-            mp.planning(self.drone.x, self.drone.y, self.map_gt, self.agents)
+            self.waypoints = mp.planning(self.drone.x, self.drone.y, self.map_gt, self.agents)
+            print("path found")
         
+        if self.waypoints != [] :
+            self.drone.x = round(self.waypoints[0][0])
+            self.drone.y = round(self.waypoints[0][1])
+            self.waypoints.pop(0)
+
 
         if ENABLE_DYNAMIC:
             # Update moving agent position
@@ -96,15 +103,9 @@ class Drone2DEnv(gym.Env):
             self.drone.yaw += 2
         if keys[pygame.K_RIGHT]:
             self.drone.yaw -= 2
-        if keys[pygame.K_UP]:
-            new_x = self.drone.x + 5*cos(math.radians(self.drone.yaw))
-            new_y = self.drone.y - 5*sin(math.radians(self.drone.yaw))
-            if self.map_gt.get_grid(new_x, new_y) != grid_type['OCCUPIED']:
-                self.drone.x = new_x
-                self.drone.y = new_y
         pygame.event.pump() # process event queue
         
-        # self.map_gt.render(self.screen, color_dict)
+        self.map_gt.render(self.screen, color_dict)
         # self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
         for ray in self.rays:
@@ -114,8 +115,11 @@ class Drone2DEnv(gym.Env):
                 (self.drone.x, self.drone.y),
                 ((ray['coords'][0]), (ray['coords'][1]))
         )
-        draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
+        # draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
+        if len(self.waypoints) > 1:
+            pygame.draw.lines(self.screen, (100,100,100), False, self.waypoints)
+
         if ENABLE_DYNAMIC:
             for agent in self.agents:
                 agent.render(self.screen)
