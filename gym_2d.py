@@ -73,11 +73,11 @@ class Drone2DEnv(gym.Env):
             x, y = pygame.mouse.get_pos()
             self.planner.set_target(np.array([x, y]))
             print("target set as:", x, y)
-            self.trajectory, self.waypoints = self.planner.planning(self.drone.x, self.drone.y, self.map_gt, self.agents, self.dt)
+            self.trajectory, self.waypoints = self.planner.planning(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
             print("path found")
         
         if self.trajectory != [] :
-            # print(math.sqrt((self.drone.x - self.waypoints[0][0])**2+(self.drone.y - self.waypoints[0][1])**2) * 20)
+            self.drone.velocity = - np.array([(self.drone.x - self.trajectory[0][0]), (self.drone.y - self.trajectory[0][1])]) / self.dt
             self.drone.x = round(self.trajectory[0][0])
             self.drone.y = round(self.trajectory[0][1])
             self.trajectory.pop(0)

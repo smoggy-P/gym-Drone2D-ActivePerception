@@ -2,6 +2,8 @@ from grid import OccupancyGridMap
 from utils import *
 from config import *
 
+import numpy as np
+
 class Drone2D():
     def __init__(self, init_x, init_y, init_yaw):
         self.x = init_x
@@ -11,6 +13,7 @@ class Drone2D():
         self.yaw_depth = 150
         self.radius = DRONE_RADIUS
         self.map = OccupancyGridMap(64, 48, MAP_SIZE)
+        self.velocity = np.array([0, 0])
         
     def render(self, surface):
         pygame.draw.arc(surface, 

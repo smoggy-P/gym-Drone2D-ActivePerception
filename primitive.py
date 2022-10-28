@@ -81,7 +81,7 @@ class Primitive(object):
                 #     print("invalid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
         return suc_node_list
 
-    def planning(self, sx, sy, occupancy_map, agents, update_t):
+    def planning(self, start_pos, start_vel, occupancy_map, agents, update_t):
         """
         A star path search
         input:
@@ -94,10 +94,10 @@ class Primitive(object):
             ry: y position list of the final path
         """
         gx, gy = self.target[0], self.target[1]
-        start_node = self.Node(pos=np.array([sx, sy]), 
-                               vel=np.array([0, 0]),
+        start_node = self.Node(pos=start_pos, 
+                               vel=start_vel,
                                cost=0.0, 
-                               idx=(round(sx)//5, round(sy)//5, 0, 0),
+                               idx=waypoint_to_index(start_pos, start_vel),
                                parent_index=-1,
                                action_idx=-1,
                                coeff=None)
