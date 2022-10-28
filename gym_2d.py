@@ -19,7 +19,7 @@ class Drone2DEnv(gym.Env):
      
     def __init__(self):
         
-        self.dt = 1/20
+        self.dt = 1/60
         
         self.obstacles = {
             'circular_obstacles'  : [[320, 240, 50]],
@@ -58,7 +58,7 @@ class Drone2DEnv(gym.Env):
             
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270)
         self.raycast = Raycast(self.dim, self.drone)  
-        self.mp = Primitive(self.screen)
+        self.planner = Primitive(self.screen)
         self.waypoints = []
         self.trajectory = []
     
@@ -71,10 +71,9 @@ class Drone2DEnv(gym.Env):
         mouse = pygame.mouse.get_pressed()
         if mouse[0]:
             x, y = pygame.mouse.get_pos()
-            mp = Primitive(self.screen)
-            mp.set_target(np.array([x, y]))
+            self.planner.set_target(np.array([x, y]))
             print("target set as:", x, y)
-            self.trajectory, self.waypoints = mp.planning(self.drone.x, self.drone.y, self.map_gt, self.agents)
+            self.trajectory, self.waypoints = self.planner.planning(self.drone.x, self.drone.y, self.map_gt, self.agents, self.dt)
             print("path found")
         
         if self.trajectory != [] :

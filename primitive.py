@@ -24,7 +24,7 @@ def waypoint_from_traj(coeff, t):
     return waypoint
 
 def waypoint_to_index(position, velocity):
-    return (round(position[0]), round(position[1]), round(velocity[0]), round(velocity[1]))
+    return (round(position[0])//5, round(position[1])//5, round(velocity[0])//2, round(velocity[1])//2)
 
 class Primitive(object):
     class Node:
@@ -38,7 +38,7 @@ class Primitive(object):
             self.coeff = coeff
 
     def __init__(self, screen):
-        self.u_space = np.array([-15, -10, -5, 0, 5, 10, 15])
+        self.u_space = np.array([-30, -15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15, 30])
         self.dt = 3
         self.sample_num = 5 # sampling number for collision check
         self.target = np.array([0,0])
@@ -71,7 +71,7 @@ class Primitive(object):
                     valid_target_num += 1
                     suc_node_list.append(self.Node(pos=waypoint.position, 
                                                    vel=waypoint.velocity, 
-                                                   cost=start_node.cost + 0.5, 
+                                                   cost=start_node.cost + 1, 
                                                    idx=waypoint_to_index(waypoint.position, waypoint.velocity),
                                                    parent_index=start_node.index,
                                                    action_idx=i*self.u_space.shape[0] + j,
@@ -81,7 +81,7 @@ class Primitive(object):
                 #     print("invalid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
         return suc_node_list
 
-    def planning(self, sx, sy, occupancy_map, agents):
+    def planning(self, sx, sy, occupancy_map, agents, update_t):
         """
         A star path search
         input:
@@ -97,7 +97,7 @@ class Primitive(object):
         start_node = self.Node(pos=np.array([sx, sy]), 
                                vel=np.array([0, 0]),
                                cost=0.0, 
-                               idx=(round(sx), round(sy), 0, 0),
+                               idx=(round(sx)//5, round(sy)//5, 0, 0),
                                parent_index=-1,
                                action_idx=-1,
                                coeff=None)
@@ -144,7 +144,7 @@ class Primitive(object):
         waypoints = []
         control_points = []
         while(cur_node!=start_node): 
-            control_points.extend([waypoint_from_traj(cur_node.coeff, t).position for t in np.arange(self.dt, 0, -1/20)])
+            control_points.extend([waypoint_from_traj(cur_node.coeff, t).position for t in np.arange(self.dt, 0, -update_t)])
             waypoints.append(cur_node.position)
             cur_node = closed_set[cur_node.parent_index]
         control_points.reverse()
@@ -164,4 +164,4 @@ class Primitive(object):
                 return False
         return True
 
-print(np.arange(2, 0, -1/20))
+# print(np.arange(2, 0, -1/20))
