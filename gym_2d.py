@@ -60,6 +60,7 @@ class Drone2DEnv(gym.Env):
         self.raycast = Raycast(self.dim, self.drone)  
         self.mp = Primitive(self.screen)
         self.waypoints = []
+        self.trajectory = []
     
     def step(self):
 
@@ -73,13 +74,14 @@ class Drone2DEnv(gym.Env):
             mp = Primitive(self.screen)
             mp.set_target(np.array([x, y]))
             print("target set as:", x, y)
-            self.waypoints = mp.planning(self.drone.x, self.drone.y, self.map_gt, self.agents)
+            self.trajectory, self.waypoints = mp.planning(self.drone.x, self.drone.y, self.map_gt, self.agents)
             print("path found")
         
-        if self.waypoints != [] :
-            self.drone.x = round(self.waypoints[0][0])
-            self.drone.y = round(self.waypoints[0][1])
-            self.waypoints.pop(0)
+        if self.trajectory != [] :
+            # print(math.sqrt((self.drone.x - self.waypoints[0][0])**2+(self.drone.y - self.waypoints[0][1])**2) * 20)
+            self.drone.x = round(self.trajectory[0][0])
+            self.drone.y = round(self.trajectory[0][1])
+            self.trajectory.pop(0)
 
 
         if ENABLE_DYNAMIC:
@@ -105,8 +107,8 @@ class Drone2DEnv(gym.Env):
             self.drone.yaw -= 2
         pygame.event.pump() # process event queue
         
-        self.map_gt.render(self.screen, color_dict)
-        # self.drone.map.render(self.screen, color_dict)
+        # self.map_gt.render(self.screen, color_dict)
+        self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
         for ray in self.rays:
             pygame.draw.line(
@@ -117,8 +119,10 @@ class Drone2DEnv(gym.Env):
         )
         # draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
-        if len(self.waypoints) > 1:
-            pygame.draw.lines(self.screen, (100,100,100), False, self.waypoints)
+        if len(self.trajectory) > 1:
+            pygame.draw.lines(self.screen, (100,100,100), False, self.trajectory)
+        for point in self.waypoints:
+            pygame.draw.circle(self.screen, (0, 0, 255), point, 3)
 
         if ENABLE_DYNAMIC:
             for agent in self.agents:

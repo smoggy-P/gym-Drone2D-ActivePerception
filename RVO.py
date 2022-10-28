@@ -3,6 +3,7 @@ import pygame
 from math import cos, sin, atan2, asin, sqrt
 from utils import check_in_view
 from math import pi as PI
+from numpy.linalg import norm
 
 class Agent(object):
     """A disk-shaped agent."""
@@ -20,7 +21,7 @@ class Agent(object):
         self.estimate_pos = None
         
     def step(self, edge_size_x, edge_size_y, map_width, map_height, drone, dt):
-        new_position = self.position + np.array(self.velocity) * dt
+        new_position = self.position + self.velocity * dt
             
         # Change reference velocity if reaching the boundary
         if new_position[0] < edge_size_x + self.radius:

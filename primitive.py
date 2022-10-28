@@ -1,6 +1,6 @@
 from numpy.linalg import norm
-import pygame
 import numpy as np
+from config import *
 
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
@@ -19,7 +19,7 @@ def waypoint_from_traj(coeff, t):
         _type_: _description_
     """
     waypoint = Waypoint2D()
-    waypoint.position = np.array([1, t, t**2]) @ coeff.T
+    waypoint.position = np.around(np.array([1, t, t**2]) @ coeff.T)
     waypoint.velocity = np.array([1, 2*t]) @ coeff[:, 1:].T
     return waypoint
 
@@ -38,8 +38,8 @@ class Primitive(object):
             self.coeff = coeff
 
     def __init__(self, screen):
-        self.u_space = np.array([-1, -0.5, 0, 0.5, 1])
-        self.dt = 4
+        self.u_space = np.array([-15, -10, -5, 0, 5, 10, 15])
+        self.dt = 3
         self.sample_num = 5 # sampling number for collision check
         self.target = np.array([0,0])
         self.search_threshold = 10
@@ -67,11 +67,11 @@ class Primitive(object):
                 
                 # Collision check
                 waypoint = waypoint_from_traj(coeff, self.dt)
-                if self.is_free(coeff, occupancy_map, agents) and norm(waypoint.velocity) < 20:
+                if self.is_free(coeff, occupancy_map, agents) and norm(waypoint.velocity) < DRONE_MAX_SPEED:
                     valid_target_num += 1
                     suc_node_list.append(self.Node(pos=waypoint.position, 
                                                    vel=waypoint.velocity, 
-                                                   cost=start_node.cost + x_acc**2 + y_acc**2, 
+                                                   cost=start_node.cost + 0.5, 
                                                    idx=waypoint_to_index(waypoint.position, waypoint.velocity),
                                                    parent_index=start_node.index,
                                                    action_idx=i*self.u_space.shape[0] + j,
@@ -112,7 +112,7 @@ class Primitive(object):
 
             c_id = min(
                 open_set,
-                key=lambda o: (open_set[o].cost)/2 + norm(open_set[o].position - np.array([gx, gy])))
+                key=lambda o: (open_set[o].cost)/2 + norm(open_set[o].position - np.array([gx, gy])) + norm(open_set[o].velocity))
             current = open_set[c_id]
 
             if norm(current.position - np.array([gx, gy])) <= self.search_threshold:
@@ -142,11 +142,13 @@ class Primitive(object):
 
         cur_node = goal_node
         waypoints = []
+        control_points = []
         while(cur_node!=start_node): 
-            waypoints.extend([waypoint_from_traj(cur_node.coeff, t).position for t in np.arange(self.dt, 0, -0.2)])
+            control_points.extend([waypoint_from_traj(cur_node.coeff, t).position for t in np.arange(self.dt, 0, -1/20)])
+            waypoints.append(cur_node.position)
             cur_node = closed_set[cur_node.parent_index]
-        waypoints.reverse()
-        return waypoints
+        control_points.reverse()
+        return control_points, waypoints
     
     def is_free(self, coeff, occupancy_map, agents):
         """Check if there is collision with the trajectory using sampling method
@@ -162,4 +164,4 @@ class Primitive(object):
                 return False
         return True
 
-
+print(np.arange(2, 0, -1/20))
