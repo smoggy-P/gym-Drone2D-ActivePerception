@@ -5,7 +5,7 @@ from config import *
 import numpy as np
 
 class Drone2D():
-    def __init__(self, init_x, init_y, init_yaw):
+    def __init__(self, init_x, init_y, init_yaw, dt):
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
@@ -13,8 +13,15 @@ class Drone2D():
         self.yaw_depth = 150
         self.radius = DRONE_RADIUS
         self.map = OccupancyGridMap(64, 48, MAP_SIZE)
-        self.velocity = np.array([0, 0])
-        
+        self.velocity = np.array([20, 20])
+        self.dt = dt
+    
+    def brake(self):
+        if self.velocity[0]*self.velocity[1] != 0:
+            self.velocity = np.multiply(self.velocity, np.ones(2) - np.minimum(DRONE_MAX_ACC * self.dt * np.ones(2), self.velocity) / np.absolute(self.velocity))
+            self.x += self.velocity[0] * self.dt
+            self.y += self.velocity[1] * self.dt
+
     def render(self, surface):
         pygame.draw.arc(surface, 
                         (255,255,255), 

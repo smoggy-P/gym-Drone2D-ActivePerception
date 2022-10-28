@@ -56,26 +56,43 @@ class Drone2DEnv(gym.Env):
         self.map_gt = OccupancyGridMap(64, 48, self.dim)
         self.map_gt.init_obstacles(self.obstacles, self.agents)
             
-        self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270)
+        self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270, self.dt)
         self.raycast = Raycast(self.dim, self.drone)  
         self.planner = Primitive(self.screen)
         self.waypoints = []
         self.trajectory = []
+        self.planning = False
     
     def step(self):
 
         self.map_gt.update_dynamic_grid(self.agents)
 
         self.rays = self.raycast.castRays(self.drone, self.map_gt, self.drone.map)
-
         mouse = pygame.mouse.get_pressed()
         if mouse[0]:
+            print("current velocity:", self.drone.velocity)
+            success = False
             x, y = pygame.mouse.get_pos()
             self.planner.set_target(np.array([x, y]))
             print("target set as:", x, y)
-            self.trajectory, self.waypoints = self.planner.planning(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
-            print("path found")
+            self.trajectory, self.waypoints, success = self.planner.planning(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
+            if not success:
+                self.drone.brake()
+                print("path not found, replanning")
+                self.planning = True
+            else:
+                print("path found")
+                self.planning = False
         
+        if self.planning:
+            self.trajectory, self.waypoints, success = self.planner.planning(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
+            if not success:
+                self.drone.brake()
+                print("path not found, replanning")
+            else:
+                print("path found")
+                self.planning = False
+
         if self.trajectory != [] :
             self.drone.velocity = - np.array([(self.drone.x - self.trajectory[0][0]), (self.drone.y - self.trajectory[0][1])]) / self.dt
             self.drone.x = round(self.trajectory[0][0])
@@ -116,7 +133,7 @@ class Drone2DEnv(gym.Env):
                 (self.drone.x, self.drone.y),
                 ((ray['coords'][0]), (ray['coords'][1]))
         )
-        # draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
+        draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
         if len(self.trajectory) > 1:
             pygame.draw.lines(self.screen, (100,100,100), False, self.trajectory)
