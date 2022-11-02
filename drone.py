@@ -2,6 +2,7 @@ from grid import OccupancyGridMap
 from utils import *
 from config import *
 
+from numpy.linalg import norm
 import numpy as np
 
 class Drone2D():
@@ -17,8 +18,11 @@ class Drone2D():
         self.dt = dt
     
     def brake(self):
-        if self.velocity[0]*self.velocity[1] != 0:
-            self.velocity = np.multiply(self.velocity, np.ones(2) - np.minimum(DRONE_MAX_ACC * self.dt * np.ones(2), self.velocity) / np.absolute(self.velocity))
+        if norm(self.velocity) <= DRONE_MAX_ACC * self.dt:
+            self.velocity = np.zeros(2)
+
+        else:
+            self.velocity = self.velocity - self.velocity / norm(self.velocity) * DRONE_MAX_ACC * self.dt
             self.x += self.velocity[0] * self.dt
             self.y += self.velocity[1] * self.dt
 

@@ -9,7 +9,7 @@ from grid import OccupancyGridMap
 from raycast import Raycast
 from drone import Drone2D
 from time import sleep
-from primitive import Primitive
+from primitive import Primitive, Trajectory2D
 
 
 from utils import *
@@ -19,7 +19,7 @@ class Drone2DEnv(gym.Env):
      
     def __init__(self):
         
-        self.dt = 1/60
+        self.dt = 1/20
         
         self.obstacles = {
             'circular_obstacles'  : [[320, 240, 50]],
@@ -59,23 +59,24 @@ class Drone2DEnv(gym.Env):
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270, self.dt)
         self.raycast = Raycast(self.dim, self.drone)  
         self.planner = Primitive(self.screen)
-        self.waypoints = []
-        self.trajectory = []
+        self.trajectory = Trajectory2D()
         self.planning = False
     
     def step(self):
-
+        # Update gridmap for dynamic obstacles
         self.map_gt.update_dynamic_grid(self.agents)
 
+        # Raycast module
         self.rays = self.raycast.castRays(self.drone, self.map_gt, self.drone.map)
+        
+        # Set target point
         mouse = pygame.mouse.get_pressed()
         if mouse[0]:
-            print("current velocity:", self.drone.velocity)
             success = False
             x, y = pygame.mouse.get_pos()
             self.planner.set_target(np.array([x, y]))
             print("target set as:", x, y)
-            self.trajectory, self.waypoints, success = self.planner.planning(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
+            self.trajectory, success = self.planner.planning(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
             if not success:
                 self.drone.brake()
                 print("path not found, replanning")
@@ -85,7 +86,7 @@ class Drone2DEnv(gym.Env):
                 self.planning = False
         
         if self.planning:
-            self.trajectory, self.waypoints, success = self.planner.planning(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
+            self.trajectory, success = self.planner.planning(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
             if not success:
                 self.drone.brake()
                 print("path not found, replanning")
@@ -93,11 +94,11 @@ class Drone2DEnv(gym.Env):
                 print("path found")
                 self.planning = False
 
-        if self.trajectory != [] :
-            self.drone.velocity = - np.array([(self.drone.x - self.trajectory[0][0]), (self.drone.y - self.trajectory[0][1])]) / self.dt
-            self.drone.x = round(self.trajectory[0][0])
-            self.drone.y = round(self.trajectory[0][1])
-            self.trajectory.pop(0)
+        if self.trajectory.positions != [] :
+            self.drone.velocity = self.trajectory.velocities[0]
+            self.drone.x = round(self.trajectory.positions[0][0])
+            self.drone.y = round(self.trajectory.positions[0][1])
+            self.trajectory.pop()
 
 
         if ENABLE_DYNAMIC:
@@ -135,10 +136,10 @@ class Drone2DEnv(gym.Env):
         )
         draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
-        if len(self.trajectory) > 1:
-            pygame.draw.lines(self.screen, (100,100,100), False, self.trajectory)
-        for point in self.waypoints:
-            pygame.draw.circle(self.screen, (0, 0, 255), point, 3)
+        if len(self.trajectory.positions) > 1:
+            pygame.draw.lines(self.screen, (100,100,100), False, self.trajectory.positions)
+        # for point in self.waypoints:
+        #     pygame.draw.circle(self.screen, (0, 0, 255), point, 3)
 
         if ENABLE_DYNAMIC:
             for agent in self.agents:

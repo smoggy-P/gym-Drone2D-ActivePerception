@@ -2,13 +2,18 @@ from cmath import sqrt
 from numpy.linalg import norm
 import numpy as np
 from config import *
-import time
-from scipy import integrate
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
         self.position = pos
         self.velocity = vel
 
+class Trajectory2D(object):
+    def __init__(self):
+        self.positions = []
+        self.velocities = []
+    def pop(self):
+        self.positions.pop(0)
+        self.velocities.pop(0)
 
 def waypoint_from_traj(coeff, t):
     """Get the waypoint in trajectory with coefficient at time t
@@ -148,17 +153,18 @@ class Primitive(object):
                     if open_set[next_node.index].cost > next_node.cost:
                         # This path is the best until now. record it
                         open_set[next_node.index] = next_node
-        waypoints = []
-        control_points = []
+        trajectory = Trajectory2D()
         if success:
             cur_node = goal_node
             
             while(cur_node!=start_node): 
-                control_points.extend([waypoint_from_traj(cur_node.coeff, t).position for t in np.arange(self.dt, 0, -update_t)])
-                waypoints.append(cur_node.position)
+                trajectory.positions.extend([waypoint_from_traj(cur_node.coeff, t).position for t in np.arange(self.dt, 0, -update_t)])
+                trajectory.velocities.extend([waypoint_from_traj(cur_node.coeff, t).velocity for t in np.arange(self.dt, 0, -update_t)])
                 cur_node = closed_set[cur_node.parent_index]
-            control_points.reverse()
-        return control_points, waypoints, success
+            trajectory.positions.reverse()
+            trajectory.velocities.reverse()
+
+        return trajectory, success
 
     
     def is_free(self, coeff, occupancy_map, agents, itr):
