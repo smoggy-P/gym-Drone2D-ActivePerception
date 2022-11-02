@@ -19,7 +19,7 @@ class Drone2DEnv(gym.Env):
      
     def __init__(self):
         
-        self.dt = 1/20
+        self.dt = 1/15
         
         self.obstacles = {
             'circular_obstacles'  : [[320, 240, 50]],
@@ -94,6 +94,7 @@ class Drone2DEnv(gym.Env):
                 print("path found")
                 self.planning = False
 
+        # execute trajectory
         if self.trajectory.positions != [] :
             self.drone.velocity = self.trajectory.velocities[0]
             self.drone.x = round(self.trajectory.positions[0][0])
@@ -166,4 +167,4 @@ if __name__ == '__main__':
     while True:
         t.step()
         t.render()
-        sleep(t.dt)
+        # sleep(t.dt)

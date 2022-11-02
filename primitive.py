@@ -30,26 +30,26 @@ def waypoint_from_traj(coeff, t):
     waypoint.velocity = np.array([1, 2*t]) @ coeff[:, 1:].T
     return waypoint
 
-def waypoint_to_index(position, velocity):
-    return (round(position[0])//5, round(position[1])//5, round(velocity[0])//2, round(velocity[1])//2)
-
 class Primitive(object):
     class Node:
-        def __init__(self, pos, vel, cost, idx, parent_index, coeff, itr):
+        def __init__(self, pos, vel, cost, parent_index, coeff, itr):
             self.position = pos  
             self.velocity = vel 
             self.cost = cost
-            self.index = idx
             self.parent_index = parent_index
             self.coeff = coeff
             self.itr = itr
+            self.get_index()
+        def get_index(self):
+            self.index = (round(self.position[0])//5, round(self.position[1])//5, round(self.velocity[0])//2, round(self.velocity[1])//2)
 
     def __init__(self, screen):
-        self.u_space = np.array([-15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15])
+        self.u_space = np.arange(-DRONE_MAX_ACC, DRONE_MAX_ACC, 2)
+        # self.u_space = np.array([-15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15])
         self.dt = 3
         self.sample_num = 10 # sampling number for collision check
         self.target = np.array([0,0])
-        self.search_threshold = 10
+        self.search_threshold = 20
         self.screen = screen
 
     def set_target(self, target_pos):
@@ -83,7 +83,6 @@ class Primitive(object):
                     suc_node_list.append(self.Node(pos=waypoint.position, 
                                                    vel=waypoint.velocity, 
                                                    cost=start_node.cost + 1, 
-                                                   idx=waypoint_to_index(waypoint.position, waypoint.velocity),
                                                    parent_index=start_node.index,
                                                    coeff=coeff,
                                                    itr = start_node.itr + 1))
@@ -108,13 +107,12 @@ class Primitive(object):
         start_node = self.Node(pos=start_pos, 
                                vel=start_vel,
                                cost=0.0, 
-                               idx=waypoint_to_index(start_pos, start_vel),
                                parent_index=-1,
                                coeff=None,
                                itr=0)
 
         open_set, closed_set = dict(), dict()
-        open_set[waypoint_to_index(start_node.position, start_node.velocity)] = start_node
+        open_set[start_node.index] = start_node
         itr = 0
         while 1:
             itr += 1
@@ -177,12 +175,13 @@ class Primitive(object):
         for t in np.arange(0, self.dt, self.dt / self.sample_num):
             wp = waypoint_from_traj(coeff, t)
             grid = occupancy_map.get_grid(wp.position[0], wp.position[1])
-            if grid == 1 or grid == 3:
+            if grid == 1:
                 return False
             for agent in agents:
                 global_t = t + itr * self.dt
                 new_position = agent.position + agent.velocity * global_t
                 if norm(wp.position - new_position) <= DRONE_RADIUS + agent.radius:
+                    # print("collision found with agent in position:", new_position)
                     return False
 
 
