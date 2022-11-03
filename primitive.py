@@ -51,6 +51,7 @@ class Primitive(object):
         self.target = np.array([0,0])
         self.search_threshold = 20
         self.screen = screen
+        self.cost_ratio = 100
 
     def set_target(self, target_pos):
         self.target = target_pos
@@ -82,7 +83,7 @@ class Primitive(object):
                     valid_target_num += 1
                     suc_node_list.append(self.Node(pos=waypoint.position, 
                                                    vel=waypoint.velocity, 
-                                                   cost=start_node.cost + 1, 
+                                                   cost=start_node.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 1, 
                                                    parent_index=start_node.index,
                                                    coeff=coeff,
                                                    itr = start_node.itr + 1))
@@ -116,7 +117,7 @@ class Primitive(object):
         itr = 0
         while 1:
             itr += 1
-            if len(open_set) == 0 or itr >= 10:
+            if len(open_set) == 0 or itr >= 20:
                 print("No solution found in limitied time")
                 goal_node = None
                 success = False
@@ -124,7 +125,7 @@ class Primitive(object):
 
             c_id = min(
                 open_set,
-                key=lambda o: (open_set[o].cost)/2 + norm(open_set[o].position - np.array([gx, gy])) + norm(open_set[o].velocity))
+                key=lambda o: (open_set[o].cost) + norm(open_set[o].position - np.array([gx, gy])))
             current = open_set[c_id]
 
             if norm(current.position - np.array([gx, gy])) <= self.search_threshold:
