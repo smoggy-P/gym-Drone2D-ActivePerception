@@ -1,6 +1,10 @@
 import math
+import multiprocessing
+import time
 from math import pi, radians, tan, ceil, atan
 from config import *
+from joblib import Parallel, delayed
+num_cores = multiprocessing.cpu_count()
 
 def get_positive_angle(angle = None):
 
@@ -49,12 +53,7 @@ class Raycast:
 
     def castRays(self, player, truth_grid_map, updated_grid_map):
         rays = []
-        player_angle = pi*2 - radians(player.yaw)
-        for i in range(self.rays_number):
-            ray_screen_pos = (-self.half_rays_number+i) * self.strip_width
-            ray_angle = atan(ray_screen_pos / self.distance_to_plane)
-            ray = self.castRay(player, player_angle, ray_angle, truth_grid_map, updated_grid_map)
-            rays.append(ray)
+        rays = [self.castRay(player, pi*2 - radians(player.yaw), atan((-self.half_rays_number+i) * self.strip_width / self.distance_to_plane), truth_grid_map, updated_grid_map) for i in range(self.rays_number)]
         return rays
 
 
@@ -93,7 +92,7 @@ class Raycast:
                 j = int(y // truth_grid_map.y_scale)
                 wall = truth_grid_map.grid_map[i, j]
                 dist = (x - player_coords.x)**2 + (y - player_coords.y)**2
-                if wall == 1 or dist >= self.depth**2:
+                if wall == 1 or wall == 3 or dist >= self.depth**2:
                     x_hit = x
                     y_hit = y
                     wall_hit = wall
@@ -114,7 +113,7 @@ class Raycast:
                 j = int(y // truth_grid_map.y_scale)
                 wall = truth_grid_map.grid_map[i, j]
                 dist = (x-player_coords.x)**2 + (y-player_coords.y)**2
-                if wall == 1 or dist >= self.depth**2:
+                if wall == 1 or wall == 3 or dist >= self.depth**2:
                     x_hit = x
                     y_hit = y
                     wall_hit = wall
