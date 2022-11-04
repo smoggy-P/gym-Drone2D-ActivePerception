@@ -22,7 +22,7 @@ PEDESTRIAN_RADIUS = 10
 
 # Drone Settings
 DRONE_RADIUS = 10
-DRONE_MAX_SPEED = 60
+DRONE_MAX_SPEED = 40
 DRONE_MAX_ACC = 15
 
 # Ray Casting Settings

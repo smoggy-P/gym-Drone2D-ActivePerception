@@ -128,13 +128,13 @@ class Drone2DEnv(gym.Env):
         # self.map_gt.render(self.screen, color_dict)
         self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
-        for ray in self.rays:
-            pygame.draw.line(
-                self.screen,
-                (100,100,100),
-                (self.drone.x, self.drone.y),
-                ((ray['coords'][0]), (ray['coords'][1]))
-        )
+        # for ray in self.rays:
+        #     pygame.draw.line(
+        #         self.screen,
+        #         (100,100,100),
+        #         (self.drone.x, self.drone.y),
+        #         ((ray['coords'][0]), (ray['coords'][1]))
+        # )
         draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
         if len(self.trajectory.positions) > 1:
