@@ -62,7 +62,8 @@ class Drone2DEnv(gym.Env):
         self.planner = Primitive(self.screen)
         self.yaw_planner = LookAhead()
         self.trajectory = Trajectory2D()
-        self.planning = False
+        self.need_replan = False
+        self.replan_count = 0
     
     def step(self):
         # Update gridmap for dynamic obstacles
@@ -78,23 +79,28 @@ class Drone2DEnv(gym.Env):
             x, y = pygame.mouse.get_pos()
             self.planner.set_target(np.array([x, y]))
             print("target set as:", x, y)
-            self.trajectory, success = self.planner.planning(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
+            self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
             if not success:
                 self.drone.brake()
                 print("path not found, replanning")
-                self.planning = True
+                self.need_replan = True
             else:
                 print("path found")
-                self.planning = False
+                self.need_replan = False
         
-        if self.planning:
-            self.trajectory, success = self.planner.planning(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
+        self.replan_count += 1
+        if self.replan_count == 10:
+            self.replan_count = 0
+            self.need_replan = True
+
+        if self.need_replan:
+            self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
             if not success:
                 self.drone.brake()
                 print("path not found, replanning")
             else:
                 print("path found")
-                self.planning = False
+                self.need_replan = False
 
         # execute trajectory
         if self.trajectory.positions != [] :
@@ -104,9 +110,8 @@ class Drone2DEnv(gym.Env):
             self.yaw_planner.plan(self.drone)
             self.trajectory.pop()
 
-
+        # Update moving agent position
         if ENABLE_DYNAMIC:
-            # Update moving agent position
             RVO_update(self.agents, self.ws_model)
             for agent in self.agents:
                 agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.dim[0], self.dim[1], self.drone, self.dt)

@@ -12,3 +12,5 @@ class LookAhead(object):
 
     def plan(self, drone):
         drone.yaw = math.degrees(math.atan2(-drone.velocity[1], drone.velocity[0]))
+
+# class Oxford(object):
