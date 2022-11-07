@@ -1,7 +1,8 @@
-from cmath import sqrt
+import time
 from numpy.linalg import norm
 import numpy as np
 from config import *
+from joblib import Parallel, delayed
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
         self.position = pos
@@ -44,7 +45,7 @@ class Primitive(object):
             self.index = (round(self.position[0])//5, round(self.position[1])//5, round(self.velocity[0])//2, round(self.velocity[1])//2)
 
     def __init__(self, screen):
-        self.u_space = np.arange(-DRONE_MAX_ACC, DRONE_MAX_ACC, 2)
+        self.u_space = np.arange(-DRONE_MAX_ACC, DRONE_MAX_ACC, 5)
         # self.u_space = np.array([-15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15])
         self.dt = 3
         self.sample_num = 10 # sampling number for collision check
@@ -67,7 +68,6 @@ class Primitive(object):
         start_velocity = start_node.velocity
 
         suc_node_list = []
-        valid_target_num = 0
         for i, x_acc in enumerate(self.u_space):
             for j, y_acc in enumerate(self.u_space):
                 coeff = np.array([[start_position[0], start_velocity[0], x_acc / 2], 
@@ -80,16 +80,15 @@ class Primitive(object):
                 # Collision check
                 waypoint = waypoint_from_traj(coeff, self.dt)
                 if self.is_free(coeff, occupancy_map, agents, start_node.itr) and norm(waypoint.velocity) < DRONE_MAX_SPEED:
-                    valid_target_num += 1
                     suc_node_list.append(self.Node(pos=waypoint.position, 
                                                    vel=waypoint.velocity, 
                                                    cost=start_node.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 1, 
                                                    parent_index=start_node.index,
                                                    coeff=coeff,
                                                    itr = start_node.itr + 1))
-                #     print("  valid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
+                    # print("  valid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
                 # else:
-                #     print("invalid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
+                    # print("invalid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
         return suc_node_list
 
     def plan(self, start_pos, start_vel, occupancy_map, agents, update_t):
@@ -141,7 +140,9 @@ class Primitive(object):
             closed_set[c_id] = current
 
             # expand_grid search grid based on motion model
+            time1 = time.time()
             sub_node_list = self.get_successor(current, occupancy_map, agents)
+            print(time.time() - time1)
             for next_node in sub_node_list:
                 if next_node.index in closed_set:
                     continue
