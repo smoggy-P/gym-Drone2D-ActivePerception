@@ -1,12 +1,13 @@
 from map.grid import OccupancyGridMap
 from map.utils import *
 from config import *
+from mav.raycast import Raycast
 
 from numpy.linalg import norm
 import numpy as np
 
 class Drone2D():
-    def __init__(self, init_x, init_y, init_yaw, dt):
+    def __init__(self, init_x, init_y, init_yaw, dt, dim):
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
@@ -16,7 +17,12 @@ class Drone2D():
         self.map = OccupancyGridMap(64, 48, MAP_SIZE)
         self.velocity = np.array([20, 20])
         self.dt = dt
-    
+
+        self.raycast = Raycast(dim, self)
+
+    def raycasting(self, gt_map):
+        self.rays = self.raycast.castRays(self, gt_map, self.map)
+
     def brake(self):
         if norm(self.velocity) <= DRONE_MAX_ACC * self.dt:
             self.velocity = np.zeros(2)

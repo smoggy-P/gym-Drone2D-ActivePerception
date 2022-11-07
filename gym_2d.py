@@ -6,7 +6,6 @@ import random
 from numpy import array, pi, cos, sin
 from map.RVO import RVO_update, Agent
 from map.grid import OccupancyGridMap
-from mav.raycast import Raycast
 from mav.drone import Drone2D
 from time import sleep
 from planner.primitive import Primitive, Trajectory2D
@@ -57,10 +56,13 @@ class Drone2DEnv(gym.Env):
         self.map_gt = OccupancyGridMap(64, 48, self.dim)
         self.map_gt.init_obstacles(self.obstacles, self.agents)
             
-        self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270, self.dt)
-        self.raycast = Raycast(self.dim, self.drone)  
-        self.planner = Primitive(self.screen)
+        self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270, self.dt, self.dim)
+        # self.raycast = Raycast(self.dim, self.drone)  
+
+        self.planner = Primitive(self.screen, self.drone)
         self.yaw_planner = LookAhead()
+        
+        
         self.trajectory = Trajectory2D()
         self.need_replan = False
         self.replan_count = 0
@@ -70,7 +72,8 @@ class Drone2DEnv(gym.Env):
         self.map_gt.update_dynamic_grid(self.agents)
 
         # Raycast module
-        self.rays = self.raycast.castRays(self.drone, self.map_gt, self.drone.map)
+        self.drone.raycasting(self.map_gt)
+        # self.rays = self.raycast.castRays(self.drone, self.map_gt, self.drone.map)
         
         # Set target point
         mouse = pygame.mouse.get_pressed()
@@ -89,7 +92,7 @@ class Drone2DEnv(gym.Env):
                 self.need_replan = False
         
         self.replan_count += 1
-        if self.replan_count == 10:
+        if self.replan_count == 20:
             self.replan_count = 0
             self.need_replan = True
 

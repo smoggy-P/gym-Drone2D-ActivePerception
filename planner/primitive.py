@@ -44,12 +44,12 @@ class Primitive(object):
         def get_index(self):
             self.index = (round(self.position[0])//5, round(self.position[1])//5, round(self.velocity[0])//2, round(self.velocity[1])//2)
 
-    def __init__(self, screen):
+    def __init__(self, screen, drone):
         self.u_space = np.arange(-DRONE_MAX_ACC, DRONE_MAX_ACC, 5)
         # self.u_space = np.array([-15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15])
         self.dt = 3
         self.sample_num = 10 # sampling number for collision check
-        self.target = np.array([0,0])
+        self.target = np.array([drone.x, drone.y])
         self.search_threshold = 20
         self.screen = screen
         self.cost_ratio = 100
