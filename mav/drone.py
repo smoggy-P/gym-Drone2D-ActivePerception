@@ -1,5 +1,5 @@
-from grid import OccupancyGridMap
-from utils import *
+from map.grid import OccupancyGridMap
+from map.utils import *
 from config import *
 
 from numpy.linalg import norm

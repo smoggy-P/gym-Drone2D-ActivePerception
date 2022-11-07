@@ -1,7 +1,7 @@
 import numpy as np
 import pygame
 from math import cos, sin, atan2, asin, sqrt
-from utils import check_in_view
+from map.utils import check_in_view
 from math import pi as PI
 from numpy.linalg import norm
 

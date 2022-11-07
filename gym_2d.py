@@ -4,15 +4,15 @@ import pygame
 import random
 
 from numpy import array, pi, cos, sin
-from RVO import RVO_update, Agent
-from grid import OccupancyGridMap
-from raycast import Raycast
-from drone import Drone2D
+from map.RVO import RVO_update, Agent
+from map.grid import OccupancyGridMap
+from mav.raycast import Raycast
+from mav.drone import Drone2D
 from time import sleep
-from primitive import Primitive, Trajectory2D
+from planner.primitive import Primitive, Trajectory2D
 
 
-from utils import *
+from map.utils import *
 from config import *      
 
 class Drone2DEnv(gym.Env):
