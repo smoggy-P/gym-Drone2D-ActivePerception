@@ -20,8 +20,8 @@ class Drone2D():
 
         self.raycast = Raycast(dim, self)
 
-    def raycasting(self, gt_map):
-        self.rays = self.raycast.castRays(self, gt_map, self.map)
+    def raycasting(self, gt_map, agents):
+        self.rays = self.raycast.castRays(self, gt_map, self.map, agents)
 
     def brake(self):
         if norm(self.velocity) <= DRONE_MAX_ACC * self.dt:

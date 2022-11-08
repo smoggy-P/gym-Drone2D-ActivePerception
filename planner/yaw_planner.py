@@ -14,3 +14,4 @@ class LookAhead(object):
         drone.yaw = math.degrees(math.atan2(-drone.velocity[1], drone.velocity[0]))
 
 # class Oxford(object):
+print([False, False, True, True] and [True, False, True, False])

@@ -1,7 +1,6 @@
 import numpy as np
 import pygame
 from math import cos, sin, atan2, asin, sqrt
-from map.utils import check_in_view
 from math import pi as PI
 from numpy.linalg import norm
 
@@ -16,7 +15,8 @@ class Agent(object):
         self.max_speed = max_speed
         self.pref_velocity = np.array(pref_velocity)
         self.seen = False
-        self.var = None
+        self.in_view = False
+        self.var = 0
         self.estimate_vel = None
         self.estimate_pos = None
         
@@ -40,18 +40,16 @@ class Agent(object):
         self.position += np.array(self.velocity) * dt
         
         # Check if the pedestrian is seen
-        if check_in_view(drone, self.position):
-            if not self.seen:
-                self.seen = True
+        if self.in_view is True:
             self.var = 0
             self.estimate_vel = self.velocity
             self.estimate_pos = self.position
         else:
             if self.seen:
                 self.var += self.dt*10
+                self.estimate_pos = self.estimate_pos + self.estimate_vel * dt
 
-        if self.seen:
-            self.estimate_pos = self.estimate_pos + self.estimate_vel * dt
+            
         
     def render(self, surface):
         if self.seen:

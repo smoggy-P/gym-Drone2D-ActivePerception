@@ -1,6 +1,7 @@
 import math
 import multiprocessing
 import time
+import torch
 from math import pi, radians, tan, ceil, atan
 from config import *
 from joblib import Parallel, delayed
@@ -51,13 +52,23 @@ class Raycast:
         self.half_rays_number = self.rays_number//2
 
 
-    def castRays(self, player, truth_grid_map, updated_grid_map):
+    def castRays(self, player, truth_grid_map, updated_grid_map, agents):
         rays = []
-        rays = [self.castRay(player, pi*2 - radians(player.yaw), atan((-self.half_rays_number+i) * self.strip_width / self.distance_to_plane), truth_grid_map, updated_grid_map) for i in range(self.rays_number)]
+        rays = [self.castRay(player, pi*2 - radians(player.yaw), atan((-self.half_rays_number+i) * self.strip_width / self.distance_to_plane), truth_grid_map, updated_grid_map, agents) for i in range(self.rays_number)]
+        hit_list = torch.zeros(len(agents), dtype=torch.int8)
+
+        for ray in rays:
+            hit_list = hit_list | ray['hit_list']
+        for i, in_view in enumerate(hit_list):
+            if in_view:
+                agents[i].in_view = True
+                agents[i].seen = True
+            else:
+                agents[i].in_view = False
         return rays
 
 
-    def castRay(self, player_coords, player_angle, ray_angle, truth_grid_map, updated_grid_map):   
+    def castRay(self, player_coords, player_angle, ray_angle, truth_grid_map, updated_grid_map, agents):   
         # x_step_size = truth_grid_map.x_scale - 1
         # y_step_size = truth_grid_map.y_scale - 1
         x_step_size = 1
@@ -81,18 +92,31 @@ class Raycast:
         x = player_coords.x
         y = player_coords.y
 
+        hit_list = torch.zeros(len(agents), dtype=torch.int8)
+
         if abs(slope) > 1:
             slope = 1 / slope
 
             y_step = -y_step_size if faced_up else y_step_size
             x_step = y_step * slope
 
+            
+
             while (0 < x < truth_grid_map.dim[0] and 0 < y < truth_grid_map.dim[1]):
                 i = int(x // truth_grid_map.x_scale)
                 j = int(y // truth_grid_map.y_scale)
+
+                for k, agent in enumerate(agents):
+                    if (agent.position[0]-x)**2 + (agent.position[1]-y)**2 <= agent.radius**2:
+                        x_hit = x
+                        y_hit = y
+                        hit_list[k] = 1
+                if x_hit != -1:
+                    break
+
                 wall = truth_grid_map.grid_map[i, j]
                 dist = (x - player_coords.x)**2 + (y - player_coords.y)**2
-                if wall == 1 or wall == 3 or dist >= self.depth**2:
+                if wall == 1 or dist >= self.depth**2:
                     x_hit = x
                     y_hit = y
                     wall_hit = wall
@@ -111,9 +135,18 @@ class Raycast:
             while (0 < x < truth_grid_map.dim[0] and 0 < y < truth_grid_map.dim[1]):
                 i = int(x // truth_grid_map.x_scale)
                 j = int(y // truth_grid_map.y_scale)
+
+                for k, agent in enumerate(agents):
+                    if (agent.position[0]-x)**2 + (agent.position[1]-y)**2 <= agent.radius**2:
+                        x_hit = x
+                        y_hit = y
+                        hit_list[k] = 1
+                if x_hit != -1:
+                    break
+
                 wall = truth_grid_map.grid_map[i, j]
                 dist = (x-player_coords.x)**2 + (y-player_coords.y)**2
-                if wall == 1 or wall == 3 or dist >= self.depth**2:
+                if wall == 1 or dist >= self.depth**2:
                     x_hit = x
                     y_hit = y
                     wall_hit = wall
@@ -125,6 +158,5 @@ class Raycast:
 
                 x = x + x_step
                 y = y + y_step
-        
-        result = {'coords':(x_hit,y_hit), 'wall':wall_hit}
+        result = {'coords':(x_hit,y_hit), 'wall':wall_hit, 'hit_list':hit_list}
         return result

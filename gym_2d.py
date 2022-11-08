@@ -19,7 +19,7 @@ class Drone2DEnv(gym.Env):
      
     def __init__(self):
         
-        self.dt = 1/15
+        self.dt = 1/10
         
         self.obstacles = {
             'circular_obstacles'  : [[320, 240, 50]],
@@ -72,7 +72,7 @@ class Drone2DEnv(gym.Env):
         self.map_gt.update_dynamic_grid(self.agents)
 
         # Raycast module
-        self.drone.raycasting(self.map_gt)
+        self.drone.raycasting(self.map_gt, self.agents)
         # self.rays = self.raycast.castRays(self.drone, self.map_gt, self.drone.map)
         
         # Set target point
@@ -139,13 +139,13 @@ class Drone2DEnv(gym.Env):
         # self.map_gt.render(self.screen, color_dict)
         self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
-        # for ray in self.rays:
-        #     pygame.draw.line(
-        #         self.screen,
-        #         (100,100,100),
-        #         (self.drone.x, self.drone.y),
-        #         ((ray['coords'][0]), (ray['coords'][1]))
-        # )
+        for ray in self.drone.rays:
+            pygame.draw.line(
+                self.screen,
+                (100,100,100),
+                (self.drone.x, self.drone.y),
+                ((ray['coords'][0]), (ray['coords'][1]))
+        )
         draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
         if len(self.trajectory.positions) > 1:
