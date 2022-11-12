@@ -82,7 +82,7 @@ class Drone2DEnv(gym.Env):
             x, y = pygame.mouse.get_pos()
             self.planner.set_target(np.array([x, y]))
             print("target set as:", x, y)
-            self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
+            self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
             if not success:
                 self.drone.brake()
                 print("path not found, replanning")
@@ -97,7 +97,7 @@ class Drone2DEnv(gym.Env):
             self.need_replan = True
 
         if self.need_replan:
-            self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.map_gt, self.agents, self.dt)
+            self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
             if not success:
                 self.drone.brake()
                 print("path not found, replanning")
@@ -117,7 +117,7 @@ class Drone2DEnv(gym.Env):
         if ENABLE_DYNAMIC:
             RVO_update(self.agents, self.ws_model)
             for agent in self.agents:
-                agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.dim[0], self.dim[1], self.drone, self.dt)
+                agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.dim[0], self.dim[1],  self.dt)
         
         reward = 10
         

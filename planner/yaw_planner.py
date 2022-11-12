@@ -13,5 +13,13 @@ class LookAhead(object):
     def plan(self, drone):
         drone.yaw = math.degrees(math.atan2(-drone.velocity[1], drone.velocity[0]))
 
-# class Oxford(object):
-print([False, False, True, True] and [True, False, True, False])
+class Oxford(object):
+    """Oxford method to plan gaze
+
+    Args:
+        object (_type_): _description_
+    """
+    def __init__(self) -> None:
+        pass
+
+    

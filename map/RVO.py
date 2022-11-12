@@ -20,7 +20,7 @@ class Agent(object):
         self.estimate_vel = None
         self.estimate_pos = None
         
-    def step(self, edge_size_x, edge_size_y, map_width, map_height, drone, dt):
+    def step(self, edge_size_x, edge_size_y, map_width, map_height, dt):
         new_position = self.position + self.velocity * dt
             
         # Change reference velocity if reaching the boundary

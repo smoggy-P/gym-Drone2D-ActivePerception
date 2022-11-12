@@ -48,7 +48,7 @@ class Primitive(object):
         self.u_space = np.arange(-DRONE_MAX_ACC, DRONE_MAX_ACC, 5)
         # self.u_space = np.array([-15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15])
         self.dt = 3
-        self.sample_num = 10 # sampling number for collision check
+        self.sample_num = 30 # sampling number for collision check
         self.target = np.array([drone.x, drone.y])
         self.search_threshold = 20
         self.screen = screen
@@ -116,7 +116,7 @@ class Primitive(object):
         itr = 0
         while 1:
             itr += 1
-            if len(open_set) == 0 or itr >= 20:
+            if len(open_set) == 0 or itr >= 10:
                 print("No solution found in limitied time")
                 goal_node = None
                 success = False
@@ -140,9 +140,7 @@ class Primitive(object):
             closed_set[c_id] = current
 
             # expand_grid search grid based on motion model
-            time1 = time.time()
             sub_node_list = self.get_successor(current, occupancy_map, agents)
-            print(time.time() - time1)
             for next_node in sub_node_list:
                 if next_node.index in closed_set:
                     continue
