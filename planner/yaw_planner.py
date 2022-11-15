@@ -1,5 +1,7 @@
 import numpy as np
 import math
+from map.grid import OccupancyGridMap
+from config import *
 
 class LookAhead(object):
     """Make the drone look at the direction of its velocity
@@ -20,6 +22,9 @@ class Oxford(object):
         object (_type_): _description_
     """
     def __init__(self) -> None:
-        pass
+        self.last_time_observed_map = OccupancyGridMap(MAP_GRID_SCALE, self.dim)
+        self.swep_map = OccupancyGridMap(MAP_GRID_SCALE, self.dim)
+    
+    # def plan(self, )
 
     

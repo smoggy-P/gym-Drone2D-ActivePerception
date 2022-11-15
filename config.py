@@ -13,6 +13,7 @@ color_dict = {
 
 # Map Settings
 MAP_SIZE = (640, 480)
+MAP_GRID_SCALE = 10
 
 # Dynamic Obstacle Settings
 ENABLE_DYNAMIC = True

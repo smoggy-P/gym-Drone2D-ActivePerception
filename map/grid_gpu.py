@@ -1,6 +1,7 @@
 import numpy as np
 import pygame
-from numpy.linalg import norm
+import torch
+
 from config import *
 
 grid_type = {
@@ -18,9 +19,11 @@ class OccupancyGridMap:
         
         self.x_scale = grid_scale
         self.y_scale = grid_scale
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # Define Grid Map
-        self.grid_map = np.zeros((self.width, self.height), dtype=np.uint8)
+        self.grid_map = torch.zeros(size=(self.width, self.height), dtype=torch.uint8, device=self.device)
 
         self.dynamic_idx = []
         
@@ -36,7 +39,7 @@ class OccupancyGridMap:
             for j in range(self.grid_map.shape[1]):
                 if 'circular_obstacles' in obstacles_dict:
                     for circle in obstacles_dict['circular_obstacles']:
-                        if norm(self.get_real_pos(i,j) - np.array([circle[0], circle[1]])) <= circle[2]:
+                        if torch.norm(self.get_real_pos(i,j) - torch.tensor([circle[0], circle[1]])) <= circle[2]:
                             self.grid_map[i,j] = grid_type['OCCUPIED']
                 if 'rectangle_obstacles' in obstacles_dict:
                     for rect in obstacles_dict['rectangle_obstacles']:
@@ -49,10 +52,12 @@ class OccupancyGridMap:
                             self.dynamic_idx.append([i,j])
     
     def update_dynamic_grid(self, agents):
+        # clear dynamic grid at last time
         for dynamic_idx in self.dynamic_idx:
             self.grid_map[dynamic_idx[0], dynamic_idx[1]] = grid_type['UNEXPLORED']
         self.dynamic_idx = []
         
+        # Mark new dynamic grid
         for agent in agents:
             unit_x = int(agent.radius // self.x_scale)
             unit_y = int(agent.radius // self.y_scale)
@@ -65,7 +70,7 @@ class OccupancyGridMap:
 
     
     def get_real_pos(self, i, j):
-        return np.array([self.x_scale * (i+0.5), self.y_scale * (j+0.5)])
+        return torch.tensor([self.x_scale * (i+0.5), self.y_scale * (j+0.5)])
     
     def get_grid(self, x, y):
         if x >= self.dim[0] or x < 0 or y >= self.dim[1] or y < 0:

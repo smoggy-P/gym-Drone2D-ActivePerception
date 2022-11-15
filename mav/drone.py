@@ -14,7 +14,7 @@ class Drone2D():
         self.yaw_range = 120
         self.yaw_depth = 150
         self.radius = DRONE_RADIUS
-        self.map = OccupancyGridMap(64, 48, MAP_SIZE)
+        self.map = OccupancyGridMap(MAP_GRID_SCALE, dim)
         self.velocity = np.array([20, 20])
         self.dt = dt
 

@@ -19,7 +19,7 @@ class Drone2DEnv(gym.Env):
      
     def __init__(self):
         
-        self.dt = 1/10
+        self.dt = 1/5
         
         self.obstacles = {
             'circular_obstacles'  : [[320, 240, 50]],
@@ -53,7 +53,7 @@ class Drone2DEnv(gym.Env):
                     self.agents.append(new_agent)
                     i += 1
 
-        self.map_gt = OccupancyGridMap(64, 48, self.dim)
+        self.map_gt = OccupancyGridMap(MAP_GRID_SCALE, self.dim)
         self.map_gt.init_obstacles(self.obstacles, self.agents)
             
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270, self.dt, self.dim)
