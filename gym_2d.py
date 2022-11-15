@@ -9,7 +9,7 @@ from map.grid import OccupancyGridMap
 from mav.drone import Drone2D
 from time import sleep
 from planner.primitive import Primitive, Trajectory2D
-from planner.yaw_planner import LookAhead
+from planner.yaw_planner import LookAhead, Oxford
 
 
 from map.utils import *
@@ -60,7 +60,7 @@ class Drone2DEnv(gym.Env):
         # self.raycast = Raycast(self.dim, self.drone)  
 
         self.planner = Primitive(self.screen, self.drone)
-        self.yaw_planner = LookAhead()
+        self.yaw_planner = Oxford(self.dt, self.dim)
         
         
         self.trajectory = Trajectory2D()
@@ -110,7 +110,7 @@ class Drone2DEnv(gym.Env):
             self.drone.velocity = self.trajectory.velocities[0]
             self.drone.x = round(self.trajectory.positions[0][0])
             self.drone.y = round(self.trajectory.positions[0][1])
-            self.yaw_planner.plan(self.drone)
+            self.yaw_planner.plan(self.drone, self.trajectory)
             self.trajectory.pop()
 
         # Update moving agent position

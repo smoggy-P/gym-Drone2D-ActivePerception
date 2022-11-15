@@ -21,8 +21,9 @@ class Oxford(object):
     Args:
         object (_type_): _description_
     """
-    def __init__(self, dt):
-        self.last_time_observed_map = OccupancyGridMap(MAP_GRID_SCALE, self.dim, np.inf)
+    def __init__(self, dt, dim):
+        self.last_time_observed_map = np.inf * np.ones((dim[0]//MAP_GRID_SCALE, dim[1]//MAP_GRID_SCALE))
+        self.swep_map = np.zeros((dim[0]//MAP_GRID_SCALE, dim[1]//MAP_GRID_SCALE))
         self.dt = dt
 
         # Farthest step in trajectory that considered as priority
@@ -41,17 +42,19 @@ class Oxford(object):
     
     def plan(self, drone, trajectory):
         # update v_i
-        swep_map = OccupancyGridMap(MAP_GRID_SCALE, self.dim, 0)
-        for i, pos in enumerate(trajectory.position):
-            swep_map.grid_map[pos[0]//MAP_GRID_SCALE, pos[1]//MAP_GRID_SCALE] = i * self.dt
+        self.swep_map = np.zeros_like(self.swep_map)
+        for i, pos in enumerate(trajectory.positions):
+            self.swep_map[int(pos[0]//MAP_GRID_SCALE), int(pos[1]//MAP_GRID_SCALE)] = i * self.dt
 
         # update t_i
-        self.last_time_observed_map = self.last_time_observed_map + (1 - drone.view_map) * self.dt
+        self.last_time_observed_map = np.where(drone.view_map,
+                                               0,
+                                               self.last_time_observed_map + (1 - drone.view_map) * self.dt)
 
         # calculate reward
-        reward_map = np.where(0 < swep_map <= self.tau_s and self.last_time_observed_map >= self.tau_c, self.c1, 
-                     np.where(swep_map > self.tau_s and self.last_time_observed_map >= self.tau_c, self.c2,
-                     max(self.c3*self.last_time_observed_map, 1)))
+        reward_map = np.where(0 < self.swep_map <= self.tau_s and self.last_time_observed_map >= self.tau_c, self.c1, 
+                     np.where(self.swep_map > self.tau_s and self.last_time_observed_map >= self.tau_c, self.c2,
+                     np.clip(self.c3*self.last_time_observed_map, -np.inf, 1)))
         print(reward_map)
 
         # calculate primitive for yaw control
