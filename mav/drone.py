@@ -14,14 +14,16 @@ class Drone2D():
         self.yaw_range = 120
         self.yaw_depth = 150
         self.radius = DRONE_RADIUS
-        self.map = OccupancyGridMap(MAP_GRID_SCALE, dim)
+        self.map = OccupancyGridMap(MAP_GRID_SCALE, dim, 0)
+        self.view_map = np.zeros((dim[0]//MAP_GRID_SCALE, dim[1]//MAP_GRID_SCALE))
         self.velocity = np.array([20, 20])
         self.dt = dt
 
         self.raycast = Raycast(dim, self)
 
     def raycasting(self, gt_map, agents):
-        self.rays = self.raycast.castRays(self, gt_map, self.map, agents)
+        self.view_map = np.zeros_like(self.view_map)
+        self.rays = self.raycast.castRays(self, gt_map, agents)
 
     def brake(self):
         if norm(self.velocity) <= DRONE_MAX_ACC * self.dt:

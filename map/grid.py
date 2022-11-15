@@ -11,7 +11,7 @@ grid_type = {
 }
 
 class OccupancyGridMap:
-    def __init__(self, grid_scale, dim):
+    def __init__(self, grid_scale, dim, init_num):
         self.dim = dim
         self.width = dim[0] // grid_scale
         self.height = dim[1] // grid_scale
@@ -20,7 +20,7 @@ class OccupancyGridMap:
         self.y_scale = grid_scale
         
         # Define Grid Map
-        self.grid_map = np.zeros((self.width, self.height), dtype=np.uint8)
+        self.grid_map = np.ones((self.width, self.height), dtype=np.uint8) * init_num
 
         self.dynamic_idx = []
         

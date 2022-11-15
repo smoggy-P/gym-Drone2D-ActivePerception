@@ -19,7 +19,7 @@ class Drone2DEnv(gym.Env):
      
     def __init__(self):
         
-        self.dt = 1/5
+        self.dt = 1/30
         
         self.obstacles = {
             'circular_obstacles'  : [[320, 240, 50]],
@@ -53,7 +53,7 @@ class Drone2DEnv(gym.Env):
                     self.agents.append(new_agent)
                     i += 1
 
-        self.map_gt = OccupancyGridMap(MAP_GRID_SCALE, self.dim)
+        self.map_gt = OccupancyGridMap(MAP_GRID_SCALE, self.dim, 0)
         self.map_gt.init_obstacles(self.obstacles, self.agents)
             
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270, self.dt, self.dim)
@@ -139,13 +139,13 @@ class Drone2DEnv(gym.Env):
         # self.map_gt.render(self.screen, color_dict)
         self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
-        for ray in self.drone.rays:
-            pygame.draw.line(
-                self.screen,
-                (100,100,100),
-                (self.drone.x, self.drone.y),
-                ((ray['coords'][0]), (ray['coords'][1]))
-        )
+        # for ray in self.drone.rays:
+        #     pygame.draw.line(
+        #         self.screen,
+        #         (100,100,100),
+        #         (self.drone.x, self.drone.y),
+        #         ((ray['coords'][0]), (ray['coords'][1]))
+        # )
         draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
         if len(self.trajectory.positions) > 1:

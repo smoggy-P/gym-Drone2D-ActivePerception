@@ -52,9 +52,8 @@ class Raycast:
         self.half_rays_number = self.rays_number//2
 
 
-    def castRays(self, player, truth_grid_map, updated_grid_map, agents):
-        rays = []
-        rays = [self.castRay(player, pi*2 - radians(player.yaw), atan((-self.half_rays_number+i) * self.strip_width / self.distance_to_plane), truth_grid_map, updated_grid_map, agents) for i in range(self.rays_number)]
+    def castRays(self, player, truth_grid_map, agents):
+        rays = [self.castRay(player, pi*2 - radians(player.yaw), atan((-self.half_rays_number+i) * self.strip_width / self.distance_to_plane), truth_grid_map, agents) for i in range(self.rays_number)]
         hit_list = torch.zeros(len(agents), dtype=torch.int8)
 
         for ray in rays:
@@ -68,11 +67,11 @@ class Raycast:
         return rays
 
 
-    def castRay(self, player_coords, player_angle, ray_angle, truth_grid_map, updated_grid_map, agents):   
-        # x_step_size = truth_grid_map.x_scale - 1
-        # y_step_size = truth_grid_map.y_scale - 1
-        x_step_size = 1
-        y_step_size = 1
+    def castRay(self, player, player_angle, ray_angle, truth_grid_map, agents):   
+        x_step_size = truth_grid_map.x_scale - 1
+        y_step_size = truth_grid_map.y_scale - 1
+        # x_step_size = 1
+        # y_step_size = 1
         
         ray_angle = player_angle + ray_angle
 
@@ -89,8 +88,8 @@ class Raycast:
 
         #Find Collision
         slope = tan(ray_angle)
-        x = player_coords.x
-        y = player_coords.y
+        x = player.x
+        y = player.y
 
         hit_list = torch.zeros(len(agents), dtype=torch.int8)
 
@@ -115,16 +114,17 @@ class Raycast:
                     break
 
                 wall = truth_grid_map.grid_map[i, j]
-                dist = (x - player_coords.x)**2 + (y - player_coords.y)**2
+                dist = (x - player.x)**2 + (y - player.y)**2
                 if wall == 1 or dist >= self.depth**2:
                     x_hit = x
                     y_hit = y
                     wall_hit = wall
                     if wall == grid_type['OCCUPIED']:
-                        updated_grid_map.grid_map[i, j] = grid_type['OCCUPIED']
+                        player.map.grid_map[i, j] = grid_type['OCCUPIED']
                     break
                 else:
-                    updated_grid_map.grid_map[i, j] = grid_type['UNOCCUPIED']
+                    player.map.grid_map[i, j] = grid_type['UNOCCUPIED']
+                    player.view_map[i, j] = 1
                 x = x + x_step
                 y = y + y_step
         
@@ -145,16 +145,17 @@ class Raycast:
                     break
 
                 wall = truth_grid_map.grid_map[i, j]
-                dist = (x-player_coords.x)**2 + (y-player_coords.y)**2
+                dist = (x-player.x)**2 + (y-player.y)**2
                 if wall == 1 or dist >= self.depth**2:
                     x_hit = x
                     y_hit = y
                     wall_hit = wall
                     if wall == grid_type['OCCUPIED']:
-                        updated_grid_map.grid_map[i, j] = grid_type['OCCUPIED']
+                        player.map.grid_map[i, j] = grid_type['OCCUPIED']
                     break
                 else:
-                    updated_grid_map.grid_map[i, j] = grid_type['UNOCCUPIED']
+                    player.map.grid_map[i, j] = grid_type['UNOCCUPIED']
+                    player.view_map[i, j] = 1
 
                 x = x + x_step
                 y = y + y_step
