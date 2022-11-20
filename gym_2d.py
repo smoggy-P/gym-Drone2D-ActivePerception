@@ -61,6 +61,7 @@ class Drone2DEnv(gym.Env):
 
         self.planner = Primitive(self.screen, self.drone)
         self.yaw_planner = Oxford(self.dt, self.dim)
+        # self.yaw_planner = LookAhead()
         
         
         self.trajectory = Trajectory2D()
@@ -111,6 +112,7 @@ class Drone2DEnv(gym.Env):
             self.drone.x = round(self.trajectory.positions[0][0])
             self.drone.y = round(self.trajectory.positions[0][1])
             self.yaw_planner.plan(self.drone, self.trajectory)
+            # self.yaw_planner.plan(self.drone)
             self.trajectory.pop()
 
         # Update moving agent position
