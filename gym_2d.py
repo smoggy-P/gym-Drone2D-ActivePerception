@@ -9,7 +9,7 @@ from map.grid import OccupancyGridMap
 from mav.drone import Drone2D
 from time import sleep
 from planner.primitive import Primitive, Trajectory2D
-from planner.yaw_planner import LookAhead, Oxford
+from planner.yaw_planner import LookAhead
 
 
 from map.utils import *
@@ -19,7 +19,7 @@ class Drone2DEnv(gym.Env):
      
     def __init__(self):
         
-        self.dt = 1/30
+        self.dt = 1/10
         
         self.obstacles = {
             'circular_obstacles'  : [[320, 240, 50]],
@@ -60,8 +60,7 @@ class Drone2DEnv(gym.Env):
         # self.raycast = Raycast(self.dim, self.drone)  
 
         self.planner = Primitive(self.screen, self.drone)
-        self.yaw_planner = Oxford(self.dt, self.dim)
-        # self.yaw_planner = LookAhead()
+        self.yaw_planner = LookAhead()
         
         
         self.trajectory = Trajectory2D()
@@ -92,10 +91,22 @@ class Drone2DEnv(gym.Env):
                 print("path found")
                 self.need_replan = False
         
-        self.replan_count += 1
-        if self.replan_count == 20:
-            self.replan_count = 0
+        swep_map = np.zeros_like(self.map_gt.grid_map)
+        for i, pos in enumerate(self.trajectory.positions):
+            swep_map[int(pos[0]//MAP_GRID_SCALE), int(pos[1]//MAP_GRID_SCALE)] = i * self.dt
+        
+        obs_map = np.where((self.drone.map.grid_map==0) | (self.drone.map.grid_map==2), 0, 1)
+
+        print(np.sum(obs_map * swep_map))
+
+        if np.sum(obs_map * swep_map) > 0:
             self.need_replan = True
+
+
+        # self.replan_count += 1
+        # if self.replan_count == 20:
+        #     self.replan_count = 0
+        #     self.need_replan = True
 
         if self.need_replan:
             self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
@@ -111,10 +122,9 @@ class Drone2DEnv(gym.Env):
             self.drone.velocity = self.trajectory.velocities[0]
             self.drone.x = round(self.trajectory.positions[0][0])
             self.drone.y = round(self.trajectory.positions[0][1])
-            self.yaw_planner.plan(self.drone, self.trajectory)
-            # self.yaw_planner.plan(self.drone)
+            self.yaw_planner.plan(self.drone)
             self.trajectory.pop()
-
+        
         # Update moving agent position
         if ENABLE_DYNAMIC:
             RVO_update(self.agents, self.ws_model)
@@ -141,13 +151,13 @@ class Drone2DEnv(gym.Env):
         # self.map_gt.render(self.screen, color_dict)
         self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
-        # for ray in self.drone.rays:
-        #     pygame.draw.line(
-        #         self.screen,
-        #         (100,100,100),
-        #         (self.drone.x, self.drone.y),
-        #         ((ray['coords'][0]), (ray['coords'][1]))
-        # )
+        for ray in self.drone.rays:
+            pygame.draw.line(
+                self.screen,
+                (100,100,100),
+                (self.drone.x, self.drone.y),
+                ((ray['coords'][0]), (ray['coords'][1]))
+        )
         draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
         
         if len(self.trajectory.positions) > 1:

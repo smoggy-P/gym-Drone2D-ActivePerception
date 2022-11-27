@@ -2,7 +2,7 @@ import numpy as np
 import math
 from map.grid import OccupancyGridMap
 from config import *
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 class LookAhead(object):
     """Make the drone look at the direction of its velocity
@@ -58,8 +58,8 @@ class Oxford(object):
         self.swep_map = np.zeros_like(self.swep_map)
         for i, pos in enumerate(trajectory.positions):
             self.swep_map[int(pos[0]//MAP_GRID_SCALE), int(pos[1]//MAP_GRID_SCALE)] = i * self.dt
-        plt.matshow(self.swep_map)
-        plt.show()
+        # plt.matshow(self.swep_map)
+        # plt.show()
         # update t_i
         x_drone = int(drone.x // MAP_GRID_SCALE)
         y_drone = int(drone.y // MAP_GRID_SCALE)
@@ -76,11 +76,12 @@ class Oxford(object):
                      np.where((self.swep_map > self.tau_s) & (self.last_time_observed_map >= self.tau_c), self.c2,
                      np.clip(self.c3*self.last_time_observed_map, -np.inf, 1)))
 
-        plt.matshow(reward_map)
-        plt.show()
+        # plt.matshow(reward_map)
+        # plt.show()
 
         # calculate primitive for yaw control
         # T = len(trajectory.position) * self.dt
+        
 
         
 
