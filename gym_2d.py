@@ -2,6 +2,8 @@ import math
 import gym
 import pygame
 import random
+import matplotlib.pyplot as plt
+from time import sleep
 
 from numpy import array, pi, cos, sin
 from map.RVO import RVO_update, Agent
@@ -58,8 +60,8 @@ class Drone2DEnv(gym.Env):
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270, self.dt, self.dim)
         self.planner = Primitive(self.screen, self.drone)
 
-        # self.yaw_planner = LookAhead()
-        self.yaw_planner = Oxford(self.dt, self.dim)
+        self.yaw_planner = LookAhead()
+        # self.yaw_planner = Oxford(self.dt, self.dim)
         
         self.trajectory = Trajectory2D()
         self.need_replan = False
@@ -180,6 +182,7 @@ class Drone2DEnv(gym.Env):
     
 if __name__ == '__main__':
     t = Drone2DEnv()
+    plt.ion()
     while True:
         t.step()
         t.render()

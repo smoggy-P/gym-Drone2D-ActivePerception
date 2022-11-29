@@ -1,4 +1,5 @@
 import time
+from tracemalloc import start
 from numpy.linalg import norm
 import numpy as np
 from config import *
@@ -68,27 +69,38 @@ class Primitive(object):
         start_velocity = start_node.velocity
 
         suc_node_list = []
-        for i, x_acc in enumerate(self.u_space):
-            for j, y_acc in enumerate(self.u_space):
-                coeff = np.array([[start_position[0], start_velocity[0], x_acc / 2], 
-                                  [start_position[1], start_velocity[1], y_acc / 2]])
-                
-                # def func(x):
-                #     return math.sqrt((coeff[0,1] + 2*coeff[0,2]*x)**2+(coeff[1,1] + 2*coeff[1,2]*x)**2)
-                # edge_cost, _ = integrate.quad(func, 0, self.dt)
+        # time1 = time.time()
+        # np.array([[start_position[0], start_position[1]], [start_velocity[0], start_velocity[1]], [x_acc/2, y_acc/2]])
+        # np.array([[start_position[0], start_velocity[0], x_acc / 2], [start_position[1], start_velocity[1], y_acc / 2]])
 
-                # Collision check
-                waypoint = waypoint_from_traj(coeff, self.dt)
-                if self.is_free(coeff, occupancy_map, agents, start_node.itr) and norm(waypoint.velocity) < DRONE_MAX_SPEED:
-                    suc_node_list.append(self.Node(pos=waypoint.position, 
-                                                   vel=waypoint.velocity, 
-                                                   cost=start_node.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 1, 
-                                                   parent_index=start_node.index,
-                                                   coeff=coeff,
-                                                   itr = start_node.itr + 1))
-                    # print("  valid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
-                # else:
-                    # print("invalid successor, target position:", waypoint_from_traj(coeff, self.dt).position)
+
+        suc_node_list = [self.Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[start_position[0], start_position[1]], [start_velocity[0], start_velocity[1]], [x_acc/2, y_acc/2]])), 
+                                   vel=np.array([1, 2*self.dt]) @ np.array([[start_velocity[0], start_velocity[1]], [x_acc/2, y_acc/2]]), 
+                                   cost=start_node.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 1, 
+                                   parent_index=start_node.index,
+                                   coeff=np.array([[start_position[0], start_velocity[0], x_acc / 2], [start_position[1], start_velocity[1], y_acc / 2]]),
+                                   itr = start_node.itr + 1) for x_acc in self.u_space 
+                                                             for y_acc in self.u_space 
+                                                             if self.is_free(np.array([[start_position[0], start_velocity[0], x_acc / 2], [start_position[1], start_velocity[1], y_acc / 2]]), occupancy_map, agents, start_node.itr) and 
+                                                                norm(np.array([1, 2*self.dt]) @ np.array([[start_velocity[0], start_velocity[1]], [x_acc/2, y_acc/2]])) < DRONE_MAX_SPEED]
+
+        # for i, x_acc in enumerate(self.u_space):
+        #     for j, y_acc in enumerate(self.u_space):
+        #         coeff = np.array([[start_position[0], start_velocity[0], x_acc / 2], 
+        #                           [start_position[1], start_velocity[1], y_acc / 2]])
+                
+
+        #         # Collision check
+        #         waypoint = waypoint_from_traj(coeff, self.dt)
+        #         if self.is_free(coeff, occupancy_map, agents, start_node.itr) and norm(waypoint.velocity) < DRONE_MAX_SPEED:
+        #             suc_node_list.append(self.Node(pos=waypoint.position, 
+        #                                            vel=waypoint.velocity, 
+        #                                            cost=start_node.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 1, 
+        #                                            parent_index=start_node.index,
+        #                                            coeff=coeff,
+        #                                            itr = start_node.itr + 1))
+
+        # print("successor time:", time.time() - time1)
         return suc_node_list
 
     def plan(self, start_pos, start_vel, occupancy_map, agents, update_t):
@@ -114,6 +126,7 @@ class Primitive(object):
         open_set, closed_set = dict(), dict()
         open_set[start_node.index] = start_node
         itr = 0
+        time1 = time.time()
         while 1:
             itr += 1
             if len(open_set) == 0 or itr >= 10:
@@ -151,6 +164,7 @@ class Primitive(object):
                     if open_set[next_node.index].cost > next_node.cost:
                         # This path is the best until now. record it
                         open_set[next_node.index] = next_node
+        print("planning time:", time.time()-time1)
         trajectory = Trajectory2D()
         if success:
             cur_node = goal_node
