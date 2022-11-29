@@ -7,9 +7,8 @@ from numpy import array, pi, cos, sin
 from map.RVO import RVO_update, Agent
 from map.grid import OccupancyGridMap
 from mav.drone import Drone2D
-from time import sleep
 from planner.primitive import Primitive, Trajectory2D
-from planner.yaw_planner import LookAhead
+from planner.yaw_planner import LookAhead, Oxford
 
 
 from map.utils import *
@@ -55,13 +54,12 @@ class Drone2DEnv(gym.Env):
 
         self.map_gt = OccupancyGridMap(MAP_GRID_SCALE, self.dim, 0)
         self.map_gt.init_obstacles(self.obstacles, self.agents)
-            
+    
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, 270, self.dt, self.dim)
-        # self.raycast = Raycast(self.dim, self.drone)  
-
         self.planner = Primitive(self.screen, self.drone)
-        self.yaw_planner = LookAhead()
-        
+
+        # self.yaw_planner = LookAhead()
+        self.yaw_planner = Oxford(self.dt, self.dim)
         
         self.trajectory = Trajectory2D()
         self.need_replan = False
@@ -73,7 +71,6 @@ class Drone2DEnv(gym.Env):
 
         # Raycast module
         self.drone.raycasting(self.map_gt, self.agents)
-        # self.rays = self.raycast.castRays(self.drone, self.map_gt, self.drone.map)
         
         # Set target point
         mouse = pygame.mouse.get_pressed()
@@ -91,23 +88,21 @@ class Drone2DEnv(gym.Env):
                 print("path found")
                 self.need_replan = False
         
+        # If collision detected for current trajectory, replan
         swep_map = np.zeros_like(self.map_gt.grid_map)
         for i, pos in enumerate(self.trajectory.positions):
             swep_map[int(pos[0]//MAP_GRID_SCALE), int(pos[1]//MAP_GRID_SCALE)] = i * self.dt
-        
         obs_map = np.where((self.drone.map.grid_map==0) | (self.drone.map.grid_map==2), 0, 1)
-
-        print(np.sum(obs_map * swep_map))
-
         if np.sum(obs_map * swep_map) > 0:
             self.need_replan = True
 
-
+        ## Replan at certain rate
         # self.replan_count += 1
         # if self.replan_count == 20:
         #     self.replan_count = 0
         #     self.need_replan = True
 
+        #Replan
         if self.need_replan:
             self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
             if not success:
@@ -122,7 +117,7 @@ class Drone2DEnv(gym.Env):
             self.drone.velocity = self.trajectory.velocities[0]
             self.drone.x = round(self.trajectory.positions[0][0])
             self.drone.y = round(self.trajectory.positions[0][1])
-            self.yaw_planner.plan(self.drone)
+            self.yaw_planner.plan(self.drone, self.trajectory)
             self.trajectory.pop()
         
         # Update moving agent position
@@ -162,8 +157,6 @@ class Drone2DEnv(gym.Env):
         
         if len(self.trajectory.positions) > 1:
             pygame.draw.lines(self.screen, (100,100,100), False, self.trajectory.positions)
-        # for point in self.waypoints:
-        #     pygame.draw.circle(self.screen, (0, 0, 255), point, 3)
 
         if ENABLE_DYNAMIC:
             for agent in self.agents:
