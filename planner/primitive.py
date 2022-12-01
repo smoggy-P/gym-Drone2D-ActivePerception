@@ -58,50 +58,6 @@ class Primitive(object):
     def set_target(self, target_pos):
         self.target = target_pos
 
-    def get_successor(self, start_node, occupancy_map, agents):
-        """Generate next primitive from start position and check collision
-
-        Args:
-            start (int): position of starting point
-            occupancy_map (_type_): _description_
-        """
-        start_position = start_node.position
-        start_velocity = start_node.velocity
-
-        suc_node_list = []
-        # time1 = time.time()
-        # np.array([[start_position[0], start_position[1]], [start_velocity[0], start_velocity[1]], [x_acc/2, y_acc/2]])
-        # np.array([[start_position[0], start_velocity[0], x_acc / 2], [start_position[1], start_velocity[1], y_acc / 2]])
-
-
-        suc_node_list = [self.Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[start_position[0], start_position[1]], [start_velocity[0], start_velocity[1]], [x_acc/2, y_acc/2]])), 
-                                   vel=np.array([1, 2*self.dt]) @ np.array([[start_velocity[0], start_velocity[1]], [x_acc/2, y_acc/2]]), 
-                                   cost=start_node.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 1, 
-                                   parent_index=start_node.index,
-                                   coeff=np.array([[start_position[0], start_velocity[0], x_acc / 2], [start_position[1], start_velocity[1], y_acc / 2]]),
-                                   itr = start_node.itr + 1) for x_acc in self.u_space 
-                                                             for y_acc in self.u_space 
-                                                             if self.is_free(np.array([[start_position[0], start_velocity[0], x_acc / 2], [start_position[1], start_velocity[1], y_acc / 2]]), occupancy_map, agents, start_node.itr) and 
-                                                                norm(np.array([1, 2*self.dt]) @ np.array([[start_velocity[0], start_velocity[1]], [x_acc/2, y_acc/2]])) < DRONE_MAX_SPEED]
-
-        # for i, x_acc in enumerate(self.u_space):
-        #     for j, y_acc in enumerate(self.u_space):
-        #         coeff = np.array([[start_position[0], start_velocity[0], x_acc / 2], 
-        #                           [start_position[1], start_velocity[1], y_acc / 2]])
-                
-
-        #         # Collision check
-        #         waypoint = waypoint_from_traj(coeff, self.dt)
-        #         if self.is_free(coeff, occupancy_map, agents, start_node.itr) and norm(waypoint.velocity) < DRONE_MAX_SPEED:
-        #             suc_node_list.append(self.Node(pos=waypoint.position, 
-        #                                            vel=waypoint.velocity, 
-        #                                            cost=start_node.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 1, 
-        #                                            parent_index=start_node.index,
-        #                                            coeff=coeff,
-        #                                            itr = start_node.itr + 1))
-
-        # print("successor time:", time.time() - time1)
-        return suc_node_list
 
     def plan(self, start_pos, start_vel, occupancy_map, agents, update_t):
         """
@@ -153,7 +109,15 @@ class Primitive(object):
             closed_set[c_id] = current
 
             # expand_grid search grid based on motion model
-            sub_node_list = self.get_successor(current, occupancy_map, agents)
+            sub_node_list = [self.Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[current.position[0], current.position[1]], [current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])), 
+                                   vel=np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]]), 
+                                   cost=current.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 1, 
+                                   parent_index=current.index,
+                                   coeff=np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]),
+                                   itr = current.itr + 1) for x_acc in self.u_space 
+                                                             for y_acc in self.u_space 
+                                                             if self.is_free(np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]), occupancy_map, agents, current.itr) and 
+                                                                norm(np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])) < DRONE_MAX_SPEED]
             for next_node in sub_node_list:
                 if next_node.index in closed_set:
                     continue
@@ -187,14 +151,16 @@ class Primitive(object):
             agents (_type_): Dynamic obstacles
         """
         for t in np.arange(0, self.dt, self.dt / self.sample_num):
-            wp = waypoint_from_traj(coeff, t)
-            grid = occupancy_map.get_grid(wp.position[0], wp.position[1])
+
+            position = np.around(np.array([1, t, t**2]) @ coeff.T)
+
+            grid = occupancy_map.get_grid(position[0], position[1])
             if grid == 1:
                 return False
             for agent in agents:
                 global_t = t + itr * self.dt
                 new_position = agent.position + agent.velocity * global_t
-                if norm(wp.position - new_position) <= DRONE_RADIUS + agent.radius:
+                if norm(position - new_position) <= DRONE_RADIUS + agent.radius:
                     # print("collision found with agent in position:", new_position)
                     return False
 

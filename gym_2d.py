@@ -128,8 +128,10 @@ class Drone2DEnv(gym.Env):
             for agent in self.agents:
                 agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.dim[0], self.dim[1],  self.dt)
         
-        reward = 10
-        
+        if self.drone.is_collide(self.map_gt, self.agents):
+            reward = -100
+        else:
+            reward = 0
         done = False
         
         return reward, done, {}
@@ -184,6 +186,12 @@ if __name__ == '__main__':
     t = Drone2DEnv()
     plt.ion()
     while True:
-        t.step()
+        reward, done, _ = t.step()
+
+        if reward < 0:
+            print("collision detected, quitting simulation")
+            break
+
         t.render()
         # sleep(t.dt)
+    

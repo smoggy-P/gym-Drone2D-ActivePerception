@@ -34,6 +34,12 @@ class Drone2D():
             self.x += self.velocity[0] * self.dt
             self.y += self.velocity[1] * self.dt
 
+    def is_collide(self, gt_map, agents):
+        grid = gt_map.get_grid(self.x, self.y)
+        if grid==grid_type['DYNAMIC_OCCUPIED'] or grid==['OCCUPIED']:
+            return True
+        return False
+
     def render(self, surface):
         pygame.draw.arc(surface, 
                         (255,255,255), 
