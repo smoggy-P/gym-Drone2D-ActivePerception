@@ -18,6 +18,8 @@ class Drone2D():
         self.view_map = np.zeros((dim[0]//MAP_GRID_SCALE, dim[1]//MAP_GRID_SCALE))
         self.velocity = np.array([20, 20])
         self.dt = dt
+        self.state = 0
+        self.rays = {}
 
         self.raycast = Raycast(dim, self)
 
@@ -36,8 +38,14 @@ class Drone2D():
 
     def is_collide(self, gt_map, agents):
         grid = gt_map.get_grid(self.x, self.y)
-        if grid==grid_type['DYNAMIC_OCCUPIED'] or grid==['OCCUPIED']:
+        if grid==['OCCUPIED']:
+            print("collision with static obstacles")
             return True
+        for agent in agents:
+            if norm(agent.position - np.array([self.x, self.y])) < agent.radius + self.radius:
+                print("collision with dynamic obstacles")
+                return True
+
         return False
 
     def render(self, surface):

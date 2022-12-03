@@ -16,6 +16,12 @@ from planner.yaw_planner import LookAhead, Oxford
 from map.utils import *
 from config import *      
 
+state_machine = {
+        'WAIT_FOR_GOAL':0,
+        'GOAL_REACHED' :1,
+        'PLANNING'     :2,
+        'EXECUTING'    :3
+    }
 class Drone2DEnv(gym.Env):
      
     def __init__(self):
@@ -64,15 +70,28 @@ class Drone2DEnv(gym.Env):
         # self.yaw_planner = Oxford(self.dt, self.dim)
         
         self.trajectory = Trajectory2D()
-        self.need_replan = False
+        self.state = state_machine['WAIT_FOR_GOAL']
+        self.state_changed = False
         self.replan_count = 0
     
     def step(self):
+
+        self.state_changed = False
+        # Update state machine
+        if self.state == state_machine['GOAL_REACHED']:
+            self.state = state_machine['WAIT_FOR_GOAL']
+            self.state_changed = True
         # Update gridmap for dynamic obstacles
         self.map_gt.update_dynamic_grid(self.agents)
 
         # Raycast module
         self.drone.raycasting(self.map_gt, self.agents)
+
+        # Update moving agent position
+        if ENABLE_DYNAMIC:
+            RVO_update(self.agents, self.ws_model)
+            for agent in self.agents:
+                agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.dim[0], self.dim[1],  self.dt)
         
         # Set target point
         mouse = pygame.mouse.get_pressed()
@@ -80,23 +99,37 @@ class Drone2DEnv(gym.Env):
             success = False
             x, y = pygame.mouse.get_pos()
             self.planner.set_target(np.array([x, y]))
-            print("target set as:", x, y)
+            # print("target set as:", x, y)
             self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
+            self.state_changed = True
             if not success:
                 self.drone.brake()
-                print("path not found, replanning")
-                self.need_replan = True
+                # print("path not found, replanning")
+                self.state = state_machine['PLANNING']
             else:
-                print("path found")
-                self.need_replan = False
+                # print("path found, executing")
+                self.state = state_machine['EXECUTING']
         
-        # If collision detected for current trajectory, replan
+        # If collision detected for planned trajectory, replan
         swep_map = np.zeros_like(self.map_gt.grid_map)
+
         for i, pos in enumerate(self.trajectory.positions):
             swep_map[int(pos[0]//MAP_GRID_SCALE), int(pos[1]//MAP_GRID_SCALE)] = i * self.dt
+            for agent in self.agents:
+                if agent.seen:
+                    estimate_pos = agent.estimate_pos + i * self.dt * agent.estimate_vel
+                    if norm(estimate_pos - pos) <= self.drone.radius + agent.radius:
+                        self.state = state_machine['PLANNING']
+                        self.state_changed = True   
+
+
+
         obs_map = np.where((self.drone.map.grid_map==0) | (self.drone.map.grid_map==2), 0, 1)
         if np.sum(obs_map * swep_map) > 0:
-            self.need_replan = True
+            self.state = state_machine['PLANNING']
+            self.state_changed = True
+        
+
 
         ## Replan at certain rate
         # self.replan_count += 1
@@ -105,39 +138,53 @@ class Drone2DEnv(gym.Env):
         #     self.need_replan = True
 
         #Replan
-        if self.need_replan:
+        if self.state == state_machine['PLANNING']:
             self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
             if not success:
                 self.drone.brake()
-                print("path not found, replanning")
+                # print("path not found, replanning")
             else:
-                print("path found")
-                self.need_replan = False
+                # print("path found")
+                self.state_changed = True
+                self.state = state_machine['EXECUTING']
 
-        # execute trajectory
+        # Execute trajectory
         if self.trajectory.positions != [] :
             self.drone.velocity = self.trajectory.velocities[0]
             self.drone.x = round(self.trajectory.positions[0][0])
             self.drone.y = round(self.trajectory.positions[0][1])
             self.yaw_planner.plan(self.drone, self.trajectory)
             self.trajectory.pop()
+            if self.trajectory.positions == []:
+                self.state_changed = True
+                self.state = state_machine['GOAL_REACHED']
         
-        # Update moving agent position
-        if ENABLE_DYNAMIC:
-            RVO_update(self.agents, self.ws_model)
-            for agent in self.agents:
-                agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.dim[0], self.dim[1],  self.dt)
-        
+        # Print state machine
+        if self.state_changed:
+            if self.state == state_machine['GOAL_REACHED']:
+                print("state: goal reached")
+            elif self.state == state_machine['WAIT_FOR_GOAL']:
+                print("state: wait for goal")
+            elif self.state == state_machine['PLANNING']:
+                print("state: planning")
+            elif self.state == state_machine['EXECUTING']:
+                print("state: executing trajectory")
+
+        # Return reward
         if self.drone.is_collide(self.map_gt, self.agents):
             reward = -100
+            done = True
+        elif self.state == state_machine['GOAL_REACHED']:
+            reward = 100
+            done = False
         else:
             reward = 0
-        done = False
+            done = False
         
         return reward, done, {}
     
     def reset(self):
-        return self.state
+        self.__init__()
         
     def render(self, mode='human'):
         keys = pygame.key.get_pressed()
@@ -189,8 +236,7 @@ if __name__ == '__main__':
         reward, done, _ = t.step()
 
         if reward < 0:
-            print("collision detected, quitting simulation")
-            break
+            t.reset()
 
         t.render()
         # sleep(t.dt)

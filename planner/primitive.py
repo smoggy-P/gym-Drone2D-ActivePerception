@@ -1,9 +1,7 @@
 import time
-from tracemalloc import start
 from numpy.linalg import norm
 import numpy as np
 from config import *
-from joblib import Parallel, delayed
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
         self.position = pos
@@ -86,7 +84,7 @@ class Primitive(object):
         while 1:
             itr += 1
             if len(open_set) == 0 or itr >= 10:
-                print("No solution found in limitied time")
+                # print("No solution found in limitied time")
                 goal_node = None
                 success = False
                 break
@@ -97,7 +95,7 @@ class Primitive(object):
             current = open_set[c_id]
 
             if norm(current.position - np.array([gx, gy])) <= self.search_threshold:
-                print("Find goal")
+                # print("Find goal")
                 goal_node = current
                 success = True
                 break
