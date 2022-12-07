@@ -4,17 +4,31 @@ from map.grid import OccupancyGridMap
 from config import *
 import matplotlib.pyplot as plt
 
+class NoControl(object):
+    def __init__(self) -> None:
+        pass
+
+    def plan(self, state):
+        return 0
+
 class LookAhead(object):
     """Make the drone look at the direction of its velocity
 
     Args:
         object (_type_): _description_
     """
-    def __init__(self) -> None:
-        pass
+    def __init__(self, dt):
+        self.dt = dt
 
-    def plan(self, drone, trajectory):
-        drone.yaw = math.degrees(math.atan2(-drone.velocity[1], drone.velocity[0]))
+    def plan(self, state):
+        if state['drone'].velocity[1]==0 and state['drone'].velocity[0]==0:
+            return 0
+        
+        target_yaw = math.degrees(math.atan2(-state['drone'].velocity[1], state['drone'].velocity[0])) % 360
+        
+        # print(target_yaw)
+        yaw_vel = max(min((target_yaw - state['drone'].yaw) / self.dt, DRONE_MAX_YAW_SPEED), -DRONE_MAX_YAW_SPEED)
+        return yaw_vel
 
 class Oxford(object):
     """Oxford method to plan gaze

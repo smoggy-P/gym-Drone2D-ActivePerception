@@ -16,12 +16,13 @@ class Drone2D():
         self.radius = DRONE_RADIUS
         self.map = OccupancyGridMap(MAP_GRID_SCALE, dim, 0)
         self.view_map = np.zeros((dim[0]//MAP_GRID_SCALE, dim[1]//MAP_GRID_SCALE))
-        self.velocity = np.array([20, 20])
+        self.velocity = np.array([0, 0])
         self.dt = dt
-        self.state = 0
         self.rays = {}
-
         self.raycast = Raycast(dim, self)
+
+    def step_yaw(self, action):
+        self.yaw = (self.yaw + action * self.dt) % 360
 
     def raycasting(self, gt_map, agents):
         self.view_map = np.zeros_like(self.view_map)
@@ -38,7 +39,7 @@ class Drone2D():
 
     def is_collide(self, gt_map, agents):
         grid = gt_map.get_grid(self.x, self.y)
-        if grid==['OCCUPIED']:
+        if grid == grid_type['OCCUPIED']:
             print("collision with static obstacles")
             return True
         for agent in agents:
