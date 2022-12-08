@@ -14,6 +14,8 @@ class Trajectory2D(object):
     def pop(self):
         self.positions.pop(0)
         self.velocities.pop(0)
+    def __len__(self):
+        return len(self.positions)
 
 def waypoint_from_traj(coeff, t):
     """Get the waypoint in trajectory with coefficient at time t

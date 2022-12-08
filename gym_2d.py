@@ -60,7 +60,7 @@ class Drone2DEnv(gym.Env):
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, -90, self.dt, self.dim)
         self.planner = Primitive(self.screen, self.drone)
 
-        self.target_list = [np.array([120, 50]), np.array([120, 380]), np.array([520, 380]), np.array([520, 100])]
+        self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
         
         self.trajectory = Trajectory2D()
         self.state = state_machine['WAIT_FOR_GOAL']
@@ -229,8 +229,9 @@ class Drone2DEnv(gym.Env):
     
 if __name__ == '__main__':
     env = Drone2DEnv()
-    policy = LookAhead(env.dt)
-    # plt.ion()
+    # policy = LookAhead(env.dt)
+    policy = Oxford(env.dt, env.dim)
+    plt.ion()
     while True:
         
         a = policy.plan(env.observation)
