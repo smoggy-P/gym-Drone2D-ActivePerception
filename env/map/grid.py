@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/env/')
+
 import numpy as np
 import pygame
 from numpy.linalg import norm

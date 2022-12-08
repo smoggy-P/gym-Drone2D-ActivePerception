@@ -17,8 +17,8 @@ class Agent(object):
         self.seen = False
         self.in_view = False
         self.var = 0
-        self.estimate_vel = None
-        self.estimate_pos = None
+        self.estimate_vel = np.array([0,0])
+        self.estimate_pos = np.array([0,0])
         
     def step(self, edge_size_x, edge_size_y, map_width, map_height, dt):
         new_position = self.position + self.velocity * dt
@@ -75,18 +75,21 @@ def RVO_update(agents, ws_model):
     ROB_RAD = agents[0].radius+0.1
        
     for i in range(len(X)):
-        RVO_BA_all = [[[X[i][0]+0.5*(V_current[j][0]+V_current[i][0]), X[i][1]+0.5*(V_current[j][1]+V_current[i][1])], 
-                      [cos(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) + asin(2*ROB_RAD/distance(X[i], X[j]))), sin(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) + asin(2*ROB_RAD/distance(X[i], X[j])))],
-                      [cos(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) - asin(2*ROB_RAD/distance(X[i], X[j]))), sin(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) - asin(2*ROB_RAD/distance(X[i], X[j])))],
-                      distance(X[i], X[j]),
-                      2.2*ROB_RAD] for j in range(len(X)) if j != i] + [[X[i], 
-                                                                        [cos(atan2(hole[1]-X[i][1], hole[0]-X[i][0]) + asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2]))), sin(atan2(hole[1]-X[i][1], hole[0]-X[i][0]) + asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2])))], 
-                                                                        [cos(atan2(hole[1]-X[i][1], hole[0]-X[i][0])-asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2]))), sin(atan2(hole[1]-X[i][1], hole[0]-X[i][0])-asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2])))], 
-                                                                        distance(X[i], hole[0:2]), 
-                                                                        hole[2]*1.5+ROB_RAD] for hole in ws_model['circular_obstacles']]
+        try:
+            RVO_BA_all = [[[X[i][0]+0.5*(V_current[j][0]+V_current[i][0]), X[i][1]+0.5*(V_current[j][1]+V_current[i][1])], 
+                        [cos(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) + asin(2*ROB_RAD/distance(X[i], X[j]))), sin(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) + asin(2*ROB_RAD/distance(X[i], X[j])))],
+                        [cos(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) - asin(2*ROB_RAD/distance(X[i], X[j]))), sin(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) - asin(2*ROB_RAD/distance(X[i], X[j])))],
+                        distance(X[i], X[j]),
+                        2.2*ROB_RAD] for j in range(len(X)) if j != i] + [[X[i], 
+                                                                            [cos(atan2(hole[1]-X[i][1], hole[0]-X[i][0]) + asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2]))), sin(atan2(hole[1]-X[i][1], hole[0]-X[i][0]) + asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2])))], 
+                                                                            [cos(atan2(hole[1]-X[i][1], hole[0]-X[i][0])-asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2]))), sin(atan2(hole[1]-X[i][1], hole[0]-X[i][0])-asin((hole[2]*1+ROB_RAD)/distance(X[i], hole[0:2])))], 
+                                                                            distance(X[i], hole[0:2]), 
+                                                                            hole[2]*1.5+ROB_RAD] for hole in ws_model['circular_obstacles']]
+        except:
+            return False
         vA_post = intersect(X[i], V_des[i], RVO_BA_all)
         agents[i].velocity = np.array(vA_post[:])
-
+    return True
 
 def intersect(pA, vA, RVO_BA_all):
     # print '----------------------------------------'

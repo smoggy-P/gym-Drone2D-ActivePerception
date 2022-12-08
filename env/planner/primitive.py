@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/env/')
+
 import time
 from numpy.linalg import norm
 import numpy as np

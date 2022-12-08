@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/env/')
+
 import math
 import multiprocessing
 import torch

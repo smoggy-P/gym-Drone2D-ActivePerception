@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/env/')
+
 from map.grid import OccupancyGridMap
 from map.utils import *
 from config import *

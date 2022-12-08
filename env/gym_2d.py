@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/env/')
+
 import gym
 import pygame
 import random
@@ -24,7 +27,7 @@ state_machine = {
     }
 class Drone2DEnv(gym.Env):
      
-    def __init__(self, render=True):
+    def __init__(self, render=False):
         
         self.dt = 1/10
         
@@ -78,7 +81,7 @@ class Drone2DEnv(gym.Env):
         }
     
     def step(self, a):
-
+        done = False
         self.state_changed = False
         # Update state machine
         if self.state == state_machine['GOAL_REACHED']:
@@ -92,9 +95,11 @@ class Drone2DEnv(gym.Env):
 
         # Update moving agent position
         if ENABLE_DYNAMIC:
-            RVO_update(self.agents, self.ws_model)
-            for agent in self.agents:
-                agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.dim[0], self.dim[1],  self.dt)
+            if RVO_update(self.agents, self.ws_model):
+                for agent in self.agents:
+                    agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.dim[0], self.dim[1],  self.dt)
+            else:
+                done = True
         
         # Set target point
         if self.state == state_machine['WAIT_FOR_GOAL']:
@@ -154,15 +159,15 @@ class Drone2DEnv(gym.Env):
         self.drone.step_yaw(a)
         
         # Print state machine
-        if self.state_changed:
-            if self.state == state_machine['GOAL_REACHED']:
-                print("state: goal reached")
-            elif self.state == state_machine['WAIT_FOR_GOAL']:
-                print("state: wait for goal")
-            elif self.state == state_machine['PLANNING']:
-                print("state: planning")
-            elif self.state == state_machine['EXECUTING']:
-                print("state: executing trajectory")
+        # if self.state_changed:
+        #     if self.state == state_machine['GOAL_REACHED']:
+        #         print("state: goal reached")
+        #     elif self.state == state_machine['WAIT_FOR_GOAL']:
+        #         print("state: wait for goal")
+        #     elif self.state == state_machine['PLANNING']:
+        #         print("state: planning")
+        #     elif self.state == state_machine['EXECUTING']:
+        #         print("state: executing trajectory")
 
         # wrap up observation
         self.observation = {
@@ -181,12 +186,11 @@ class Drone2DEnv(gym.Env):
                 done = True
         else:
             reward = -1
-            done = False
 
         return self.observation, reward, done
     
     def reset(self):
-        self.__init__()
+        self.__init__(render=self.render)
         
     def render(self, mode='human'):
         # keys = pygame.key.get_pressed()
@@ -233,7 +237,7 @@ class Drone2DEnv(gym.Env):
             self.clock.tick(60)
     
 if __name__ == '__main__':
-    env = Drone2DEnv()
+    env = Drone2DEnv(render=True)
     # policy = LookAhead(env.dt)
     policy = Oxford(env.dt, env.dim)
     # plt.ion()
