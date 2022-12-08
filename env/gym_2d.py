@@ -2,6 +2,7 @@ import gym
 import pygame
 import random
 import matplotlib.pyplot as plt
+import pylab as pl
 
 from numpy import array, pi, cos, sin
 from map.RVO import RVO_update, Agent
@@ -9,6 +10,7 @@ from map.grid import OccupancyGridMap
 from mav.drone import Drone2D
 from planner.primitive import Primitive, Trajectory2D
 from planner.yaw_planner import LookAhead, Oxford, NoControl
+from IPython import display
 
 
 from map.utils import *
@@ -22,7 +24,7 @@ state_machine = {
     }
 class Drone2DEnv(gym.Env):
      
-    def __init__(self):
+    def __init__(self, render=True):
         
         self.dt = 1/10
         
@@ -35,10 +37,12 @@ class Drone2DEnv(gym.Env):
         self.ws_model = obs_dict_to_ws_model(self.obstacles)
         
         # Setup pygame environment
-        pygame.init()
         self.dim = MAP_SIZE
-        self.screen = pygame.display.set_mode(self.dim)
-        self.clock = pygame.time.Clock()
+        self.is_render = render
+        if render:
+            pygame.init()
+            self.screen = pygame.display.set_mode(self.dim)
+            self.clock = pygame.time.Clock()
         
         # Define physical setup
         self.agents = []
@@ -58,7 +62,7 @@ class Drone2DEnv(gym.Env):
         self.map_gt.init_obstacles(self.obstacles, self.agents)
     
         self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, -90, self.dt, self.dim)
-        self.planner = Primitive(self.screen, self.drone)
+        self.planner = Primitive(self.drone)
 
         self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
         
@@ -176,7 +180,7 @@ class Drone2DEnv(gym.Env):
             if len(self.target_list) == 0:
                 done = True
         else:
-            reward = 0
+            reward = -1
             done = False
 
         return self.observation, reward, done
@@ -193,52 +197,59 @@ class Drone2DEnv(gym.Env):
         # pygame.event.pump() # process event queue
         
         # self.map_gt.render(self.screen, color_dict)
-        self.drone.map.render(self.screen, color_dict)
-        self.drone.render(self.screen)
-        for ray in self.drone.rays:
-            pygame.draw.line(
-                self.screen,
-                (100,100,100),
-                (self.drone.x, self.drone.y),
-                ((ray['coords'][0]), (ray['coords'][1]))
-        )
-        # draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
-        
-        if len(self.trajectory.positions) > 1:
-            pygame.draw.lines(self.screen, (100,100,100), False, self.trajectory.positions)
+        if self.is_render:
+            self.drone.map.render(self.screen, color_dict)
+            self.drone.render(self.screen)
+            for ray in self.drone.rays:
+                pygame.draw.line(
+                    self.screen,
+                    (100,100,100),
+                    (self.drone.x, self.drone.y),
+                    ((ray['coords'][0]), (ray['coords'][1]))
+            )
+            # draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
+            
+            if len(self.trajectory.positions) > 1:
+                pygame.draw.lines(self.screen, (100,100,100), False, self.trajectory.positions)
 
-        if ENABLE_DYNAMIC:
-            for agent in self.agents:
-                agent.render(self.screen)
-        
-        fps = round(self.clock.get_fps())
-        if (fps >= 40):
-            fps_color = (0,102,0)
-        elif(fps >= 20):
-            fps_color = (255, 153, 0)
-        else:
-            fps_color = (204, 0, 0)
-        default_font = pygame.font.SysFont('Arial', 15)
-        pygame.Surface.blit(self.screen,
-            default_font.render('FPS: '+str(fps), False, fps_color),
-            (0, 0)
-        )
-        
-        pygame.display.update()
-        self.clock.tick(60)
+            if ENABLE_DYNAMIC:
+                for agent in self.agents:
+                    agent.render(self.screen)
+            
+            fps = round(self.clock.get_fps())
+            if (fps >= 40):
+                fps_color = (0,102,0)
+            elif(fps >= 20):
+                fps_color = (255, 153, 0)
+            else:
+                fps_color = (204, 0, 0)
+            default_font = pygame.font.SysFont('Arial', 15)
+            pygame.Surface.blit(self.screen,
+                default_font.render('FPS: '+str(fps), False, fps_color),
+                (0, 0)
+            )
+            
+            pygame.display.update()
+            self.clock.tick(60)
     
 if __name__ == '__main__':
     env = Drone2DEnv()
     # policy = LookAhead(env.dt)
     policy = Oxford(env.dt, env.dim)
-    plt.ion()
-    while True:
+    # plt.ion()
+    max_step = 10000
+    rewards = []
+    steps = []
+    for i in range(max_step):
         
         a = policy.plan(env.observation)
         observation, reward, done= env.step(a)
 
         if done:
             env.reset()
+
         env.render()
         # sleep(t.dt)
+    # plt.plot(rewards)
+    # plt.show()
     

@@ -2,7 +2,7 @@ import numpy as np
 import pygame
 import torch
 
-from config import *
+from env.config import *
 
 grid_type = {
     'DYNAMIC_OCCUPIED' : 3,

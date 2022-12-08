@@ -40,11 +40,11 @@ class Drone2D():
     def is_collide(self, gt_map, agents):
         grid = gt_map.get_grid(self.x, self.y)
         if grid == grid_type['OCCUPIED']:
-            print("collision with static obstacles")
+            # print("collision with static obstacles")
             return True
         for agent in agents:
             if norm(agent.position - np.array([self.x, self.y])) < agent.radius + self.radius:
-                print("collision with dynamic obstacles")
+                # print("collision with dynamic obstacles")
                 return True
 
         return False
