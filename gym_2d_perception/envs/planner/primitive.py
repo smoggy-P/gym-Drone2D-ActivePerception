@@ -4,7 +4,6 @@ sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/gym_2d_percept
 import time
 from numpy.linalg import norm
 import numpy as np
-from config import *
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
         self.position = pos
@@ -48,8 +47,9 @@ class Primitive(object):
         def get_index(self):
             self.index = (round(self.position[0])//5, round(self.position[1])//5, round(self.velocity[0])//2, round(self.velocity[1])//2)
 
-    def __init__(self, drone):
-        self.u_space = np.arange(-DRONE_MAX_ACC, DRONE_MAX_ACC, 5)
+    def __init__(self, drone, params):
+        self.params = params
+        self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 5)
         # self.u_space = np.array([-15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15])
         self.dt = 3
         self.sample_num = 30 # sampling number for collision check
@@ -119,7 +119,7 @@ class Primitive(object):
                                    itr = current.itr + 1) for x_acc in self.u_space 
                                                              for y_acc in self.u_space 
                                                              if self.is_free(np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]), occupancy_map, agents, current.itr) and 
-                                                                norm(np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])) < DRONE_MAX_SPEED]
+                                                                norm(np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])) < self.params.drone_max_speed]
             for next_node in sub_node_list:
                 if next_node.index in closed_set:
                     continue
@@ -162,7 +162,7 @@ class Primitive(object):
             for agent in agents:
                 global_t = t + itr * self.dt
                 new_position = agent.position + agent.velocity * global_t
-                if norm(position - new_position) <= DRONE_RADIUS + agent.radius:
+                if norm(position - new_position) <= self.params.drone_radius + agent.radius:
                     # print("collision found with agent in position:", new_position)
                     return False
 

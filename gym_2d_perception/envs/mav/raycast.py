@@ -5,8 +5,14 @@ import math
 import multiprocessing
 import torch
 from math import pi, radians, tan, ceil, atan
-from config import *
-num_cores = multiprocessing.cpu_count()
+# from config import *
+# num_cores = multiprocessing.cpu_count()
+grid_type = {
+    'DYNAMIC_OCCUPIED' : 3,
+    'OCCUPIED' : 1,
+    'UNOCCUPIED' : 2,
+    'UNEXPLORED' : 0
+}
 
 def get_positive_angle(angle = None):
 

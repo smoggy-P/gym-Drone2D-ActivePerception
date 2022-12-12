@@ -1,7 +1,11 @@
+import sys
+sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/gym_2d_perception/envs')
+
 import numpy as np
 import math
-from gym_2d_perception.envs.config import *
+# from config import *
 from gym_2d_perception.envs.mav.drone import Drone2D
+import matplotlib.pyplot as plt
 
 class NoControl(object):
     def __init__(self) -> None:
@@ -16,8 +20,9 @@ class LookAhead(object):
     Args:
         object (_type_): _description_
     """
-    def __init__(self, dt):
-        self.dt = dt
+    def __init__(self, params):
+        self.dt = params.dt
+        self.params = params
 
     def plan(self, state):
         if state['drone'].velocity[1]==0 and state['drone'].velocity[0]==0:
@@ -27,9 +32,9 @@ class LookAhead(object):
         
         # print(target_yaw)
         if abs(target_yaw - state['drone'].yaw) < 180:
-            yaw_vel = max(min((target_yaw - state['drone'].yaw) / self.dt, DRONE_MAX_YAW_SPEED), -DRONE_MAX_YAW_SPEED)
+            yaw_vel = max(min((target_yaw - state['drone'].yaw) / self.dt, self.params.drone_max_yaw_speed), -self.params.drone_max_yaw_speed)
         else:
-            yaw_vel = -max(min((target_yaw - state['drone'].yaw) / self.dt, DRONE_MAX_YAW_SPEED), -DRONE_MAX_YAW_SPEED)
+            yaw_vel = -max(min((target_yaw - state['drone'].yaw) / self.dt, self.params.drone_max_yaw_speed), -self.params.drone_max_yaw_speed)
         return yaw_vel
 
 class Oxford(object):
@@ -38,29 +43,29 @@ class Oxford(object):
     Args:
         object (_type_): _description_
     """
-    def __init__(self, dt, dim):
-        self.last_time_observed_map = np.inf * np.ones((dim[0]//MAP_GRID_SCALE, dim[1]//MAP_GRID_SCALE))
-        self.swep_map = np.zeros((dim[0]//MAP_GRID_SCALE, dim[1]//MAP_GRID_SCALE))
-        self.dim = dim
-        self.dt = dt
+    def __init__(self, params):
+        self.last_time_observed_map = np.inf * np.ones((params.map_size[0]//params.map_scale, params.map_size[1]//params.map_scale))
+        self.swep_map = np.zeros((params.map_size[0]//params.map_scale, params.map_size[1]//params.map_scale))
+        self.dim = params.map_size
+        self.dt = params.dt
 
         # Farthest step in trajectory that considered as priority
         self.tau_s = 3
 
         # Safe last time observed
-        self.tau_c = 3
+        self.tau_c = 0.5
 
         self.c1 = 1000000
         self.c2 = 1000
         self.c3 = 1
 
         # Primitive time step
-        self.v_yaw_space = np.arange(-DRONE_MAX_YAW_SPEED, DRONE_MAX_YAW_SPEED, DRONE_MAX_YAW_SPEED/3)
+        self.v_yaw_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/3)
 
     def get_view_map(self, drone):
         dim = self.dim
-        x = np.arange(int(dim[0]//MAP_GRID_SCALE)).reshape(-1, 1) * MAP_GRID_SCALE
-        y = np.arange(int(dim[1]//MAP_GRID_SCALE)).reshape(1, -1) * MAP_GRID_SCALE
+        x = np.arange(int(dim[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
+        y = np.arange(int(dim[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
 
         vec_yaw = np.array([math.cos(math.radians(drone.yaw)), -math.sin(math.radians(drone.yaw))])
         view_angle = math.radians(drone.yaw_range / 2)
@@ -77,7 +82,7 @@ class Oxford(object):
         # update v_i
         self.swep_map = np.zeros_like(self.swep_map)
         for i, pos in enumerate(trajectory.positions):
-            self.swep_map[int(pos[0]//MAP_GRID_SCALE), int(pos[1]//MAP_GRID_SCALE)] = i * self.dt
+            self.swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.dt
 
         # update t_i
         view_map = self.get_view_map(drone)

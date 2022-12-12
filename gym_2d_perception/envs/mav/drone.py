@@ -3,26 +3,34 @@ sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/gym_2d_percept
 
 from map.grid import OccupancyGridMap
 from map.utils import *
-from config import *
+# from config import *
 from mav.raycast import Raycast
 
 from numpy.linalg import norm
 import numpy as np
 
+grid_type = {
+    'DYNAMIC_OCCUPIED' : 3,
+    'OCCUPIED' : 1,
+    'UNOCCUPIED' : 2,
+    'UNEXPLORED' : 0
+}
+
 class Drone2D():
-    def __init__(self, init_x, init_y, init_yaw, dt, dim):
+    def __init__(self, init_x, init_y, init_yaw, dt, dim, params):
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
         self.yaw_range = 90
         self.yaw_depth = 80
-        self.radius = DRONE_RADIUS
-        self.map = OccupancyGridMap(MAP_GRID_SCALE, dim, 0)
-        self.view_map = np.zeros((dim[0]//MAP_GRID_SCALE, dim[1]//MAP_GRID_SCALE))
+        self.radius = params.drone_radius
+        self.map = OccupancyGridMap(params.map_scale, dim, 0)
+        self.view_map = np.zeros((dim[0]//params.map_scale, dim[1]//params.map_scale))
         self.velocity = np.array([0, 0])
         self.dt = dt
         self.rays = {}
         self.raycast = Raycast(dim, self)
+        self.params = params
 
     def step_yaw(self, action):
         self.yaw = (self.yaw + action * self.dt) % 360
@@ -32,11 +40,11 @@ class Drone2D():
         self.rays = self.raycast.castRays(self, gt_map, agents)
 
     def brake(self):
-        if norm(self.velocity) <= DRONE_MAX_ACC * self.dt:
+        if norm(self.velocity) <= self.params.drone_max_acceleration * self.dt:
             self.velocity = np.zeros(2)
 
         else:
-            self.velocity = self.velocity - self.velocity / norm(self.velocity) * DRONE_MAX_ACC * self.dt
+            self.velocity = self.velocity - self.velocity / norm(self.velocity) * self.params.drone_max_acceleration * self.dt
             self.x += self.velocity[0] * self.dt
             self.y += self.velocity[1] * self.dt
 

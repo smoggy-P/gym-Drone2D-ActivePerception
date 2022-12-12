@@ -12,12 +12,16 @@ from map.RVO import RVO_update, Agent
 from map.grid import OccupancyGridMap
 from mav.drone import Drone2D
 from planner.primitive import Primitive, Trajectory2D
-from planner.yaw_planner import LookAhead, Oxford, NoControl
+# from planner.yaw_planner import LookAhead, Oxford, NoControl
 from IPython import display
 
 
-from map.utils import *
-from config import *      
+from map.utils import *    
+color_dict = {
+    'OCCUPIED'   : (150, 150, 150),
+    'UNOCCUPIED' : (50, 50, 50),
+    'UNEXPLORED' : (0, 0, 0)
+}
 
 state_machine = {
         'WAIT_FOR_GOAL':0,
@@ -40,7 +44,7 @@ class Drone2DEnv(gym.Env):
         self.ws_model = obs_dict_to_ws_model(self.obstacles)
         
         # Setup pygame environment
-        self.dim = MAP_SIZE
+        self.dim = params.map_size
         self.is_render = params.render
         if self.is_render:
             pygame.init()
@@ -49,23 +53,22 @@ class Drone2DEnv(gym.Env):
         
         # Define physical setup
         self.agents = []
-        if ENABLE_DYNAMIC:
-            i = 1
-            while(i <= N_AGENTS):
-                theta = 2 * pi * i / N_AGENTS
-                x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
-                vel = -x * PEDESTRIAN_MAX_SPEED
-                pos = (random.uniform(200, 440), random.uniform(120, 360))
-                new_agent = Agent(pos, (0., 0.), PEDESTRIAN_RADIUS, PEDESTRIAN_MAX_SPEED, vel, self.dt)
-                if check_collision(self.agents, new_agent, self.ws_model):
-                    self.agents.append(new_agent)
-                    i += 1
+        i = 1
+        while(i <= params.agent_number):
+            theta = 2 * pi * i / params.agent_number
+            x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
+            vel = -x * params.agent_max_speed
+            pos = (random.uniform(self.dim[0] / 2 - 100, self.dim[0] / 2 +100), random.uniform(self.dim[1] / 2 - 100, self.dim[1] / 2 +100))
+            new_agent = Agent(pos, (0., 0.), params.agent_radius, params.agent_max_speed, vel, self.dt)
+            if check_collision(self.agents, new_agent, self.ws_model):
+                self.agents.append(new_agent)
+                i += 1
 
-        self.map_gt = OccupancyGridMap(MAP_GRID_SCALE, self.dim, 2)
+        self.map_gt = OccupancyGridMap(params.map_scale, self.dim, 2)
         self.map_gt.init_obstacles(self.obstacles, self.agents)
     
-        self.drone = Drone2D(self.dim[0] / 2, DRONE_RADIUS + self.map_gt.x_scale, -90, self.dt, self.dim)
-        self.planner = Primitive(self.drone)
+        self.drone = Drone2D(self.dim[0] / 2, params.drone_radius + self.map_gt.x_scale, -90, self.dt, self.dim, params)
+        self.planner = Primitive(self.drone, params)
 
         self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
         
@@ -94,7 +97,7 @@ class Drone2DEnv(gym.Env):
         self.drone.raycasting(self.map_gt, self.agents)
 
         # Update moving agent position
-        if ENABLE_DYNAMIC:
+        if len(self.agents) > 0:
             if RVO_update(self.agents, self.ws_model):
                 for agent in self.agents:
                     agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.dim[0], self.dim[1],  self.dt)
@@ -133,7 +136,7 @@ class Drone2DEnv(gym.Env):
         # If collision detected for planned trajectory, replan
         swep_map = np.zeros_like(self.map_gt.grid_map)
         for i, pos in enumerate(self.trajectory.positions):
-            swep_map[int(pos[0]//MAP_GRID_SCALE), int(pos[1]//MAP_GRID_SCALE)] = i * self.dt
+            swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.dt
             for agent in self.agents:
                 if agent.seen:
                     estimate_pos = agent.estimate_pos + i * self.dt * agent.estimate_vel
@@ -216,7 +219,7 @@ class Drone2DEnv(gym.Env):
             if len(self.trajectory.positions) > 1:
                 pygame.draw.lines(self.screen, (100,100,100), False, self.trajectory.positions)
 
-            if ENABLE_DYNAMIC:
+            if len(self.agents) > 0:
                 for agent in self.agents:
                     agent.render(self.screen)
             
@@ -236,23 +239,23 @@ class Drone2DEnv(gym.Env):
             pygame.display.update()
             self.clock.tick(60)
     
-if __name__ == '__main__':
-    env = Drone2DEnv(render=True)
-    # policy = LookAhead(env.dt)
-    policy = Oxford(env.dt, env.dim)
-    # plt.ion()
-    max_step = 10000
-    rewards = []
-    steps = []
-    for i in range(max_step):
+# if __name__ == '__main__':
+#     env = Drone2DEnv(render=True)
+#     # policy = LookAhead(env.dt)
+#     policy = Oxford(env.dt, env.dim)
+#     # plt.ion()
+#     max_step = 10000
+#     rewards = []
+#     steps = []
+#     for i in range(max_step):
         
-        a = policy.plan(env.observation)
-        observation, reward, done= env.step(a)
+#         a = policy.plan(env.observation)
+#         observation, reward, done= env.step(a)
 
-        if done:
-            env.reset()
+#         if done:
+#             env.reset()
 
-        env.render()
+#         env.render()
         # sleep(t.dt)
     # plt.plot(rewards)
     # plt.show()

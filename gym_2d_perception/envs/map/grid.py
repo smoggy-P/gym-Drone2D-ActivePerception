@@ -4,7 +4,7 @@ sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/gym_2d_percept
 import numpy as np
 import pygame
 from numpy.linalg import norm
-from config import *
+# from config import *
 
 grid_type = {
     'DYNAMIC_OCCUPIED' : 3,
@@ -45,7 +45,7 @@ class OccupancyGridMap:
                     for rect in obstacles_dict['rectangle_obstacles']:
                         if rect[0] <= self.get_real_pos(i,j)[0] <= rect[0] + rect[2] and rect[1] <= self.get_real_pos(i,j)[1] <= rect[1] + rect[3]:
                             self.grid_map[i,j] = grid_type['OCCUPIED']
-                if ENABLE_DYNAMIC:
+                if len(agents) > 0:
                     for agent in agents:
                         if (self.get_real_pos(i,j)[0] - agent.position[0])**2 + (self.get_real_pos(i,j)[1] - agent.position[1])**2 <= agent.radius ** 2:
                             self.grid_map[i,j] = grid_type['DYNAMIC_OCCUPIED']
