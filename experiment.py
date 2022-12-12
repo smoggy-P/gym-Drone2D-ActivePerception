@@ -38,7 +38,3 @@ class Experiment:
             steps.append(i)
             if self.params.render:
                 self.env.render()
-
-cfg = get_args()
-runner = Experiment(cfg)
-runner.run()
