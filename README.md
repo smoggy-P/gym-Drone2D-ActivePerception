@@ -1,6 +1,6 @@
 # Gym for 2D active perception
 This is a repository for openai gym environment. The general task is navigation of MAV with limited field of view in unknown and dynamic environment.
-
+![](picture/lookahead_demo1.gif)
 ## Installation
 To run the code, it would be suggested to use anaconda to setup the environment:
 ```bash

@@ -1,7 +1,7 @@
 import gym
 from tqdm import tqdm
 from yaw_planner import Oxford, LookAhead, NoControl
-from arg_utils import get_args
+from param.arg_utils import get_args
 
 policy_list = {
     'LookAhead': LookAhead,
