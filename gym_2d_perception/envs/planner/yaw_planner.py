@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/env/')
+sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/gym_2d_perception/envs')
 
 import numpy as np
 import math
@@ -52,7 +52,7 @@ class Oxford(object):
         self.tau_s = 3
 
         # Safe last time observed
-        self.tau_c = 3
+        self.tau_c = 0.5
 
         self.c1 = 1000000
         self.c2 = 1000

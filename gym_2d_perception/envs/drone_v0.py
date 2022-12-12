@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/env/')
+sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/gym_2d_perception/envs')
 
 import gym
 import pygame
@@ -27,9 +27,9 @@ state_machine = {
     }
 class Drone2DEnv(gym.Env):
      
-    def __init__(self, render=False):
-        
-        self.dt = 1/10
+    def __init__(self, params):
+        self.params = params
+        self.dt = params.dt
         
         self.obstacles = {
             'circular_obstacles'  : [[320, 240, 50]],
@@ -41,8 +41,8 @@ class Drone2DEnv(gym.Env):
         
         # Setup pygame environment
         self.dim = MAP_SIZE
-        self.is_render = render
-        if render:
+        self.is_render = params.render
+        if self.is_render:
             pygame.init()
             self.screen = pygame.display.set_mode(self.dim)
             self.clock = pygame.time.Clock()
@@ -190,7 +190,7 @@ class Drone2DEnv(gym.Env):
         return self.observation, reward, done
     
     def reset(self):
-        self.__init__(render=self.render)
+        self.__init__(params=self.params)
         
     def render(self, mode='human'):
         # keys = pygame.key.get_pressed()

@@ -3,3 +3,8 @@ __pycache__/**
 map/__pycache__/**
 mav/__pycache__/**
 planner/__pycache__/**
+env/__pycache__/**
+env/map/__pycache__/**
+env/mav/__pycache__/**
+env/planner/__pycache__/**
+gym_2d_perception.egg-info

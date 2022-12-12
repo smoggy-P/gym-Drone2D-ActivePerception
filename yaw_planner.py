@@ -1,7 +1,7 @@
 import numpy as np
 import math
-from env.config import *
-from env.mav.drone import Drone2D
+from gym_2d_perception.envs.config import *
+from gym_2d_perception.envs.mav.drone import Drone2D
 
 class NoControl(object):
     def __init__(self) -> None:

@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/env/')
+sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/gym_2d_perception/envs')
 
 from map.grid import OccupancyGridMap
 from map.utils import *
@@ -14,8 +14,8 @@ class Drone2D():
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
-        self.yaw_range = 120
-        self.yaw_depth = 150
+        self.yaw_range = 90
+        self.yaw_depth = 80
         self.radius = DRONE_RADIUS
         self.map = OccupancyGridMap(MAP_GRID_SCALE, dim, 0)
         self.view_map = np.zeros((dim[0]//MAP_GRID_SCALE, dim[1]//MAP_GRID_SCALE))
