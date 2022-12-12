@@ -71,8 +71,10 @@ class Oxford(object):
         vec_yaw = np.array([math.cos(math.radians(drone.yaw)), -math.sin(math.radians(drone.yaw))])
         view_angle = math.radians(drone.yaw_range / 2)
         #((drone.x - x)**2 + (drone.y - y)**2 <= drone.yaw_depth ** 2) and 
+        
         # math.acos(np.array([math.cos(math.radians(drone.yaw)), -math.sin(math.radians(drone.yaw))]).dot(np.array([x - drone.x, y - drone.y]))/np.norm(np.array([x - drone.x, y - drone.y]))) <= math.radians(drone.yaw_range / 2)
-        view_map = np.where(np.arccos(((x - drone.x)*vec_yaw[0] + (y - drone.y)*vec_yaw[1]) / np.sqrt((drone.x - x)**2 + (drone.y - y)**2)) <= view_angle, np.where(((drone.x - x)**2 + (drone.y - y)**2 <= drone.yaw_depth ** 2), 1, 0), 0)
+        np.seterr(divide='ignore', invalid='ignore')
+        view_map = np.where(np.logical_or((drone.x - x)**2 + (drone.y - y)**2 <= 0, np.logical_and(np.arccos(((x - drone.x)*vec_yaw[0] + (y - drone.y)*vec_yaw[1]) / np.sqrt((drone.x - x)**2 + (drone.y - y)**2)) <= view_angle, ((drone.x - x)**2 + (drone.y - y)**2 <= drone.yaw_depth ** 2))), 1, 0)
         return view_map
 
     def plan(self, observation):

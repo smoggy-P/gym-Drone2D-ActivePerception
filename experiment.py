@@ -36,7 +36,8 @@ class Experiment:
 
             rewards.append(reward)
             steps.append(i)
-            self.env.render()
+            if self.params.render:
+                self.env.render()
 
 cfg = get_args()
 runner = Experiment(cfg)
