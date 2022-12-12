@@ -44,6 +44,7 @@ class Oxford(object):
         object (_type_): _description_
     """
     def __init__(self, params):
+        self.params = params
         self.last_time_observed_map = np.inf * np.ones((params.map_size[0]//params.map_scale, params.map_size[1]//params.map_scale))
         self.swep_map = np.zeros((params.map_size[0]//params.map_scale, params.map_size[1]//params.map_scale))
         self.dim = params.map_size
@@ -85,7 +86,7 @@ class Oxford(object):
             self.swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.dt
 
         # update t_i
-        view_map = self.get_view_map(drone)
+        view_map = self.get_view_map(self, drone)
         
 
         self.last_time_observed_map = np.where(view_map,
@@ -106,8 +107,8 @@ class Oxford(object):
             return 0
 
         for i, yaw in enumerate(target_yaw):
-            new_drone = Drone2D(trajectory.positions[0][0], trajectory.positions[0][1], yaw, self.dt, self.dim)
-            new_view_map = self.get_view_map(new_drone)
+            new_drone = Drone2D(trajectory.positions[0][0], trajectory.positions[0][1], yaw, self.dt, self.dim, self.params)
+            new_view_map = self.get_view_map(self, new_drone)
             if max_reward < np.sum(new_view_map*reward_map):
                 best_action = i
                 max_reward = np.sum(new_view_map*reward_map)
