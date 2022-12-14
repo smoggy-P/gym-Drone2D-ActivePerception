@@ -1,7 +1,8 @@
 import gym
+import numpy as np
 from tqdm import tqdm
 from yaw_planner import Oxford, LookAhead, NoControl
-from param.arg_utils import get_args
+from model.DQN import preprocess, Qnet
 
 policy_list = {
     'LookAhead': LookAhead,
@@ -16,7 +17,9 @@ class Experiment:
         self.dt = params.dt
         self.policy = policy_list[params.gaze_method]
         self.policy.__init__(self.policy, params)
-        self.max_step = 10000
+        self.max_step = 20000
+        self.action_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/3)
+        self.model = Qnet(action_dim=self.action_space.shape[0])
 
 
     def run(self):
@@ -26,7 +29,10 @@ class Experiment:
         fail = 0
         for i in tqdm(range(self.max_step)):
             a = self.policy.plan(self.policy, self.env.observation)
-            _, reward, done= self.env.step(a)
+            state, reward, done, _ = self.env.step(a)
+
+            self.model(preprocess(state))
+            
             if reward == 100:
                 success += 1
             if reward == -100:
@@ -38,3 +44,4 @@ class Experiment:
             steps.append(i)
             if self.params.render:
                 self.env.render()
+        print("success rate of " + self.params.gaze_method + ":", success / (success+fail))

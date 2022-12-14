@@ -131,7 +131,7 @@ class Raycast:
                     break
                 else:
                     player.map.grid_map[i, j] = grid_type['UNOCCUPIED']
-                    player.view_map[i, j] = 1
+                    # player.view_map[i, j] = 1
                 x = x + x_step
                 y = y + y_step
         
@@ -162,7 +162,7 @@ class Raycast:
                     break
                 else:
                     player.map.grid_map[i, j] = grid_type['UNOCCUPIED']
-                    player.view_map[i, j] = 1
+                    # player.view_map[i, j] = 1
 
                 x = x + x_step
                 y = y + y_step

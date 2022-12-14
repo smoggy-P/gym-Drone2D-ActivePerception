@@ -1,5 +1,6 @@
 import sys
 sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/gym_2d_perception/envs')
+sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/')
 
 import gym
 import pygame
@@ -14,6 +15,7 @@ from mav.drone import Drone2D
 from planner.primitive import Primitive, Trajectory2D
 # from planner.yaw_planner import LookAhead, Oxford, NoControl
 from IPython import display
+from model.DQN import preprocess
 
 
 from map.utils import *    
@@ -73,15 +75,18 @@ class Drone2DEnv(gym.Env):
         self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
         
         self.trajectory = Trajectory2D()
+        self.swep_map = np.zeros([64, 48])
         self.state = state_machine['WAIT_FOR_GOAL']
         self.state_changed = False
         self.replan_count = 0
 
         # Define action and observation space
-        self.observation = {
+        self.action_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/3)
+        self.observation = preprocess({
             'drone':self.drone,
-            'trajectory':self.trajectory
-        }
+            'trajectory':self.trajectory,
+            'swep_map':self.swep_map
+        })
     
     def step(self, a):
         done = False
@@ -173,10 +178,11 @@ class Drone2DEnv(gym.Env):
         #         print("state: executing trajectory")
 
         # wrap up observation
-        self.observation = {
+        self.observation = preprocess({
             'drone':self.drone,
-            'trajectory':self.trajectory
-        }
+            'trajectory':self.trajectory,
+            'swep_map':self.swep_map
+        })
 
         # Return reward
         if self.drone.is_collide(self.map_gt, self.agents):
@@ -190,10 +196,11 @@ class Drone2DEnv(gym.Env):
         else:
             reward = -1
 
-        return self.observation, reward, done
+        return self.observation, reward, done, {}
     
     def reset(self):
         self.__init__(params=self.params)
+        return self.observation
         
     def render(self, mode='human'):
         # keys = pygame.key.get_pressed()

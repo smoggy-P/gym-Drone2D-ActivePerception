@@ -25,7 +25,7 @@ class Drone2D():
         self.yaw_depth = 80
         self.radius = params.drone_radius
         self.map = OccupancyGridMap(params.map_scale, dim, 0)
-        self.view_map = np.zeros((dim[0]//params.map_scale, dim[1]//params.map_scale))
+        # self.view_map = np.zeros((dim[0]//params.map_scale, dim[1]//params.map_scale))
         self.velocity = np.array([0, 0])
         self.dt = dt
         self.rays = {}
@@ -33,10 +33,11 @@ class Drone2D():
         self.params = params
 
     def step_yaw(self, action):
-        self.yaw = (self.yaw + action * self.dt) % 360
+        # print(action)
+        self.yaw = (self.yaw + action[0] * self.dt) % 360
 
     def raycasting(self, gt_map, agents):
-        self.view_map = np.zeros_like(self.view_map)
+        # self.view_map = np.zeros_like(self.view_map)
         self.rays = self.raycast.castRays(self, gt_map, agents)
 
     def brake(self):
