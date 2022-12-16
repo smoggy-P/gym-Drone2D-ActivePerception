@@ -149,7 +149,7 @@ def train_DQN(agent, env, num_episodes, replay_buffer, minimal_size,
                     max_q_value_list.append(max_q_value)  # 保存每个状态的最大Q值
                     action_continuous = dis_to_con(action, env,
                                                    agent.action_dim)
-                    next_state, reward, done, _ = env.step([action_continuous])
+                    next_state, reward, done, _ = env.step(action_continuous)
                     replay_buffer.add(state, action, reward, next_state, done)
                     state = next_state
                     episode_return += reward

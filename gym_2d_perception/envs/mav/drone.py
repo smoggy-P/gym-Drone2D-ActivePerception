@@ -34,7 +34,7 @@ class Drone2D():
 
     def step_yaw(self, action):
         # print(action)
-        self.yaw = (self.yaw + action[0] * self.dt) % 360
+        self.yaw = (self.yaw + action * self.dt) % 360
 
     def raycasting(self, gt_map, agents):
         # self.view_map = np.zeros_like(self.view_map)

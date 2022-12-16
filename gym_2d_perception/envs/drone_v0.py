@@ -82,6 +82,11 @@ class Drone2DEnv(gym.Env):
 
         # Define action and observation space
         self.action_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/3)
+        self.info = {
+            'drone':self.drone,
+            'trajectory':self.trajectory,
+            'swep_map':self.swep_map
+        }
         self.observation = preprocess({
             'drone':self.drone,
             'trajectory':self.trajectory,
@@ -178,6 +183,11 @@ class Drone2DEnv(gym.Env):
         #         print("state: executing trajectory")
 
         # wrap up observation
+        self.info = {
+            'drone':self.drone,
+            'trajectory':self.trajectory,
+            'swep_map':self.swep_map
+        }
         self.observation = preprocess({
             'drone':self.drone,
             'trajectory':self.trajectory,
@@ -196,7 +206,7 @@ class Drone2DEnv(gym.Env):
         else:
             reward = -1
 
-        return self.observation, reward, done, {}
+        return self.observation, reward, done, self.info
     
     def reset(self):
         self.__init__(params=self.params)
