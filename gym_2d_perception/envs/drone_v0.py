@@ -195,8 +195,11 @@ class Drone2DEnv(gym.Env):
         })
 
         # Return reward
+
+        # lookahead: 1. 给速度方向，reward定为yaw和速度方向差距 2. 加入地图信息和中间reward（减弱地图信息干扰）
+
         if self.drone.is_collide(self.map_gt, self.agents):
-            reward = -100
+            reward = -1000
             done = True
         elif self.state == state_machine['GOAL_REACHED']:
             reward = 100
@@ -204,7 +207,13 @@ class Drone2DEnv(gym.Env):
             if len(self.target_list) == 0:
                 done = True
         else:
-            reward = -1
+            x = np.arange(int(self.dim[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
+            y = np.arange(int(self.dim[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
+
+            vec_yaw = np.array([math.cos(math.radians(self.drone.yaw)), -math.sin(math.radians(self.drone.yaw))])
+            view_angle = math.radians(self.drone.yaw_range / 2)
+            view_map = np.where(np.logical_or((self.drone.x - x)**2 + (self.drone.y - y)**2 <= 0, np.logical_and(np.arccos(((x - self.drone.x)*vec_yaw[0] + (y - self.drone.y)*vec_yaw[1]) / np.sqrt((self.drone.x - x)**2 + (self.drone.y - y)**2)) <= view_angle, ((self.drone.x - x)**2 + (self.drone.y - y)**2 <= self.drone.yaw_depth ** 2))), 1, 0)
+            reward = np.sum(view_map * np.where(swep_map == 0, 0, 1))
 
         return self.observation, reward, done, self.info
     

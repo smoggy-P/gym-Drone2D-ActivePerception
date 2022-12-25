@@ -6,13 +6,15 @@ import math
 # from config import *
 from gym_2d_perception.envs.mav.drone import Drone2D
 import matplotlib.pyplot as plt
+import random
 
 class NoControl(object):
-    def __init__(self) -> None:
-        pass
+    def __init__(self, params):
+        self.params = params
 
     def plan(self, state):
-        return 0
+        self.v_yaw_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/3)
+        return random.choice(self.v_yaw_space)
 
 class LookAhead(object):
     """Make the drone look at the direction of its velocity

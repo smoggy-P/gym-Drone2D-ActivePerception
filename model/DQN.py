@@ -30,7 +30,10 @@ def preprocess(state):
 class Qnet(torch.nn.Module):
     def __init__(self, action_dim):
         super(Qnet, self).__init__()
-        kernel_size = 5
+        kernel_size = 5 #3或者1
+
+        #1. 加一层cnn； 2.输入输出归一化； 3.input改成local map； 4. scale改合理； 5.input之间关系； 6.cnn+全连接+拼接yaw角（可以用显shi表达）
+
         padding = 2
         hidden_channel = 6
         input_dim = (64, 48)
