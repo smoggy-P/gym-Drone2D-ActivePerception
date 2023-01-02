@@ -1,3 +1,4 @@
+from math import atan2, degrees
 import sys
 sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/gym_2d_perception/envs')
 sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/')
@@ -34,6 +35,7 @@ state_machine = {
 class Drone2DEnv(gym.Env):
      
     def __init__(self, params):
+        np.seterr(divide='ignore', invalid='ignore')
         self.params = params
         self.dt = params.dt
         
@@ -76,29 +78,24 @@ class Drone2DEnv(gym.Env):
         
         self.trajectory = Trajectory2D()
         self.swep_map = np.zeros([64, 48])
-        self.state = state_machine['WAIT_FOR_GOAL']
+        self.state_machine = state_machine['WAIT_FOR_GOAL']
         self.state_changed = False
         self.replan_count = 0
 
         # Define action and observation space
-        self.action_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/3)
-        self.info = {
-            'drone':self.drone,
-            'trajectory':self.trajectory,
-            'swep_map':self.swep_map
-        }
-        self.observation = preprocess({
-            'drone':self.drone,
-            'trajectory':self.trajectory,
-            'swep_map':self.swep_map
-        })
+        self.info = None
+        self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
+        self.observation_space = gym.spaces.Box(low=np.array([0.0, 0.0]), 
+                                                high=np.array([360.0, 360.0]), 
+                                                shape=(2,),
+                                                dtype=np.float64)
     
     def step(self, a):
         done = False
         self.state_changed = False
         # Update state machine
-        if self.state == state_machine['GOAL_REACHED']:
-            self.state = state_machine['WAIT_FOR_GOAL']
+        if self.state_machine == state_machine['GOAL_REACHED']:
+            self.state_machine = state_machine['WAIT_FOR_GOAL']
             self.state_changed = True
         # Update gridmap for dynamic obstacles
         self.map_gt.update_dynamic_grid(self.agents)
@@ -115,10 +112,10 @@ class Drone2DEnv(gym.Env):
                 done = True
         
         # Set target point
-        if self.state == state_machine['WAIT_FOR_GOAL']:
+        if self.state_machine == state_machine['WAIT_FOR_GOAL']:
             self.planner.set_target(self.target_list[-1])
             self.target_list.pop()
-            self.state = state_machine['PLANNING']
+            self.state_machine = state_machine['PLANNING']
         # mouse = pygame.mouse.get_pressed()
         # if mouse[0]:
         #     success = False
@@ -128,12 +125,12 @@ class Drone2DEnv(gym.Env):
         #     self.state_changed = True
         #     if not success:
         #         self.drone.brake()
-        #         self.state = state_machine['PLANNING']
+        #         self.state_machine = state_machine['PLANNING']
         #     else:
-        #         self.state = state_machine['EXECUTING']
+        #         self.state_machine = state_machine['EXECUTING']
 
         #Plan
-        if self.state == state_machine['PLANNING']:
+        if self.state_machine == state_machine['PLANNING']:
             self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
             if not success:
                 self.drone.brake()
@@ -141,7 +138,7 @@ class Drone2DEnv(gym.Env):
             else:
                 # print("path found")
                 self.state_changed = True
-                self.state = state_machine['EXECUTING']
+                self.state_machine = state_machine['EXECUTING']
 
         # If collision detected for planned trajectory, replan
         swep_map = np.zeros_like(self.map_gt.grid_map)
@@ -151,11 +148,11 @@ class Drone2DEnv(gym.Env):
                 if agent.seen:
                     estimate_pos = agent.estimate_pos + i * self.dt * agent.estimate_vel
                     if norm(estimate_pos - pos) <= self.drone.radius + agent.radius:
-                        self.state = state_machine['PLANNING']
+                        self.state_machine = state_machine['PLANNING']
                         self.state_changed = True   
         obs_map = np.where((self.drone.map.grid_map==0) | (self.drone.map.grid_map==2), 0, 1)
         if np.sum(obs_map * swep_map) > 0:
-            self.state = state_machine['PLANNING']
+            self.state_machine = state_machine['PLANNING']
             self.state_changed = True
 
         # Execute trajectory
@@ -166,20 +163,20 @@ class Drone2DEnv(gym.Env):
             self.trajectory.pop()
             if self.trajectory.positions == []:
                 self.state_changed = True
-                self.state = state_machine['GOAL_REACHED']
+                self.state_machine = state_machine['GOAL_REACHED']
         
         # Execute gaze control
-        self.drone.step_yaw(a)
+        self.drone.step_yaw(a*self.params.drone_max_yaw_speed)
         
         # Print state machine
         # if self.state_changed:
-        #     if self.state == state_machine['GOAL_REACHED']:
+        #     if self.state_machine == state_machine['GOAL_REACHED']:
         #         print("state: goal reached")
-        #     elif self.state == state_machine['WAIT_FOR_GOAL']:
+        #     elif self.state_machine == state_machine['WAIT_FOR_GOAL']:
         #         print("state: wait for goal")
-        #     elif self.state == state_machine['PLANNING']:
+        #     elif self.state_machine == state_machine['PLANNING']:
         #         print("state: planning")
-        #     elif self.state == state_machine['EXECUTING']:
+        #     elif self.state_machine == state_machine['EXECUTING']:
         #         print("state: executing trajectory")
 
         # wrap up observation
@@ -188,21 +185,15 @@ class Drone2DEnv(gym.Env):
             'trajectory':self.trajectory,
             'swep_map':self.swep_map
         }
-        self.observation = preprocess({
-            'drone':self.drone,
-            'trajectory':self.trajectory,
-            'swep_map':self.swep_map
-        })
-
         # Return reward
 
         # lookahead: 1. 给速度方向，reward定为yaw和速度方向差距 2. 加入地图信息和中间reward（减弱地图信息干扰）
 
         if self.drone.is_collide(self.map_gt, self.agents):
-            reward = -1000
+            reward = -1000.0
             done = True
-        elif self.state == state_machine['GOAL_REACHED']:
-            reward = 100
+        elif self.state_machine == state_machine['GOAL_REACHED']:
+            reward = 100.0
             done = False
             if len(self.target_list) == 0:
                 done = True
@@ -213,13 +204,21 @@ class Drone2DEnv(gym.Env):
             vec_yaw = np.array([math.cos(math.radians(self.drone.yaw)), -math.sin(math.radians(self.drone.yaw))])
             view_angle = math.radians(self.drone.yaw_range / 2)
             view_map = np.where(np.logical_or((self.drone.x - x)**2 + (self.drone.y - y)**2 <= 0, np.logical_and(np.arccos(((x - self.drone.x)*vec_yaw[0] + (y - self.drone.y)*vec_yaw[1]) / np.sqrt((self.drone.x - x)**2 + (self.drone.y - y)**2)) <= view_angle, ((self.drone.x - x)**2 + (self.drone.y - y)**2 <= self.drone.yaw_depth ** 2))), 1, 0)
-            reward = np.sum(view_map * np.where(swep_map == 0, 0, 1))
+            reward = float(np.sum(view_map * np.where(swep_map == 0, 0, 1)))
+            
 
-        return self.observation, reward, done, self.info
+        vel_angle = degrees(atan2(-self.drone.velocity[1], self.drone.velocity[0]))
+        
+        vel_angle = vel_angle if vel_angle > 0 else 360 + vel_angle
+
+        reward = -(float(abs(vel_angle - self.drone.yaw)) if abs(vel_angle - self.drone.yaw) < 180 else float(360 - abs(vel_angle - self.drone.yaw)))
+        print("reward:", reward)
+        print(np.array([vel_angle, self.drone.yaw], dtype=np.float64))
+        return np.array([vel_angle, self.drone.yaw], dtype=np.float64), reward, done, self.info
     
     def reset(self):
         self.__init__(params=self.params)
-        return self.observation
+        return np.array([0, self.drone.yaw], dtype=np.float64)
         
     def render(self, mode='human'):
         # keys = pygame.key.get_pressed()

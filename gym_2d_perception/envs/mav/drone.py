@@ -20,7 +20,7 @@ class Drone2D():
     def __init__(self, init_x, init_y, init_yaw, dt, dim, params):
         self.x = init_x
         self.y = init_y
-        self.yaw = init_yaw
+        self.yaw = init_yaw % 360
         self.yaw_range = 90
         self.yaw_depth = 80
         self.radius = params.drone_radius
