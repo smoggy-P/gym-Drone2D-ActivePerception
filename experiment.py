@@ -27,6 +27,7 @@ class Experiment:
         steps = []
         success = 0
         fail = 0
+        self.env.reset()
         for i in tqdm(range(self.max_step)):
             a = self.policy.plan(self.policy, self.env.info)
             state, reward, done, info = self.env.step(a)

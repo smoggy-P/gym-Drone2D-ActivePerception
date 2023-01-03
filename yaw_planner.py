@@ -1,12 +1,8 @@
-import sys
-sys.path.append('/home/smoggy/thesis/gym-Drone2D-ActivePerception/gym_2d_perception/envs')
-
 import numpy as np
 import math
-# from config import *
-from gym_2d_perception.envs.mav.drone import Drone2D
 import matplotlib.pyplot as plt
 import random
+from gym_2d_perception.envs.drone_v0 import Drone2D
 
 class NoControl(object):
     def __init__(self, params):

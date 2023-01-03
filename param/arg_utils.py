@@ -4,8 +4,8 @@ import argparse
 def get_args():
     parser = argparse.ArgumentParser(description='Arguments')
     parser.add_argument('--gaze-method',
-                        default='Oxford',
-                        help='Method used (default: Oxford)')
+                        default='NoControl',
+                        help='Method used (default: NoControl)')
     parser.add_argument('--render',
                         action="store_true",
                         help='render (default: False)')
