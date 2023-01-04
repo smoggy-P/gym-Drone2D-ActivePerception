@@ -1,15 +1,23 @@
-from param.arg_utils import get_args
 from experiment import Experiment
-
-import gym
-from stable_baselines3 import A2C
-from stable_baselines3.common.env_checker import check_env
-# from param.arg_utils import get_args
+import easydict
 
 if __name__ == '__main__':
-    cfg = get_args()
+    cfg = easydict.EasyDict({
+        'gaze_method':'Oxford',
+        'render':True,
+        'dt':0.1,
+        'map_scale':10,
+        'map_size':[640,480],
+        'agent_number':10,
+        'agent_max_speed':20,
+        'agent_radius':10,
+        'drone_max_speed':40,
+        'drone_max_acceleration':15,
+        'drone_radius':5,
+        'drone_max_yaw_speed':80
+    })
     runner = Experiment(cfg)
-    runner.run()
+    success, fail = runner.run()
 
 # if __name__ == '__main__':
 

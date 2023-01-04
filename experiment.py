@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from yaw_planner import Oxford, LookAhead, NoControl
 from model.DQN import preprocess, Qnet
@@ -11,14 +12,15 @@ policy_list = {
 }
 
 class Experiment:
-    def __init__(self, params):
+    def __init__(self, params, dir):
         self.params = params
         self.env = gym.make('gym-2d-perception-v0', params=params)
         self.dt = params.dt
         self.policy = policy_list[params.gaze_method]
         self.policy.__init__(self.policy, params)
-        self.max_step = 20000
+        self.max_step = 50000
         self.action_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/3)
+        self.df = pd.read_csv("./experiment/results.csv")
         # self.model = Qnet(action_dim=self.action_space.shape[0])
 
 
@@ -43,4 +45,4 @@ class Experiment:
             steps.append(i)
             if self.params.render:
                 self.env.render()
-        print("success rate of " + self.params.gaze_method + ":", success / (success+fail))
+        return success, fail

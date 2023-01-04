@@ -113,7 +113,7 @@ class Oxford(object):
                 best_action = i
                 max_reward = np.sum(new_view_map*reward_map)
         
-        return self.v_yaw_space[best_action]
+        return self.v_yaw_space[best_action] / self.params.drone_max_yaw_speed
 
 
         # plt.imshow(reward_map)

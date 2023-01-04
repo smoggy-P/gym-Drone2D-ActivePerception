@@ -17,17 +17,22 @@ color_dict = {
 }
 
 state_machine = {
-        'WAIT_FOR_GOAL':0,
-        'GOAL_REACHED' :1,
-        'PLANNING'     :2,
-        'EXECUTING'    :3
-    }
+    'WAIT_FOR_GOAL':0,
+    'GOAL_REACHED' :1,
+    'PLANNING'     :2,
+    'EXECUTING'    :3
+}
 
 grid_type = {
     'DYNAMIC_OCCUPIED' : 3,
     'OCCUPIED' : 1,
     'UNOCCUPIED' : 2,
     'UNEXPLORED' : 0
+}
+
+obstacles = {
+    'circular_obstacles'  : [[320, 240, 50]],
+    'rectangle_obstacles' : [[100, 100, 100, 40], [400, 300, 100, 30]]
 }
 
 def waypoint_from_traj(coeff, t):
@@ -752,10 +757,7 @@ class Drone2DEnv(gym.Env):
         self.params = params
         self.dt = params.dt
         
-        self.obstacles = {
-            'circular_obstacles'  : [[320, 240, 50]],
-            'rectangle_obstacles' : [[100, 100, 100, 40], [400, 300, 100, 30]]
-        }
+        self.obstacles = obstacles
         
         # Define workspace model for RVO model (approximate using circles)
         self.ws_model = obs_dict_to_ws_model(self.obstacles)
