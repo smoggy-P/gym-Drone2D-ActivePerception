@@ -6,7 +6,7 @@ import pylab as pl
 import torch
 import math
 import numpy as np
-
+from datetime import datetime
 from numpy import array, pi, cos, sin
 from numpy.linalg import norm
 from math import cos, sin, atan2, asin, sqrt, radians, tan, ceil, atan, degrees
@@ -904,11 +904,12 @@ class Drone2DEnv(gym.Env):
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
         if collision_state == 1:
             self.state_machine = state_machine['STATIC_COLLISION']
+            pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
             reward = -1000.0
             done = True
         elif collision_state == 2:
             self.state_machine = state_machine['DYNAMIC_COLLISION']
-            pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_dynamic'+'.png')
+            pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
             reward = -1000.0
             done = True
         elif self.state_machine == state_machine['GOAL_REACHED']:

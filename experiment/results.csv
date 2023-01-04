@@ -1,2 +1,3 @@
 Method,Map,Number of agents,Success,Static Collision,Dynamic Collision
 Oxford,1,10,17,0,1
+NoControl,1,10,4,0,3
