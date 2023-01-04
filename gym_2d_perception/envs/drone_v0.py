@@ -20,7 +20,9 @@ state_machine = {
         'WAIT_FOR_GOAL':0,
         'GOAL_REACHED' :1,
         'PLANNING'     :2,
-        'EXECUTING'    :3
+        'EXECUTING'    :3,
+        'STATIC_COLLISION'     :4,
+        'DYNAMIC_COLLISION'    :5,
     }
 
 grid_type = {
@@ -575,11 +577,11 @@ class Drone2D():
         grid = gt_map.get_grid(self.x, self.y)
         if grid == grid_type['OCCUPIED']:
             # print("collision with static obstacles")
-            return True
+            return 1
         for agent in agents:
             if norm(agent.position - np.array([self.x, self.y])) < agent.radius + self.radius:
                 # print("collision with dynamic obstacles")
-                return True
+                return 2
 
         return False
 
@@ -798,7 +800,8 @@ class Drone2DEnv(gym.Env):
         # Define action and observation space
         self.info = {
             'drone':self.drone,
-            'trajectory':self.trajectory
+            'trajectory':self.trajectory,
+            'state_machine':self.state_machine
         }
         self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
         self.observation_space = gym.spaces.Box(low=np.array([0.0, 0.0]), 
@@ -895,17 +898,17 @@ class Drone2DEnv(gym.Env):
         #     elif self.state_machine == state_machine['EXECUTING']:
         #         print("state: executing trajectory")
 
-        # wrap up observation
-        self.info = {
-            'drone':self.drone,
-            'trajectory':self.trajectory,
-            'swep_map':self.swep_map
-        }
         # Return reward
 
         # lookahead: 1. 给速度方向，reward定为yaw和速度方向差距 2. 加入地图信息和中间reward（减弱地图信息干扰）
-
-        if self.drone.is_collide(self.map_gt, self.agents):
+        collision_state = self.drone.is_collide(self.map_gt, self.agents)
+        if collision_state == 1:
+            self.state_machine = state_machine['STATIC_COLLISION']
+            reward = -1000.0
+            done = True
+        elif collision_state == 2:
+            self.state_machine = state_machine['DYNAMIC_COLLISION']
+            pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_dynamic'+'.png')
             reward = -1000.0
             done = True
         elif self.state_machine == state_machine['GOAL_REACHED']:
@@ -922,6 +925,13 @@ class Drone2DEnv(gym.Env):
             view_map = np.where(np.logical_or((self.drone.x - x)**2 + (self.drone.y - y)**2 <= 0, np.logical_and(np.arccos(((x - self.drone.x)*vec_yaw[0] + (y - self.drone.y)*vec_yaw[1]) / np.sqrt((self.drone.x - x)**2 + (self.drone.y - y)**2)) <= view_angle, ((self.drone.x - x)**2 + (self.drone.y - y)**2 <= self.drone.yaw_depth ** 2))), 1, 0)
             reward = float(np.sum(view_map * np.where(swep_map == 0, 0, 1)))
             
+        # wrap up information
+        self.info = {
+            'drone':self.drone,
+            'trajectory':self.trajectory,
+            'swep_map':self.swep_map,
+            'state_machine':self.state_machine
+        }
 
         vel_angle = degrees(atan2(-self.drone.velocity[1], self.drone.velocity[0]))
         

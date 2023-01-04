@@ -16,7 +16,8 @@ if __name__ == '__main__':
         'drone_radius':5,
         'drone_max_yaw_speed':80
     })
-    runner = Experiment(cfg)
+    result_dir = './experiment/results.csv'
+    runner = Experiment(cfg, result_dir)
     success, fail = runner.run()
 
 # if __name__ == '__main__':

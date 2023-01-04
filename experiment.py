@@ -11,6 +11,51 @@ policy_list = {
     'Oxford': Oxford
 }
 
+def add_success(dir, index):
+    """Add success record
+
+    Args:
+        index = ('Oxford',1,10)
+    """
+
+    df = pd.read_csv(dir, index_col=['Method','Map','Number of agents']).T
+    
+    if index in df.T.index:
+        df[index]['Success'] += 1
+    else:
+        df[index] = {'Success': 1,'Static Collision':0,'Dynamic Collision': 0}
+    (df.T).to_csv("./experiment/results.csv", index=True)
+
+def add_static_collision(dir, index):
+    """Add record
+
+    Args:
+        index = ('Oxford',1,10)
+    """
+
+    df = pd.read_csv(dir, index_col=['Method','Map','Number of agents']).T
+    
+    if index in df.T.index:
+        df[index]['Static Collision'] += 1
+    else:
+        df[index] = {'Success': 0,'Static Collision':1,'Dynamic Collision': 0}
+    (df.T).to_csv("./experiment/results.csv", index=True)
+
+def add_dynamic_collision(dir, index):
+    """Add record
+
+    Args:
+        index = ('Oxford',1,10)
+    """
+
+    df = pd.read_csv(dir, index_col=['Method','Map','Number of agents']).T
+    
+    if index in df.T.index:
+        df[index]['Dynamic Collision'] += 1
+    else:
+        df[index] = {'Success': 0,'Static Collision':0,'Dynamic Collision': 1}
+    (df.T).to_csv("./experiment/results.csv", index=True)
+
 class Experiment:
     def __init__(self, params, dir):
         self.params = params
@@ -20,7 +65,7 @@ class Experiment:
         self.policy.__init__(self.policy, params)
         self.max_step = 50000
         self.action_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/3)
-        self.df = pd.read_csv("./experiment/results.csv")
+        self.result_dir = dir
         # self.model = Qnet(action_dim=self.action_space.shape[0])
 
 
@@ -33,11 +78,13 @@ class Experiment:
         for i in tqdm(range(self.max_step)):
             a = self.policy.plan(self.policy, self.env.info)
             state, reward, done, info = self.env.step(a)
-            
-            if reward == 100:
-                success += 1
-            if reward == -100:
-                fail += 1
+            if info['state_machine'] == 1:
+                add_success(self.result_dir,(self.params.gaze_method,1,self.params.agent_number))
+            if info['state_machine'] == 4:
+                add_static_collision(self.result_dir,(self.params.gaze_method,1,self.params.agent_number))
+            if info['state_machine'] == 5:
+                add_dynamic_collision(self.result_dir,(self.params.gaze_method,1,self.params.agent_number))
+
             if done:
                 self.env.reset()
 
