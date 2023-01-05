@@ -79,9 +79,9 @@ class Experiment:
             state, reward, done, info = self.env.step(a)
             if info['state_machine'] == 1:
                 add_success(self.result_dir,(self.params.gaze_method,1,self.params.agent_number))
-            if info['state_machine'] == 4:
+            if info['collision_flag'] == 1:
                 add_static_collision(self.result_dir,(self.params.gaze_method,1,self.params.agent_number))
-            if info['state_machine'] == 5:
+            elif info['collision_flag'] == 2:
                 add_dynamic_collision(self.result_dir,(self.params.gaze_method,1,self.params.agent_number))
 
             if done:

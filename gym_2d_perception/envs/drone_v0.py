@@ -583,7 +583,7 @@ class Drone2D():
                 # print("collision with dynamic obstacles")
                 return 2
 
-        return False
+        return 0
 
     def render(self, surface):
         pygame.draw.arc(surface, 
@@ -790,6 +790,7 @@ class Drone2DEnv(gym.Env):
         self.planner = Primitive(self.drone, params)
 
         self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
+        random.shuffle(self.target_list)
         
         self.trajectory = Trajectory2D()
         self.swep_map = np.zeros([64, 48])
@@ -801,7 +802,8 @@ class Drone2DEnv(gym.Env):
         self.info = {
             'drone':self.drone,
             'trajectory':self.trajectory,
-            'state_machine':self.state_machine
+            'state_machine':self.state_machine,
+            'collision_flag':0
         }
         self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
         self.observation_space = gym.spaces.Box(low=np.array([0.0, 0.0]), 
@@ -903,12 +905,10 @@ class Drone2DEnv(gym.Env):
         # lookahead: 1. 给速度方向，reward定为yaw和速度方向差距 2. 加入地图信息和中间reward（减弱地图信息干扰）
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
         if collision_state == 1:
-            self.state_machine = state_machine['STATIC_COLLISION']
             pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
             reward = -1000.0
             done = True
         elif collision_state == 2:
-            self.state_machine = state_machine['DYNAMIC_COLLISION']
             pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
             reward = -1000.0
             done = True
@@ -931,7 +931,8 @@ class Drone2DEnv(gym.Env):
             'drone':self.drone,
             'trajectory':self.trajectory,
             'swep_map':self.swep_map,
-            'state_machine':self.state_machine
+            'state_machine':self.state_machine,
+            'collision_flag':collision_state
         }
 
         vel_angle = degrees(atan2(-self.drone.velocity[1], self.drone.velocity[0]))
@@ -974,17 +975,10 @@ class Drone2DEnv(gym.Env):
             if len(self.agents) > 0:
                 for agent in self.agents:
                     agent.render(self.screen)
-            
-            fps = round(self.clock.get_fps())
-            if (fps >= 40):
-                fps_color = (0,102,0)
-            elif(fps >= 20):
-                fps_color = (255, 153, 0)
-            else:
-                fps_color = (204, 0, 0)
+
             default_font = pygame.font.SysFont('Arial', 15)
             pygame.Surface.blit(self.screen,
-                default_font.render('FPS: '+str(fps), False, fps_color),
+                default_font.render('STATE: '+list(state_machine.keys())[list(state_machine.values()).index(self.state_machine)], False, (0, 102, 0)),
                 (0, 0)
             )
             
