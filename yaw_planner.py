@@ -33,7 +33,7 @@ class LookAhead(object):
             yaw_vel = max(min((target_yaw - state['drone'].yaw) / self.dt, self.params.drone_max_yaw_speed), -self.params.drone_max_yaw_speed)
         else:
             yaw_vel = -max(min((target_yaw - state['drone'].yaw) / self.dt, self.params.drone_max_yaw_speed), -self.params.drone_max_yaw_speed)
-        return yaw_vel
+        return yaw_vel / self.params.drone_max_yaw_speed
 
 class Oxford(object):
     """Oxford method to plan gaze

@@ -3,7 +3,7 @@ import easydict
 
 if __name__ == '__main__':
     cfg = easydict.EasyDict({
-        'gaze_method':'NoControl',
+        'gaze_method':'LookAhead',
         'render':True,
         'dt':0.1,
         'map_scale':10,

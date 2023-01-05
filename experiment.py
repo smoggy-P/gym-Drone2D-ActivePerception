@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from yaw_planner import Oxford, LookAhead, NoControl
-from model.DQN import preprocess, Qnet
 
 policy_list = {
     'LookAhead': LookAhead,
