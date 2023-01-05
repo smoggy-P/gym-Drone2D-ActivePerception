@@ -4,3 +4,8 @@ register(
     id="gym-2d-perception-v0",
     entry_point="gym_2d_perception.envs:Drone2DEnv"
 )
+
+register(
+    id="gym-2d-perception-v1",
+    entry_point="gym_2d_perception.envs:Drone2DEnv1"
+)
