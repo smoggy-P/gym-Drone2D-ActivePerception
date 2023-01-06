@@ -1,8 +1,10 @@
 from experiment import Experiment
+from stable_baselines3.common.env_checker import check_env
 import easydict
 
 if __name__ == '__main__':
     cfg = easydict.EasyDict({
+        'env':'gym-2d-perception-v1',
         'gaze_method':'LookAhead',
         'render':True,
         'dt':0.1,
@@ -18,7 +20,9 @@ if __name__ == '__main__':
     })
     result_dir = './experiment/results.csv'
     runner = Experiment(cfg, result_dir)
-    success, fail = runner.run()
+    check_env(runner.env)
+    
+    # success, fail = runner.run()
 
 # if __name__ == '__main__':
 

@@ -806,10 +806,10 @@ class Drone2DEnv1(gym.Env):
             'collision_flag':0
         }
         self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
-        self.observation_space = gym.spaces.Box(low=np.array([0.0, 0.0]), 
-                                                high=np.array([360.0, 360.0]), 
-                                                shape=(2,),
-                                                dtype=np.float64)
+        self.observation_space = gym.spaces.Box(low=np.zeros_like(self.swep_map), 
+                                                high=360 * np.ones(self.swep_map.shape), 
+                                                shape=self.swep_map.shape,
+                                                dtype=np.float32)
     
     def step(self, a):
         done = False
@@ -837,18 +837,6 @@ class Drone2DEnv1(gym.Env):
             self.planner.set_target(self.target_list[-1])
             self.target_list.pop()
             self.state_machine = state_machine['PLANNING']
-        # mouse = pygame.mouse.get_pressed()
-        # if mouse[0]:
-        #     success = False
-        #     x, y = pygame.mouse.get_pos()
-        #     self.planner.set_target(np.array([x, y]))
-        #     self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
-        #     self.state_changed = True
-        #     if not success:
-        #         self.drone.brake()
-        #         self.state_machine = state_machine['PLANNING']
-        #     else:
-        #         self.state_machine = state_machine['EXECUTING']
 
         #Plan
         if self.state_machine == state_machine['PLANNING']:
@@ -888,17 +876,6 @@ class Drone2DEnv1(gym.Env):
         
         # Execute gaze control
         self.drone.step_yaw(a*self.params.drone_max_yaw_speed)
-        
-        # Print state machine
-        # if self.state_changed:
-        #     if self.state_machine == state_machine['GOAL_REACHED']:
-        #         print("state: goal reached")
-        #     elif self.state_machine == state_machine['WAIT_FOR_GOAL']:
-        #         print("state: wait for goal")
-        #     elif self.state_machine == state_machine['PLANNING']:
-        #         print("state: planning")
-        #     elif self.state_machine == state_machine['EXECUTING']:
-        #         print("state: executing trajectory")
 
         # Return reward
 
@@ -935,26 +912,13 @@ class Drone2DEnv1(gym.Env):
             'collision_flag':collision_state
         }
 
-        vel_angle = degrees(atan2(-self.drone.velocity[1], self.drone.velocity[0]))
-        
-        vel_angle = vel_angle if vel_angle > 0 else 360 + vel_angle
-
-        reward = -(float(abs(vel_angle - self.drone.yaw)) if abs(vel_angle - self.drone.yaw) < 180 else float(360 - abs(vel_angle - self.drone.yaw)))
-        # print("reward:", reward)
-        # print(np.array([vel_angle, self.drone.yaw], dtype=np.float64))
-        return np.array([vel_angle, self.drone.yaw], dtype=np.float64), reward, done, self.info
+        return swep_map, reward, done, self.info
     
     def reset(self):
         self.__init__(params=self.params)
-        return np.array([0, self.drone.yaw], dtype=np.float64)
+        return self.swep_map
         
     def render(self, mode='human'):
-        # keys = pygame.key.get_pressed()
-        # if keys[pygame.K_LEFT]:
-        #     self.drone.yaw += 2
-        # if keys[pygame.K_RIGHT]:
-        #     self.drone.yaw -= 2
-        # pygame.event.pump() # process event queue
         
         # self.map_gt.render(self.screen, color_dict)
         if self.is_render:

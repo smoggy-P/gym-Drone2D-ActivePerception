@@ -58,7 +58,7 @@ def add_dynamic_collision(dir, index):
 class Experiment:
     def __init__(self, params, dir):
         self.params = params
-        self.env = gym.make('gym-2d-perception-v0', params=params)
+        self.env = gym.make(params.env, params=params)
         self.dt = params.dt
         self.policy = policy_list[params.gaze_method]
         self.policy.__init__(self.policy, params)
