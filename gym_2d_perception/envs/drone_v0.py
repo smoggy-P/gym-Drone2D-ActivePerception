@@ -674,7 +674,7 @@ class Primitive(object):
 
             c_id = min(
                 open_set,
-                key=lambda o: (open_set[o].cost) + norm(open_set[o].position - np.array([gx, gy])))
+                key=lambda o: (open_set[o].cost) + norm(open_set[o].position - np.array([gx, gy]))/2 + norm(open_set[o].velocity)/5)
             current = open_set[c_id]
 
             if norm(current.position - np.array([gx, gy])) <= self.search_threshold:
@@ -692,7 +692,7 @@ class Primitive(object):
             # expand_grid search grid based on motion model
             sub_node_list = [self.Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[current.position[0], current.position[1]], [current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])), 
                                    vel=np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]]), 
-                                   cost=current.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 1, 
+                                   cost=current.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 10, 
                                    parent_index=current.index,
                                    coeff=np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]),
                                    itr = current.itr + 1) for x_acc in self.u_space 
