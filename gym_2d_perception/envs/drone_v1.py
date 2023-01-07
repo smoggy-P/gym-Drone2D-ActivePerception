@@ -584,6 +584,12 @@ class Drone2D():
                 return 2
 
         return 0
+    
+    def get_local_map(self):
+        drone_idx = (int(self.x // self.params.map_scale), int(self.y // self.params.map_scale))
+        edge_len = 2 * (self.params.drone_view_depth // self.params.map_scale)
+        local_map = np.pad(self.map.grid_map, ((edge_len,edge_len),(edge_len,edge_len)), 'constant', constant_values=0)
+        return local_map[drone_idx[0] : drone_idx[0] + 2 * edge_len + 1, drone_idx[1] : drone_idx[1] + 2 * edge_len + 1]
 
     def render(self, surface):
         pygame.draw.arc(surface, 
@@ -839,7 +845,8 @@ class Drone2DEnv1(gym.Env):
             'collision_flag':0
         }
         self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
-        self.observation_space = gym.spaces.MultiDiscrete(4*np.ones_like(self.swep_map))
+        local_map_size = 4 * (params.drone_view_depth // params.map_scale) + 1
+        self.observation_space = gym.spaces.MultiDiscrete(4*np.ones((local_map_size, local_map_size)))
     
     def step(self, a):
         done = False
@@ -974,11 +981,12 @@ class Drone2DEnv1(gym.Env):
         reward = -(float(abs(vel_angle - self.drone.yaw)) if abs(vel_angle - self.drone.yaw) < 180 else float(360 - abs(vel_angle - self.drone.yaw)))
         # print("reward:", reward)
         # print(np.array([vel_angle, self.drone.yaw], dtype=np.float64))
-        return self.drone.map.grid_map, reward, done, self.info
+
+        return self.drone.get_local_map(), reward, done, self.info
     
     def reset(self):
         self.__init__(params=self.params)
-        return self.drone.map.grid_map
+        return self.drone.get_local_map()
         
     def render(self, mode='human'):
         # keys = pygame.key.get_pressed()

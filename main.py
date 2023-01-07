@@ -24,8 +24,9 @@ if __name__ == '__main__':
     })
     result_dir = './experiment/results.csv'
     runner = Experiment(cfg, result_dir)
+    check_env(runner.env)
     runner.run()
-    # check_env(runner.env)
+    # 
     
     # success, fail = runner.run()
 

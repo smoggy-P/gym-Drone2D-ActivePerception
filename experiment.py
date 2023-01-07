@@ -78,7 +78,7 @@ class Experiment:
             a = self.policy.plan(self.policy, self.env.info)
             state, reward, done, info = self.env.step(a)
 
-            plt.imshow(state)
+            plt.imshow(state.T)
             plt.show()
             plt.pause(0.1)
             plt.clf()
