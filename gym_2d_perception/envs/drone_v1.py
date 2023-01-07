@@ -846,7 +846,15 @@ class Drone2DEnv1(gym.Env):
         }
         self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
         local_map_size = 4 * (params.drone_view_depth // params.map_scale) + 1
-        self.observation_space = gym.spaces.MultiDiscrete(4*np.ones((local_map_size, local_map_size)))
+        self.observation_space = gym.spaces.Dict(
+            {
+                'local_map' : gym.spaces.MultiDiscrete(4*np.ones((local_map_size, local_map_size))),
+                'swep_map'  : gym.spaces.Box(np.zeros((local_map_size, local_map_size)), 
+                                                       10*np.ones((local_map_size,local_map_size)), 
+                                                       shape=(local_map_size, local_map_size),
+                                                       dtype=np.float32)
+            }
+        )
     
     def step(self, a):
         done = False
@@ -974,19 +982,22 @@ class Drone2DEnv1(gym.Env):
             'collision_flag':collision_state
         }
 
-        vel_angle = degrees(atan2(-self.drone.velocity[1], self.drone.velocity[0]))
-        
-        vel_angle = vel_angle if vel_angle > 0 else 360 + vel_angle
+        drone_idx = (int(self.drone.x // self.params.map_scale), int(self.drone.y // self.params.map_scale))
+        edge_len = 2 * (self.params.drone_view_depth // self.params.map_scale)
+        local_swep_map = np.pad(swep_map, ((edge_len,edge_len),(edge_len,edge_len)), 'constant', constant_values=0)
+        local_swep_map = local_swep_map[drone_idx[0] : drone_idx[0] + 2 * edge_len + 1, drone_idx[1] : drone_idx[1] + 2 * edge_len + 1]
 
-        reward = -(float(abs(vel_angle - self.drone.yaw)) if abs(vel_angle - self.drone.yaw) < 180 else float(360 - abs(vel_angle - self.drone.yaw)))
-        # print("reward:", reward)
-        # print(np.array([vel_angle, self.drone.yaw], dtype=np.float64))
+        state = {
+            'local_map' : self.drone.get_local_map(),
+            'swep_map' : local_swep_map
+        }
 
-        return self.drone.get_local_map(), reward, done, self.info
+        return state, reward, done, self.info
     
     def reset(self):
         self.__init__(params=self.params)
-        return self.drone.get_local_map()
+        local_map_size = 4 * (self.params.drone_view_depth // self.params.map_scale) + 1
+        return {'local_map' : self.drone.get_local_map(), 'swep_map' : np.zeros((local_map_size, local_map_size))}
         
     def render(self, mode='human'):
         # keys = pygame.key.get_pressed()
