@@ -78,10 +78,7 @@ class Experiment:
             a = self.policy.plan(self.policy, self.env.info)
             state, reward, done, info = self.env.step(a)
 
-            plt.imshow(state['swep_map'].T)
-            plt.show()
-            plt.pause(0.1)
-            plt.clf()
+            # print(state['local_map'].shape == state['swep_map'].shape)
 
             if self.params.record:
                 if info['state_machine'] == 1:

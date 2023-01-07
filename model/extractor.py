@@ -90,6 +90,8 @@ class StackedImgStateExtractor(BaseFeaturesExtractor):
             "global_map",
             "goal_map",
             "pos_map",
+            "local_map",
+            'swep_map'
         ]
         self.cfg_stacked_image_keys = [
             ["local_map", "swep_map"],
