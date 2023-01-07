@@ -1,2 +1,3 @@
 Method,Map,Number of agents,Success,Static Collision,Dynamic Collision
-LookAhead,1,10,354,2,22
+LookAhead,1,10,404,4,27
+LookAhead,1,5,63,0,3

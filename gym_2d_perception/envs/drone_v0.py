@@ -630,7 +630,7 @@ class Primitive(object):
         self.params = params
         self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 5)
         # self.u_space = np.array([-15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15])
-        self.dt = 3
+        self.dt = 2
         self.sample_num = 30 # sampling number for collision check
         self.target = np.array([drone.x, drone.y])
         self.search_threshold = 10
@@ -666,7 +666,7 @@ class Primitive(object):
         # time1 = time.time()
         while 1:
             itr += 1
-            if len(open_set) == 0 or itr >= 10:
+            if len(open_set) == 0 or itr >= 30:
                 # print("No solution found in limitied time")
                 goal_node = None
                 success = False
@@ -735,9 +735,26 @@ class Primitive(object):
 
             position = np.around(np.array([1, t, t**2]) @ coeff.T)
 
+            grid = occupancy_map.get_grid(position[0] - self.params.drone_radius, position[1])
+            if grid == 1:
+                return False
+
             grid = occupancy_map.get_grid(position[0], position[1])
             if grid == 1:
                 return False
+
+            grid = occupancy_map.get_grid(position[0] + self.params.drone_radius, position[1])
+            if grid == 1:
+                return False
+
+            grid = occupancy_map.get_grid(position[0], position[1] - self.params.drone_radius)
+            if grid == 1:
+                return False
+
+            grid = occupancy_map.get_grid(position[0], position[1] + self.params.drone_radius)
+            if grid == 1:
+                return False
+
             for agent in agents:
                 global_t = t + itr * self.dt
                 new_position = agent.position + agent.velocity * global_t
@@ -764,16 +781,22 @@ class Drone2DEnv(gym.Env):
         
         self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
         random.shuffle(self.target_list)
+
+        self.drone = Drone2D(self.dim[0] / 2, params.drone_radius + params.map_scale, -90, self.dt, self.dim, params)
+
         circular_obstacles = []
         for i in range(5):
             collision_free = False
             while not collision_free:
-                obs = np.array([random.randint(0,self.dim[0]), random.randint(0,self.dim[1]), random.randint(30,50)])
+                obs = np.array([random.randint(50,self.dim[0]-50), random.randint(50,self.dim[1]-50), random.randint(30,50)])
                 collision_free = True
                 for target in self.target_list:
-                    if norm(target - obs[:-1]) <= params.drone_radius + 10:
+                    if norm(target - obs[:-1]) <= params.drone_radius + 20 + obs[-1]:
                         collision_free = False
                         break
+                if norm(np.array([self.drone.x, self.drone.y]) - obs[:-1]) <= params.drone_radius + 10 + obs[-1]:
+                    collision_free = False
+                
             circular_obstacles.append(obs)
 
         self.obstacles = {
@@ -800,7 +823,6 @@ class Drone2DEnv(gym.Env):
         self.map_gt = OccupancyGridMap(params.map_scale, self.dim, 2)
         self.map_gt.init_obstacles(self.obstacles, self.agents)
     
-        self.drone = Drone2D(self.dim[0] / 2, params.drone_radius + self.map_gt.x_scale, -90, self.dt, self.dim, params)
         self.planner = Primitive(self.drone, params)
         
         self.trajectory = Trajectory2D()
@@ -986,7 +1008,7 @@ class Drone2DEnv(gym.Env):
             if len(self.agents) > 0:
                 for agent in self.agents:
                     agent.render(self.screen)
-
+            pygame.draw.circle(self.screen, (0,0,255), self.planner.target, self.drone.radius)
             default_font = pygame.font.SysFont('Arial', 15)
             pygame.Surface.blit(self.screen,
                 default_font.render('STATE: '+list(state_machine.keys())[list(state_machine.values()).index(self.state_machine)], False, (0, 102, 0)),

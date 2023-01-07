@@ -666,7 +666,7 @@ class Primitive(object):
         # time1 = time.time()
         while 1:
             itr += 1
-            if len(open_set) == 0 or itr >= 10:
+            if len(open_set) == 0 or itr >= 20:
                 # print("No solution found in limitied time")
                 goal_node = None
                 success = False
@@ -754,14 +754,6 @@ class Drone2DEnv1(gym.Env):
         self.params = params
         self.dt = params.dt
         
-        self.obstacles = {
-            'circular_obstacles'  : [[320, 240, 50]],
-            'rectangle_obstacles' : [[100, 100, 100, 40]]
-        }
-        
-        # Define workspace model for RVO model (approximate using circles)
-        self.ws_model = obs_dict_to_ws_model(self.obstacles)
-        
         # Setup pygame environment
         self.dim = params.map_size
         self.is_render = params.render
@@ -769,6 +761,33 @@ class Drone2DEnv1(gym.Env):
             pygame.init()
             self.screen = pygame.display.set_mode(self.dim)
             self.clock = pygame.time.Clock()
+        
+        self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
+        random.shuffle(self.target_list)
+
+        self.drone = Drone2D(self.dim[0] / 2, params.drone_radius + params.map_scale, -90, self.dt, self.dim, params)
+
+        circular_obstacles = []
+        for i in range(10):
+            collision_free = False
+            while not collision_free:
+                obs = np.array([random.randint(50,self.dim[0]-50), random.randint(50,self.dim[1]-50), random.randint(30,50)])
+                collision_free = True
+                for target in self.target_list:
+                    if norm(target - obs[:-1]) <= params.drone_radius + 10 + obs[-1]:
+                        collision_free = False
+                        break
+                if norm(np.array([self.drone.x, self.drone.y]) - obs[:-1]) <= params.drone_radius + 10 + obs[-1]:
+                    collision_free = False
+            circular_obstacles.append(obs)
+
+        self.obstacles = {
+            'circular_obstacles'  : circular_obstacles,
+            'rectangle_obstacles' : []
+        }
+        
+        # Define workspace model for RVO model (approximate using circles)
+        self.ws_model = obs_dict_to_ws_model(self.obstacles)
         
         # Define physical setup
         self.agents = []
@@ -786,7 +805,7 @@ class Drone2DEnv1(gym.Env):
         self.map_gt = OccupancyGridMap(params.map_scale, self.dim, 2)
         self.map_gt.init_obstacles(self.obstacles, self.agents)
     
-        self.drone = Drone2D(self.dim[0] / 2, params.drone_radius + self.map_gt.x_scale, -90, self.dt, self.dim, params)
+        
         self.planner = Primitive(self.drone, params)
 
         self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
