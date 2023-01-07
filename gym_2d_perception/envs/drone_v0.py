@@ -633,7 +633,7 @@ class Primitive(object):
         self.dt = 3
         self.sample_num = 30 # sampling number for collision check
         self.target = np.array([drone.x, drone.y])
-        self.search_threshold = 20
+        self.search_threshold = 10
         self.cost_ratio = 100
 
     def set_target(self, target_pos):
@@ -753,15 +753,7 @@ class Drone2DEnv(gym.Env):
         np.seterr(divide='ignore', invalid='ignore')
         self.params = params
         self.dt = params.dt
-        
-        self.obstacles = {
-            'circular_obstacles'  : [[320, 240, 50]],
-            'rectangle_obstacles' : [[100, 100, 100, 40], [400, 300, 100, 30]]
-        }
-        
-        # Define workspace model for RVO model (approximate using circles)
-        self.ws_model = obs_dict_to_ws_model(self.obstacles)
-        
+
         # Setup pygame environment
         self.dim = params.map_size
         self.is_render = params.render
@@ -769,6 +761,28 @@ class Drone2DEnv(gym.Env):
             pygame.init()
             self.screen = pygame.display.set_mode(self.dim)
             self.clock = pygame.time.Clock()
+        
+        self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
+        random.shuffle(self.target_list)
+        circular_obstacles = []
+        for i in range(5):
+            collision_free = False
+            while not collision_free:
+                obs = np.array([random.randint(0,self.dim[0]), random.randint(0,self.dim[1]), random.randint(30,50)])
+                collision_free = True
+                for target in self.target_list:
+                    if norm(target - obs[:-1]) <= params.drone_radius + 10:
+                        collision_free = False
+                        break
+            circular_obstacles.append(obs)
+
+        self.obstacles = {
+            'circular_obstacles'  : circular_obstacles,
+            'rectangle_obstacles' : [[100, 100, 100, 40], [400, 300, 100, 30]]
+        }
+        
+        # Define workspace model for RVO model (approximate using circles)
+        self.ws_model = obs_dict_to_ws_model(self.obstacles)
         
         # Define physical setup
         self.agents = []
@@ -788,9 +802,6 @@ class Drone2DEnv(gym.Env):
     
         self.drone = Drone2D(self.dim[0] / 2, params.drone_radius + self.map_gt.x_scale, -90, self.dt, self.dim, params)
         self.planner = Primitive(self.drone, params)
-
-        self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
-        random.shuffle(self.target_list)
         
         self.trajectory = Trajectory2D()
         self.swep_map = np.zeros([64, 48])

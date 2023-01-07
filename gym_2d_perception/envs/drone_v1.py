@@ -807,7 +807,7 @@ class Drone2DEnv1(gym.Env):
         }
         self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
         self.observation_space = gym.spaces.Box(low=np.zeros_like(self.swep_map), 
-                                                high=360 * np.ones(self.swep_map.shape), 
+                                                high=np.ones(self.swep_map.shape), 
                                                 shape=self.swep_map.shape,
                                                 dtype=np.float32)
     
