@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from yaw_planner import Oxford, LookAhead, NoControl
+import matplotlib.pyplot as plt
 
 policy_list = {
     'LookAhead': LookAhead,
@@ -63,7 +64,6 @@ class Experiment:
         self.policy = policy_list[params.gaze_method]
         self.policy.__init__(self.policy, params)
         self.max_step = 50000
-        self.action_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/3)
         self.result_dir = dir
         # self.model = Qnet(action_dim=self.action_space.shape[0])
 
@@ -77,6 +77,12 @@ class Experiment:
         for i in tqdm(range(self.max_step)):
             a = self.policy.plan(self.policy, self.env.info)
             state, reward, done, info = self.env.step(a)
+
+            plt.imshow(state)
+            plt.show()
+            plt.pause(0.1)
+            plt.clf()
+
             if self.params.record:
                 if info['state_machine'] == 1:
                     add_success(self.result_dir,(self.params.gaze_method,1,self.params.agent_number))

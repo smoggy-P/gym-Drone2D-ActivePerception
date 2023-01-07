@@ -4,7 +4,7 @@ import easydict
 
 if __name__ == '__main__':
     cfg = easydict.EasyDict({
-        'env':'gym-2d-perception-v0',
+        'env':'gym-2d-perception-v1',
         'gaze_method':'LookAhead',
         'render':True,
         'dt':0.1,
@@ -19,7 +19,7 @@ if __name__ == '__main__':
         'drone_max_yaw_speed':80,
         'drone_view_depth' : 80,
         'drone_view_range': 120,
-        'record': True,
+        'record': False,
         'pillar_number':3
     })
     result_dir = './experiment/results.csv'

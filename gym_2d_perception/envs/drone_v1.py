@@ -545,8 +545,8 @@ class Drone2D():
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw % 360
-        self.yaw_range = 90
-        self.yaw_depth = 80
+        self.yaw_range = params.drone_view_range
+        self.yaw_depth = params.drone_view_depth
         self.radius = params.drone_radius
         self.map = OccupancyGridMap(params.map_scale, dim, 0)
         # self.view_map = np.zeros((dim[0]//params.map_scale, dim[1]//params.map_scale))
@@ -630,10 +630,10 @@ class Primitive(object):
         self.params = params
         self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 5)
         # self.u_space = np.array([-15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15])
-        self.dt = 3
+        self.dt = 2
         self.sample_num = 30 # sampling number for collision check
         self.target = np.array([drone.x, drone.y])
-        self.search_threshold = 20
+        self.search_threshold = 10
         self.cost_ratio = 100
 
     def set_target(self, target_pos):
@@ -666,7 +666,7 @@ class Primitive(object):
         # time1 = time.time()
         while 1:
             itr += 1
-            if len(open_set) == 0 or itr >= 20:
+            if len(open_set) == 0 or itr >= 30:
                 # print("No solution found in limitied time")
                 goal_node = None
                 success = False
@@ -674,7 +674,7 @@ class Primitive(object):
 
             c_id = min(
                 open_set,
-                key=lambda o: (open_set[o].cost) + norm(open_set[o].position - np.array([gx, gy])))
+                key=lambda o: (open_set[o].cost) + norm(open_set[o].position - np.array([gx, gy]))/2 + norm(open_set[o].velocity)/5)
             current = open_set[c_id]
 
             if norm(current.position - np.array([gx, gy])) <= self.search_threshold:
@@ -692,7 +692,7 @@ class Primitive(object):
             # expand_grid search grid based on motion model
             sub_node_list = [self.Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[current.position[0], current.position[1]], [current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])), 
                                    vel=np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]]), 
-                                   cost=current.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 1, 
+                                   cost=current.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 10, 
                                    parent_index=current.index,
                                    coeff=np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]),
                                    itr = current.itr + 1) for x_acc in self.u_space 
@@ -735,9 +735,26 @@ class Primitive(object):
 
             position = np.around(np.array([1, t, t**2]) @ coeff.T)
 
+            grid = occupancy_map.get_grid(position[0] - self.params.drone_radius, position[1])
+            if grid == 1:
+                return False
+
             grid = occupancy_map.get_grid(position[0], position[1])
             if grid == 1:
                 return False
+
+            grid = occupancy_map.get_grid(position[0] + self.params.drone_radius, position[1])
+            if grid == 1:
+                return False
+
+            grid = occupancy_map.get_grid(position[0], position[1] - self.params.drone_radius)
+            if grid == 1:
+                return False
+
+            grid = occupancy_map.get_grid(position[0], position[1] + self.params.drone_radius)
+            if grid == 1:
+                return False
+
             for agent in agents:
                 global_t = t + itr * self.dt
                 new_position = agent.position + agent.velocity * global_t
@@ -753,7 +770,7 @@ class Drone2DEnv1(gym.Env):
         np.seterr(divide='ignore', invalid='ignore')
         self.params = params
         self.dt = params.dt
-        
+
         # Setup pygame environment
         self.dim = params.map_size
         self.is_render = params.render
@@ -768,22 +785,23 @@ class Drone2DEnv1(gym.Env):
         self.drone = Drone2D(self.dim[0] / 2, params.drone_radius + params.map_scale, -90, self.dt, self.dim, params)
 
         circular_obstacles = []
-        for i in range(10):
+        for i in range(self.params.pillar_number):
             collision_free = False
             while not collision_free:
                 obs = np.array([random.randint(50,self.dim[0]-50), random.randint(50,self.dim[1]-50), random.randint(30,50)])
                 collision_free = True
                 for target in self.target_list:
-                    if norm(target - obs[:-1]) <= params.drone_radius + 10 + obs[-1]:
+                    if norm(target - obs[:-1]) <= params.drone_radius + 20 + obs[-1]:
                         collision_free = False
                         break
                 if norm(np.array([self.drone.x, self.drone.y]) - obs[:-1]) <= params.drone_radius + 10 + obs[-1]:
                     collision_free = False
+                
             circular_obstacles.append(obs)
 
         self.obstacles = {
             'circular_obstacles'  : circular_obstacles,
-            'rectangle_obstacles' : []
+            'rectangle_obstacles' : [[100, 100, 100, 40], [400, 300, 100, 30]]
         }
         
         # Define workspace model for RVO model (approximate using circles)
@@ -805,11 +823,7 @@ class Drone2DEnv1(gym.Env):
         self.map_gt = OccupancyGridMap(params.map_scale, self.dim, 2)
         self.map_gt.init_obstacles(self.obstacles, self.agents)
     
-        
         self.planner = Primitive(self.drone, params)
-
-        self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
-        random.shuffle(self.target_list)
         
         self.trajectory = Trajectory2D()
         self.swep_map = np.zeros([64, 48])
@@ -825,10 +839,7 @@ class Drone2DEnv1(gym.Env):
             'collision_flag':0
         }
         self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
-        self.observation_space = gym.spaces.Box(low=np.zeros_like(self.swep_map), 
-                                                high=np.ones(self.swep_map.shape), 
-                                                shape=self.swep_map.shape,
-                                                dtype=np.float32)
+        self.observation_space = gym.spaces.MultiDiscrete(4*np.ones_like(self.swep_map))
     
     def step(self, a):
         done = False
@@ -856,6 +867,18 @@ class Drone2DEnv1(gym.Env):
             self.planner.set_target(self.target_list[-1])
             self.target_list.pop()
             self.state_machine = state_machine['PLANNING']
+        # mouse = pygame.mouse.get_pressed()
+        # if mouse[0]:
+        #     success = False
+        #     x, y = pygame.mouse.get_pos()
+        #     self.planner.set_target(np.array([x, y]))
+        #     self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
+        #     self.state_changed = True
+        #     if not success:
+        #         self.drone.brake()
+        #         self.state_machine = state_machine['PLANNING']
+        #     else:
+        #         self.state_machine = state_machine['EXECUTING']
 
         #Plan
         if self.state_machine == state_machine['PLANNING']:
@@ -895,17 +918,30 @@ class Drone2DEnv1(gym.Env):
         
         # Execute gaze control
         self.drone.step_yaw(a*self.params.drone_max_yaw_speed)
+        
+        # Print state machine
+        # if self.state_changed:
+        #     if self.state_machine == state_machine['GOAL_REACHED']:
+        #         print("state: goal reached")
+        #     elif self.state_machine == state_machine['WAIT_FOR_GOAL']:
+        #         print("state: wait for goal")
+        #     elif self.state_machine == state_machine['PLANNING']:
+        #         print("state: planning")
+        #     elif self.state_machine == state_machine['EXECUTING']:
+        #         print("state: executing trajectory")
 
         # Return reward
 
         # lookahead: 1. 给速度方向，reward定为yaw和速度方向差距 2. 加入地图信息和中间reward（减弱地图信息干扰）
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
         if collision_state == 1:
-            # pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
+            if self.params.record:
+                pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
             reward = -1000.0
             done = True
         elif collision_state == 2:
-            # pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
+            if self.params.record:
+                pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
             reward = -1000.0
             done = True
         elif self.state_machine == state_machine['GOAL_REACHED']:
@@ -931,13 +967,26 @@ class Drone2DEnv1(gym.Env):
             'collision_flag':collision_state
         }
 
-        return swep_map, reward, done, self.info
+        vel_angle = degrees(atan2(-self.drone.velocity[1], self.drone.velocity[0]))
+        
+        vel_angle = vel_angle if vel_angle > 0 else 360 + vel_angle
+
+        reward = -(float(abs(vel_angle - self.drone.yaw)) if abs(vel_angle - self.drone.yaw) < 180 else float(360 - abs(vel_angle - self.drone.yaw)))
+        # print("reward:", reward)
+        # print(np.array([vel_angle, self.drone.yaw], dtype=np.float64))
+        return self.drone.map.grid_map, reward, done, self.info
     
     def reset(self):
         self.__init__(params=self.params)
-        return self.swep_map
+        return self.drone.map.grid_map
         
     def render(self, mode='human'):
+        # keys = pygame.key.get_pressed()
+        # if keys[pygame.K_LEFT]:
+        #     self.drone.yaw += 2
+        # if keys[pygame.K_RIGHT]:
+        #     self.drone.yaw -= 2
+        # pygame.event.pump() # process event queue
         
         # self.map_gt.render(self.screen, color_dict)
         if self.is_render:
@@ -958,7 +1007,7 @@ class Drone2DEnv1(gym.Env):
             if len(self.agents) > 0:
                 for agent in self.agents:
                     agent.render(self.screen)
-
+            pygame.draw.circle(self.screen, (0,0,255), self.planner.target, self.drone.radius)
             default_font = pygame.font.SysFont('Arial', 15)
             pygame.Surface.blit(self.screen,
                 default_font.render('STATE: '+list(state_machine.keys())[list(state_machine.values()).index(self.state_machine)], False, (0, 102, 0)),
