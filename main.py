@@ -16,7 +16,11 @@ if __name__ == '__main__':
         'drone_max_speed':40,
         'drone_max_acceleration':15,
         'drone_radius':5,
-        'drone_max_yaw_speed':80
+        'drone_max_yaw_speed':80,
+        'drone_view_depth' : 80,
+        'drone_view_range': 120,
+        'record': True,
+        'pillar_number':3
     })
     result_dir = './experiment/results.csv'
     runner = Experiment(cfg, result_dir)

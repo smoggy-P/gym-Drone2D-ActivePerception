@@ -545,8 +545,8 @@ class Drone2D():
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw % 360
-        self.yaw_range = 90
-        self.yaw_depth = 80
+        self.yaw_range = params.drone_view_range
+        self.yaw_depth = params.drone_view_depth
         self.radius = params.drone_radius
         self.map = OccupancyGridMap(params.map_scale, dim, 0)
         # self.view_map = np.zeros((dim[0]//params.map_scale, dim[1]//params.map_scale))
@@ -785,7 +785,7 @@ class Drone2DEnv(gym.Env):
         self.drone = Drone2D(self.dim[0] / 2, params.drone_radius + params.map_scale, -90, self.dt, self.dim, params)
 
         circular_obstacles = []
-        for i in range(5):
+        for i in range(self.params.pillar_number):
             collision_free = False
             while not collision_free:
                 obs = np.array([random.randint(50,self.dim[0]-50), random.randint(50,self.dim[1]-50), random.randint(30,50)])
@@ -938,11 +938,13 @@ class Drone2DEnv(gym.Env):
         # lookahead: 1. 给速度方向，reward定为yaw和速度方向差距 2. 加入地图信息和中间reward（减弱地图信息干扰）
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
         if collision_state == 1:
-            # pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
+            if self.params.record:
+                pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
             reward = -1000.0
             done = True
         elif collision_state == 2:
-            # pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
+            if self.params.record:
+                pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
             reward = -1000.0
             done = True
         elif self.state_machine == state_machine['GOAL_REACHED']:
