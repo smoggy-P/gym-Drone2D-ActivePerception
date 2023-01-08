@@ -848,10 +848,14 @@ class Drone2DEnv1(gym.Env):
         local_map_size = 4 * (params.drone_view_depth // params.map_scale) + 1
         self.observation_space = gym.spaces.Dict(
             {
-                'local_map' : gym.spaces.MultiDiscrete(4*np.ones((local_map_size, local_map_size))),
-                'swep_map'  : gym.spaces.Box(np.zeros((local_map_size, local_map_size)), 
-                                                       10*np.ones((local_map_size,local_map_size)), 
-                                                       shape=(local_map_size, local_map_size),
+                # 'local_map' : gym.spaces.MultiDiscrete(4*np.ones((1, local_map_size, local_map_size))),
+                'local_map' : gym.spaces.Box(np.zeros((1, local_map_size, local_map_size)), 
+                                                       255*np.ones((1, local_map_size,local_map_size)), 
+                                                       shape=(1, local_map_size, local_map_size),
+                                                       dtype=np.float32),
+                'swep_map'  : gym.spaces.Box(np.zeros((1, local_map_size, local_map_size)), 
+                                                       255*np.ones((1, local_map_size,local_map_size)), 
+                                                       shape=(1, local_map_size, local_map_size),
                                                        dtype=np.float32)
             }
         )
@@ -988,8 +992,8 @@ class Drone2DEnv1(gym.Env):
         local_swep_map = local_swep_map[drone_idx[0] : drone_idx[0] + 2 * edge_len + 1, drone_idx[1] : drone_idx[1] + 2 * edge_len + 1]
 
         state = {
-            'local_map' : self.drone.get_local_map(),
-            'swep_map' : local_swep_map
+            'local_map' : self.drone.get_local_map()[None],
+            'swep_map' : local_swep_map[None]
         }
 
         return state, reward, done, self.info
@@ -997,7 +1001,7 @@ class Drone2DEnv1(gym.Env):
     def reset(self):
         self.__init__(params=self.params)
         local_map_size = 4 * (self.params.drone_view_depth // self.params.map_scale) + 1
-        return {'local_map' : self.drone.get_local_map(), 'swep_map' : np.zeros((local_map_size, local_map_size))}
+        return {'local_map' : self.drone.get_local_map()[None], 'swep_map' : np.zeros((1, local_map_size, local_map_size))}
         
     def render(self, mode='human'):
         # keys = pygame.key.get_pressed()

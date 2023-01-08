@@ -11,7 +11,7 @@ class CnnEncoder(nn.Module):
     ):
         super().__init__()
         self.cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
+            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=4, padding=0),
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
             nn.ReLU(),
@@ -59,6 +59,65 @@ class CnnMapEncoder(nn.Module):
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
         return self.fc(self.cnn(observations))
+
+class ImgStateExtractor(BaseFeaturesExtractor):
+    def __init__(
+        self,
+        observation_space: gym.spaces.Dict,
+        device: th.device,
+        cnn_encoder_name: str = "CnnEncoder",
+        cnn_output_dim: int = 512,
+    ):
+        # We do not know features-dim here before going over all the items,
+        # so put something dummy for now. PyTorch requires calling
+        # nn.Module.__init__ before adding modules
+        super(ImgStateExtractor, self).__init__(
+            observation_space, features_dim=1
+        )
+
+        # Policy Settings
+
+        cnn_class = globals()[cnn_encoder_name]
+        # Image input settings
+        self.cfg_image_keys = [
+            "local_map",
+            'swep_map'
+        ]
+
+        total_concat_size = 0
+
+        self.single_img_keys = []
+
+        cnn_encoder_single = []
+
+        for key, subspace in observation_space.spaces.items():
+            self.single_img_keys.append(key)
+            n_input_channels = subspace.shape[0]
+            cnn_encoder_single.append(
+                cnn_class(
+                    n_input_channels=n_input_channels,
+                    n_output_features=cnn_output_dim,
+                    sample_input=subspace.sample(),
+                )
+            )
+            total_concat_size += cnn_output_dim
+
+        self.cnn_encoder_single = nn.ModuleList(cnn_encoder_single)
+
+        # Update the features dim manually
+        self._features_dim = total_concat_size
+
+    def forward(self, observations) -> th.Tensor:
+        encoded_tensor_list = []
+
+        # Process Single images
+        for i, cnn in enumerate(self.cnn_encoder_single):
+            image = observations[self.single_img_keys[i]].float() / 255.0
+            encoded_tensor_list.append(self.cnn_encoder_single[i](image))
+
+        # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
+        return th.cat(encoded_tensor_list, dim=1)
+
 class StackedImgStateExtractor(BaseFeaturesExtractor):
     def __init__(
         self,
@@ -82,31 +141,16 @@ class StackedImgStateExtractor(BaseFeaturesExtractor):
         # TODO move settings to arguments
         # Image input settings
         self.cfg_image_keys = [
-            "local_grid",
-            "ego_binary_map",
-            "ego_explored_map",
-            "ego_goal_map",
-            "ego_global_map",
-            "global_map",
-            "goal_map",
-            "pos_map",
             "local_map",
             'swep_map'
         ]
         self.cfg_stacked_image_keys = [
-            ["local_map", "swep_map"],
+            # ["local_map", "swep_map"],
             # ["global_map", "goal_map", "pos_map", "binary_map", "explored_map"],
         ]
 
         # State input settings
         self.cfg_vector_keys = [
-            "heading_global_frame",
-            "angvel_global_frame",
-            "pos_global_frame",
-            "vel_global_frame",
-            "goal_global_frame",
-            "rel_goal",
-            "last_goal",
         ]
         self.vector_scales = {
             "heading_global_frame": [-th.pi, th.pi],
