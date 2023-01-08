@@ -5,7 +5,7 @@ import easydict
 if __name__ == '__main__':
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v1',
-        'gaze_method':'LookAhead',
+        'gaze_method':'Oxford',
         'render':True,
         'dt':0.1,
         'map_scale':10,

@@ -67,6 +67,7 @@ class ImgStateExtractor(BaseFeaturesExtractor):
         device: th.device,
         cnn_encoder_name: str = "CnnEncoder",
         cnn_output_dim: int = 512,
+        state_output_dim: int = 32
     ):
         # We do not know features-dim here before going over all the items,
         # so put something dummy for now. PyTorch requires calling
@@ -78,31 +79,51 @@ class ImgStateExtractor(BaseFeaturesExtractor):
         # Policy Settings
 
         cnn_class = globals()[cnn_encoder_name]
+        self.vector_scales = {
+            "yaw_angle": [0, 360],
+        }
+
         # Image input settings
         self.cfg_image_keys = [
-            "local_map",
             'swep_map'
         ]
 
+        self.cfg_vector_keys = [
+            'yaw_angle'
+        ]
+        n_states = 0
         total_concat_size = 0
 
         self.single_img_keys = []
+        self.vector_keys = []
 
         cnn_encoder_single = []
 
         for key, subspace in observation_space.spaces.items():
-            self.single_img_keys.append(key)
-            n_input_channels = subspace.shape[0]
-            cnn_encoder_single.append(
-                cnn_class(
-                    n_input_channels=n_input_channels,
-                    n_output_features=cnn_output_dim,
-                    sample_input=subspace.sample(),
+            if key in self.cfg_image_keys:
+                self.single_img_keys.append(key)
+                n_input_channels = subspace.shape[0]
+                cnn_encoder_single.append(
+                    cnn_class(
+                        n_input_channels=n_input_channels,
+                        n_output_features=cnn_output_dim,
+                        sample_input=subspace.sample(),
+                    )
                 )
-            )
-            total_concat_size += cnn_output_dim
+                total_concat_size += cnn_output_dim
+            
+            if key in self.cfg_vector_keys:
+                self.vector_keys.append(key)
+                n_states += (
+                    subspace.shape[0] if len(subspace.shape) == 1 else subspace.shape[1]
+                )
 
         self.cnn_encoder_single = nn.ModuleList(cnn_encoder_single)
+
+        self.state_encoder = nn.Linear(
+            in_features=n_states, out_features=state_output_dim
+        )
+        total_concat_size += state_output_dim
 
         # Update the features dim manually
         self._features_dim = total_concat_size
@@ -112,8 +133,22 @@ class ImgStateExtractor(BaseFeaturesExtractor):
 
         # Process Single images
         for i, cnn in enumerate(self.cnn_encoder_single):
-            image = observations[self.single_img_keys[i]].float() / 255.0
+            image = observations[self.single_img_keys[i]].float() / 5
             encoded_tensor_list.append(self.cnn_encoder_single[i](image))
+        
+        # Process states
+        states_list = []
+        for key in self.vector_keys:
+            states_list.append(
+                (
+                    (observations[key] - self.vector_scales[key][0])
+                    * 2
+                    / (self.vector_scales[key][1] - self.vector_scales[key][0])
+                )
+                - 1.0
+            )
+        states = th.cat(states_list, dim=1)
+        encoded_tensor_list.append(self.state_encoder(states))
 
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
         return th.cat(encoded_tensor_list, dim=1)

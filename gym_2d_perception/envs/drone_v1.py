@@ -849,12 +849,13 @@ class Drone2DEnv1(gym.Env):
         self.observation_space = gym.spaces.Dict(
             {
                 # 'local_map' : gym.spaces.MultiDiscrete(4*np.ones((1, local_map_size, local_map_size))),
+                'yaw_angle' : gym.spaces.Box(np.array([0]), np.array([360]), shape=(1,), dtype=np.float32), 
                 'local_map' : gym.spaces.Box(np.zeros((1, local_map_size, local_map_size)), 
-                                                       255*np.ones((1, local_map_size,local_map_size)), 
+                                                       4*np.ones((1, local_map_size,local_map_size)), 
                                                        shape=(1, local_map_size, local_map_size),
                                                        dtype=np.float32),
                 'swep_map'  : gym.spaces.Box(np.zeros((1, local_map_size, local_map_size)), 
-                                                       255*np.ones((1, local_map_size,local_map_size)), 
+                                                       10*np.ones((1, local_map_size,local_map_size)), 
                                                        shape=(1, local_map_size, local_map_size),
                                                        dtype=np.float32)
             }
@@ -968,14 +969,13 @@ class Drone2DEnv1(gym.Env):
             done = False
             if len(self.target_list) == 0:
                 done = True
-        else:
-            x = np.arange(int(self.dim[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
-            y = np.arange(int(self.dim[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
+        x = np.arange(int(self.dim[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
+        y = np.arange(int(self.dim[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
 
-            vec_yaw = np.array([math.cos(math.radians(self.drone.yaw)), -math.sin(math.radians(self.drone.yaw))])
-            view_angle = math.radians(self.drone.yaw_range / 2)
-            view_map = np.where(np.logical_or((self.drone.x - x)**2 + (self.drone.y - y)**2 <= 0, np.logical_and(np.arccos(((x - self.drone.x)*vec_yaw[0] + (y - self.drone.y)*vec_yaw[1]) / np.sqrt((self.drone.x - x)**2 + (self.drone.y - y)**2)) <= view_angle, ((self.drone.x - x)**2 + (self.drone.y - y)**2 <= self.drone.yaw_depth ** 2))), 1, 0)
-            reward = float(np.sum(view_map * np.where(swep_map == 0, 0, 1)))
+        vec_yaw = np.array([math.cos(math.radians(self.drone.yaw)), -math.sin(math.radians(self.drone.yaw))])
+        view_angle = math.radians(self.drone.yaw_range / 2)
+        view_map = np.where(np.logical_or((self.drone.x - x)**2 + (self.drone.y - y)**2 <= 0, np.logical_and(np.arccos(((x - self.drone.x)*vec_yaw[0] + (y - self.drone.y)*vec_yaw[1]) / np.sqrt((self.drone.x - x)**2 + (self.drone.y - y)**2)) <= view_angle, ((self.drone.x - x)**2 + (self.drone.y - y)**2 <= self.drone.yaw_depth ** 2))), 1, 0)
+        reward = float(np.sum(view_map * np.where(swep_map == 0, 0, 1)))
             
         # wrap up information
         self.info = {
@@ -993,7 +993,8 @@ class Drone2DEnv1(gym.Env):
 
         state = {
             'local_map' : self.drone.get_local_map()[None],
-            'swep_map' : local_swep_map[None]
+            'swep_map' : local_swep_map[None],
+            'yaw_angle' : np.array([self.drone.yaw], dtype=np.float32).flatten()
         }
 
         return state, reward, done, self.info
@@ -1001,7 +1002,9 @@ class Drone2DEnv1(gym.Env):
     def reset(self):
         self.__init__(params=self.params)
         local_map_size = 4 * (self.params.drone_view_depth // self.params.map_scale) + 1
-        return {'local_map' : self.drone.get_local_map()[None], 'swep_map' : np.zeros((1, local_map_size, local_map_size))}
+        return {'local_map' : self.drone.get_local_map()[None], 
+                'swep_map'  : np.zeros((1, local_map_size, local_map_size)),
+                'yaw_angle' : np.array([self.drone.yaw])}
         
     def render(self, mode='human'):
         # keys = pygame.key.get_pressed()
