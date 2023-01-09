@@ -25,8 +25,8 @@ if __name__ == '__main__':
 
     gaze_methods = ['LookAhead', 'Oxford']
     agent_numbers = [0, 5, 10]
-    drone_view_depths = [80, 120]
-    drone_view_ranges = [90, 120]
+    drone_view_depths = [80]
+    drone_view_ranges = [90]
     pillar_numbers = [3, 6]
 
     result_dir = './experiment/results.csv'
