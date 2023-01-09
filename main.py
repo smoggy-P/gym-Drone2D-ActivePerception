@@ -18,14 +18,31 @@ if __name__ == '__main__':
         'drone_radius':5,
         'drone_max_yaw_speed':80,
         'drone_view_depth' : 80,
-        'drone_view_range': 120,
+        'drone_view_range': 90,
         'record': True,
         'pillar_number':3
     })
+
+    gaze_methods = ['LookAhead', 'Oxford']
+    agent_numbers = [0, 5, 10]
+    drone_view_depths = [80, 120]
+    drone_view_ranges = [90, 120]
+    pillar_numbers = [3, 6]
+
     result_dir = './experiment/results.csv'
-    runner = Experiment(cfg, result_dir)
-    check_env(runner.env)
-    runner.run()
+
+    for gaze_method in gaze_methods:
+        for agent_number in agent_numbers:
+            for drone_view_depth in drone_view_depths:
+                for drone_view_range in drone_view_ranges:
+                    for pillar_number in pillar_numbers:
+                        cfg.gaze_method = gaze_method
+                        cfg.agent_number = agent_number
+                        cfg.drone_view_depth = drone_view_depth
+                        cfg.drone_view_range = drone_view_range
+                        cfg.pillar_number = pillar_number
+                        runner = Experiment(cfg, result_dir)
+                        runner.run()
     # 
     
     # success, fail = runner.run()
