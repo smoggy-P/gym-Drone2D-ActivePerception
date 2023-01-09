@@ -19,7 +19,7 @@ if __name__ == '__main__':
         'drone_max_yaw_speed':80,
         'drone_view_depth' : 80,
         'drone_view_range': 120,
-        'record': False,
+        'record': True,
         'pillar_number':3
     })
     result_dir = './experiment/results.csv'

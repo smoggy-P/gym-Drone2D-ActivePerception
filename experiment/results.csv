@@ -1,3 +1,2 @@
-Method,Map,Number of agents,Success,Static Collision,Dynamic Collision
-LookAhead,1,10,409,4,27
-LookAhead,1,5,63,0,3
+Method,Number of agents,Number of pillars,View depth,View range,Success,Static Collision,Dynamic Collision
+
