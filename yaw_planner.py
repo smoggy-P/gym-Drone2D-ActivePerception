@@ -1,6 +1,6 @@
 import numpy as np
 import math
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import random
 from gym_2d_perception.envs.drone_v0 import Drone2D
 

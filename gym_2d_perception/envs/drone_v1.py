@@ -1,8 +1,6 @@
 import gym
 import pygame
 import random
-import matplotlib.pyplot as plt
-import pylab as pl
 import torch
 import math
 import numpy as np
@@ -835,7 +833,7 @@ class Drone2DEnv1(gym.Env):
         self.swep_map = np.zeros([64, 48])
         self.state_machine = state_machine['WAIT_FOR_GOAL']
         self.state_changed = False
-        self.replan_count = 0
+        self.failed_plan = 0
 
         # Define action and observation space
         self.info = {
@@ -905,11 +903,15 @@ class Drone2DEnv1(gym.Env):
             self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
             if not success:
                 self.drone.brake()
+                self.failed_plan += 1
+                if self.failed_plan == 3:
+                    done = True
                 # print("path not found, replanning")
             else:
                 # print("path found")
                 self.state_changed = True
                 self.state_machine = state_machine['EXECUTING']
+                self.failed_plan = 0
 
         # If collision detected for planned trajectory, replan
         swep_map = np.zeros_like(self.map_gt.grid_map)

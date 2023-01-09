@@ -1,2 +1,2 @@
 Method,Number of agents,Number of pillars,View depth,View range,Success,Static Collision,Dynamic Collision
-
+LookAhead,0,3,80,90,3,0,0

@@ -1,9 +1,9 @@
 import gym
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+# from tqdm import tqdm
 from yaw_planner import Oxford, LookAhead, NoControl
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 policy_list = {
     'LookAhead': LookAhead,
@@ -23,7 +23,7 @@ def add_success(dir, index):
     if index in df.T.index:
         df[index]['Success'] += 1
     else:
-        df[index] = {'Success': 1,'Static Collision':0,'Dynamic Collision': 0}
+        df[index] = [1,0,0]
     (df.T).to_csv("./experiment/results.csv", index=True)
 
 def add_static_collision(dir, index):
@@ -38,7 +38,7 @@ def add_static_collision(dir, index):
     if index in df.T.index:
         df[index]['Static Collision'] += 1
     else:
-        df[index] = {'Success': 0,'Static Collision':1,'Dynamic Collision': 0}
+        df[index] = [0,1,0]
     (df.T).to_csv("./experiment/results.csv", index=True)
 
 def add_dynamic_collision(dir, index):
@@ -53,7 +53,7 @@ def add_dynamic_collision(dir, index):
     if index in df.T.index:
         df[index]['Dynamic Collision'] += 1
     else:
-        df[index] = {'Success': 0,'Static Collision':0,'Dynamic Collision': 1}
+        df[index] = [0,0,1]
     (df.T).to_csv(dir, index=True)
 
 class Experiment:
@@ -74,7 +74,7 @@ class Experiment:
         success = 0
         fail = 0
         self.env.reset()
-        for i in tqdm(range(self.max_step)):
+        for i in range(self.max_step):
             a = self.policy.plan(self.policy, self.env.info)
             state, reward, done, info = self.env.step(a)
 

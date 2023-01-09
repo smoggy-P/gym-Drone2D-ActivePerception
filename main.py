@@ -1,6 +1,9 @@
 from experiment import Experiment
-from stable_baselines3.common.env_checker import check_env
+# from stable_baselines3.common.env_checker import check_env
 import easydict
+
+import os
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 if __name__ == '__main__':
     cfg = easydict.EasyDict({
@@ -23,7 +26,7 @@ if __name__ == '__main__':
         'pillar_number':3
     })
 
-    gaze_methods = ['LookAhead', 'Oxford']
+    gaze_methods = ['NoControl','LookAhead', 'Oxford']
     agent_numbers = [0, 5, 10]
     drone_view_depths = [80]
     drone_view_ranges = [90]
