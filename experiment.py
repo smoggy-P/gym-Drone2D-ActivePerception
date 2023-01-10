@@ -23,7 +23,7 @@ def add_to_csv(dir, index, flag):
             df[index] = [0,1,0]
         elif flag == 'Dynamic Collision':
             df[index] = [0,0,1]
-    (df.T).to_csv("dir", index=True)
+    (df.T).to_csv(dir, index=True)
 
 # def add_success(dir, index):
 #     """Add success record
@@ -95,7 +95,13 @@ class Experiment:
             # print(state['local_map'].shape == state['swep_map'].shape)
 
             if self.params.record:
-                index = (self.params.gaze_method,self.params.agent_number,self.params.pillar_number,self.params.drone_view_depth, self.params.drone_view_range)
+                index = (self.params.gaze_method,
+                         self.params.agent_number,
+                         self.params.pillar_number,
+                         self.params.drone_view_depth, 
+                         self.params.drone_view_range, 
+                         self.params.agent_max_speed,
+                         self.params.drone_max_speed)
                 if info['state_machine'] == 1:
                     add_to_csv(self.result_dir,index,'Success')
                     # add_success(self.result_dir,index)

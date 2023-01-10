@@ -1,3 +1,5 @@
 .vscode/**
 gym_2d_perception.egg-info
 **/__pycache__/
+experiment/fails/**
+slurm-*.out
