@@ -11,50 +11,64 @@ policy_list = {
     'Oxford': Oxford
 }
 
-def add_success(dir, index):
-    """Add success record
-
-    Args:
-        index = ('Oxford',1,10)
-    """
-
-    df = pd.read_csv(dir, index_col=['Method','Number of agents','Number of pillars', 'View depth', 'View range']).T
+def add_to_csv(dir, index, flag):
+    df = pd.read_csv(dir, index_col=['Method','Number of agents','Number of pillars', 'View depth', 'View range', 'Agent speed', 'Drone speed']).T
     
     if index in df.T.index:
-        df[index]['Success'] += 1
+        df[index][flag] += 1
     else:
-        df[index] = [1,0,0]
-    (df.T).to_csv("./experiment/results.csv", index=True)
+        if flag == 'Success':
+            df[index] = [1,0,0]
+        elif flag == 'Static Collision':
+            df[index] = [0,1,0]
+        elif flag == 'Dynamic Collision':
+            df[index] = [0,0,1]
+    (df.T).to_csv("dir", index=True)
 
-def add_static_collision(dir, index):
-    """Add record
+# def add_success(dir, index):
+#     """Add success record
 
-    Args:
-        index = ('Oxford',1,10)
-    """
+#     Args:
+#         index = ('Oxford',1,10)
+#     """
 
-    df = pd.read_csv(dir, index_col=['Method','Number of agents','Number of pillars', 'View depth', 'View range']).T
+#     df = pd.read_csv(dir, index_col=['Method','Number of agents','Number of pillars', 'View depth', 'View range']).T
     
-    if index in df.T.index:
-        df[index]['Static Collision'] += 1
-    else:
-        df[index] = [0,1,0]
-    (df.T).to_csv("./experiment/results.csv", index=True)
+#     if index in df.T.index:
+#         df[index]['Success'] += 1
+#     else:
+#         df[index] = [1,0,0]
+#     (df.T).to_csv("./experiment/results.csv", index=True)
 
-def add_dynamic_collision(dir, index):
-    """Add record
+# def add_static_collision(dir, index):
+#     """Add record
 
-    Args:
-        index = ('Oxford',1,10)
-    """
+#     Args:
+#         index = ('Oxford',1,10)
+#     """
 
-    df = pd.read_csv(dir, index_col=['Method','Number of agents','Number of pillars', 'View depth', 'View range']).T
+#     df = pd.read_csv(dir, index_col=['Method','Number of agents','Number of pillars', 'View depth', 'View range']).T
     
-    if index in df.T.index:
-        df[index]['Dynamic Collision'] += 1
-    else:
-        df[index] = [0,0,1]
-    (df.T).to_csv(dir, index=True)
+#     if index in df.T.index:
+#         df[index]['Static Collision'] += 1
+#     else:
+#         df[index] = [0,1,0]
+#     (df.T).to_csv("./experiment/results.csv", index=True)
+
+# def add_dynamic_collision(dir, index):
+#     """Add record
+
+#     Args:
+#         index = ('Oxford',1,10)
+#     """
+
+#     df = pd.read_csv(dir, index_col=['Method','Number of agents','Number of pillars', 'View depth', 'View range']).T
+    
+#     if index in df.T.index:
+#         df[index]['Dynamic Collision'] += 1
+#     else:
+#         df[index] = [0,0,1]
+#     (df.T).to_csv(dir, index=True)
 
 class Experiment:
     def __init__(self, params, dir):
@@ -83,11 +97,14 @@ class Experiment:
             if self.params.record:
                 index = (self.params.gaze_method,self.params.agent_number,self.params.pillar_number,self.params.drone_view_depth, self.params.drone_view_range)
                 if info['state_machine'] == 1:
-                    add_success(self.result_dir,index)
+                    add_to_csv(self.result_dir,index,'Success')
+                    # add_success(self.result_dir,index)
                 if info['collision_flag'] == 1:
-                    add_static_collision(self.result_dir,index)
+                    add_to_csv(self.result_dir,index,'Static Collision')
+                    # add_static_collision(self.result_dir,index)
                 elif info['collision_flag'] == 2:
-                    add_dynamic_collision(self.result_dir,index)
+                    add_to_csv(self.result_dir,index,'Dynamic Collision')
+                    # add_dynamic_collision(self.result_dir,index)
 
             if done:
                 self.env.reset()

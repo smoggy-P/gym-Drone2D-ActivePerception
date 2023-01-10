@@ -26,11 +26,13 @@ if __name__ == '__main__':
         'pillar_number':3
     })
 
-    gaze_methods = ['NoControl','LookAhead', 'Oxford']
-    agent_numbers = [0, 5, 10]
+    gaze_methods = ['LookAhead']
+    agent_numbers = [12]
     drone_view_depths = [80]
     drone_view_ranges = [90]
-    pillar_numbers = [3, 6]
+    pillar_numbers = [9]
+    agent_max_speeds = [30]
+    drone_max_speeds = [30]
 
     result_dir = './experiment/results.csv'
 
@@ -39,13 +41,17 @@ if __name__ == '__main__':
             for drone_view_depth in drone_view_depths:
                 for drone_view_range in drone_view_ranges:
                     for pillar_number in pillar_numbers:
-                        cfg.gaze_method = gaze_method
-                        cfg.agent_number = agent_number
-                        cfg.drone_view_depth = drone_view_depth
-                        cfg.drone_view_range = drone_view_range
-                        cfg.pillar_number = pillar_number
-                        runner = Experiment(cfg, result_dir)
-                        runner.run()
+                        for agent_speed in agent_max_speeds:
+                            for drone_speed in drone_max_speeds:
+                                cfg.gaze_method = gaze_method
+                                cfg.agent_number = agent_number
+                                cfg.drone_view_depth = drone_view_depth
+                                cfg.drone_view_range = drone_view_range
+                                cfg.pillar_number = pillar_number
+                                cfg.agent_max_speed = agent_speed
+                                cfg.drone_max_speed = drone_speed
+                                runner = Experiment(cfg, result_dir)
+                                runner.run()
     # 
     
     # success, fail = runner.run()

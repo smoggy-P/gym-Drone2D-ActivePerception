@@ -1,2 +1,19 @@
-Method,Number of agents,Number of pillars,View depth,View range,Success,Static Collision,Dynamic Collision
-LookAhead,0,3,80,90,3,0,0
+Method    ,Number of agents ,Number of pillars ,View depth ,View range ,Agent speed,Drone speed,Success ,Static Collision ,Dynamic Collision
+NoControl ,               0 ,                3 ,        80 ,        90 ,20,40,     55 ,              25 ,                0
+NoControl ,               0 ,                6 ,        80 ,        90 ,20,40,     58 ,              25 ,                0
+NoControl ,               5 ,                3 ,        80 ,        90 ,20,40,     55 ,              20 ,               10
+NoControl ,               5 ,                6 ,        80 ,        90 ,20,40,     53 ,              24 ,                1
+NoControl ,              10 ,                3 ,        80 ,        90 ,20,40,     53 ,              25 ,                7
+NoControl ,              10 ,                6 ,        80 ,        90 ,20,40,     53 ,              31 ,                8
+LookAhead ,               0 ,                3 ,        80 ,        90 ,20,40,     66 ,               0 ,                0
+LookAhead ,               0 ,                6 ,        80 ,        90 ,20,40,     66 ,               0 ,                0
+LookAhead ,               5 ,                3 ,        80 ,        90 ,20,40,     64 ,               0 ,                2
+LookAhead ,               5 ,                6 ,        80 ,        90 ,20,40,     62 ,               0 ,                0
+LookAhead ,              10 ,                3 ,        80 ,        90 ,20,40,     63 ,               0 ,                4
+LookAhead ,              10 ,                6 ,        80 ,        90 ,20,40,     61 ,               0 ,                1
+Oxford    ,               0 ,                3 ,        80 ,        90 ,20,40,    132 ,               4 ,                0
+Oxford    ,               0 ,                6 ,        80 ,        90 ,20,40,     96 ,              16 ,                0
+Oxford    ,               5 ,                3 ,        80 ,        90 ,20,40,     62 ,               4 ,                2
+Oxford    ,               5 ,                6 ,        80 ,        90 ,20,40,     56 ,               8 ,                2
+Oxford    ,              10 ,                3 ,        80 ,        90 ,20,40,     62 ,               7 ,                5
+Oxford    ,              10 ,                6 ,        80 ,        90 ,20,40,     35 ,               7 ,                1

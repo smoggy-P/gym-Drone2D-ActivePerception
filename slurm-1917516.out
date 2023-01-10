@@ -1,0 +1,61 @@
+Autoloading intel-mkl/2020.4.304
+Autoloading py-setuptools/58.2.0
+Autoloading cuda/10.2.89
+Autoloading cudnn/8.2.0.53-10.2
+Autoloading eigen/3.4.0
+Autoloading fxdiv/2020-04-17
+Autoloading magma/2.6.1-intel-mkl
+Autoloading nccl/2.9.9-1
+Autoloading numactl/2.0.14
+Autoloading protobuf/3.15.7
+Autoloading psimd/2020-05-17
+Autoloading pthreadpool/2021-04-13
+Autoloading py-future/0.18.2
+Autoloading py-protobuf/3.17.3
+Autoloading py-six/1.15.0
+Autoloading py-pybind11/2.6.2
+Autoloading py-pyyaml/5.3.1
+Autoloading libyaml/0.2.5
+Autoloading py-tqdm/4.62.3
+Autoloading py-typing-extensions/3.7.4.3
+Autoloading valgrind/3.17.0
+/home/mojishi/.local/lib/python3.8/site-packages/gym/spaces/box.py:127: UserWarning: [33mWARN: Box bound precision lowered by casting to float32[0m
+  logger.warn(f"Box bound precision lowered by casting to {self.dtype}")
+/home/mojishi/.local/lib/python3.8/site-packages/gym/utils/passive_env_checker.py:20: UserWarning: [33mWARN: It seems a Box observation space is an image but the `dtype` is not `np.uint8`, actual type: float32. If the Box observation space is not an image, we recommend flattening the observation to have only a 1D vector.[0m
+  logger.warn(
+/home/mojishi/.local/lib/python3.8/site-packages/gym/utils/passive_env_checker.py:25: UserWarning: [33mWARN: It seems a Box observation space is an image but the upper and lower bounds are not in [0, 255]. Generally, CNN policies assume observations are within that range, so you may encounter an issue if the observation values are not.[0m
+  logger.warn(
+/home/mojishi/.local/lib/python3.8/site-packages/gym/utils/passive_env_checker.py:174: UserWarning: [33mWARN: Future gym versions will require that `Env.reset` can be passed a `seed` instead of using `Env.seed` for resetting the environment random number generator.[0m
+  logger.warn(
+/home/mojishi/.local/lib/python3.8/site-packages/gym/utils/passive_env_checker.py:187: UserWarning: [33mWARN: Future gym versions will require that `Env.reset` can be passed `options` to allow the environment initialisation to be passed additional information.[0m
+  logger.warn(
+/home/mojishi/.local/lib/python3.8/site-packages/gym/utils/passive_env_checker.py:195: UserWarning: [33mWARN: The result returned by `env.reset()` was not a tuple of the form `(obs, info)`, where `obs` is a observation and `info` is a dictionary containing additional information. Actual type: `<class 'dict'>`[0m
+  logger.warn(
+/home/mojishi/.local/lib/python3.8/site-packages/gym/utils/passive_env_checker.py:219: DeprecationWarning: [33mWARN: Core environment is written in old step API which returns one bool instead of two. It is recommended to rewrite the environment with new step API. [0m
+  logger.deprecation(
+/home/mojishi/.local/lib/python3.8/site-packages/gym/utils/passive_env_checker.py:141: UserWarning: [33mWARN: The obs returned by the `step()` method was expecting numpy array dtype to be float32, actual type: uint8[0m
+  logger.warn(
+Traceback (most recent call last):
+  File "main.py", line 54, in <module>
+    runner.run()
+  File "/home/mojishi/gym-Drone2D-ActivePerception/experiment.py", line 100, in run
+    add_to_csv(self.result_dir,index,'Success')
+  File "/home/mojishi/gym-Drone2D-ActivePerception/experiment.py", line 15, in add_to_csv
+    df = pd.read_csv(dir, index_col=['Method','Number of agents','Number of pillars', 'View depth', 'View range', 'Agent speed', 'Drone speed']).T
+  File "/home/mojishi/.local/lib/python3.8/site-packages/pandas/util/_decorators.py", line 311, in wrapper
+    return func(*args, **kwargs)
+  File "/home/mojishi/.local/lib/python3.8/site-packages/pandas/io/parsers/readers.py", line 586, in read_csv
+    return _read(filepath_or_buffer, kwds)
+  File "/home/mojishi/.local/lib/python3.8/site-packages/pandas/io/parsers/readers.py", line 488, in _read
+    return parser.read(nrows)
+  File "/home/mojishi/.local/lib/python3.8/site-packages/pandas/io/parsers/readers.py", line 1047, in read
+    index, columns, col_dict = self._engine.read(nrows)
+  File "/home/mojishi/.local/lib/python3.8/site-packages/pandas/io/parsers/c_parser_wrapper.py", line 309, in read
+    index, names = self._make_index(data, alldata, names)
+  File "/home/mojishi/.local/lib/python3.8/site-packages/pandas/io/parsers/base_parser.py", line 415, in _make_index
+    index = self._get_simple_index(alldata, columns)
+  File "/home/mojishi/.local/lib/python3.8/site-packages/pandas/io/parsers/base_parser.py", line 447, in _get_simple_index
+    i = ix(idx)
+  File "/home/mojishi/.local/lib/python3.8/site-packages/pandas/io/parsers/base_parser.py", line 442, in ix
+    raise ValueError(f"Index {col} invalid")
+ValueError: Index Method invalid
