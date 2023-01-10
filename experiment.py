@@ -77,7 +77,7 @@ class Experiment:
         self.dt = params.dt
         self.policy = policy_list[params.gaze_method]
         self.policy.__init__(self.policy, params)
-        self.max_step = 10000
+        self.max_step = 20000
         self.result_dir = dir
         # self.model = Qnet(action_dim=self.action_space.shape[0])
 
