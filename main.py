@@ -27,12 +27,12 @@ if __name__ == '__main__':
     })
 
     gaze_methods = ['LookAhead']
-    agent_numbers = [12]
+    agent_numbers = [10]
     drone_view_depths = [80]
     drone_view_ranges = [90]
-    pillar_numbers = [9]
-    agent_max_speeds = [20]
-    drone_max_speeds = [40]
+    pillar_numbers = [15]
+    agent_max_speeds = [30]
+    drone_max_speeds = [30, 40]
 
     result_dir = './experiment/results.csv'
 

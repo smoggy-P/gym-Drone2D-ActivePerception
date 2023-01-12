@@ -904,7 +904,7 @@ class Drone2DEnv1(gym.Env):
             if not success:
                 self.drone.brake()
                 self.failed_plan += 1
-                if self.failed_plan == 3:
+                if self.failed_plan >= 3 and norm(self.drone.velocity)==0:
                     done = True
                 # print("path not found, replanning")
             else:
