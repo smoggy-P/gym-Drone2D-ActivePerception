@@ -8,6 +8,7 @@ from datetime import datetime
 from numpy import array, pi, cos, sin
 from numpy.linalg import norm
 from math import cos, sin, atan2, asin, sqrt, radians, tan, ceil, atan, degrees
+from heapq import heappush, heappop
 color_dict = {
     'OCCUPIED'   : (150, 150, 150),
     'UNOCCUPIED' : (50, 50, 50),
@@ -107,7 +108,7 @@ def RVO_update(agents, ws_model):
     V_des = [agent.pref_velocity for agent in agents]
     V_current = [agent.velocity for agent in agents]
     
-    ROB_RAD = agents[0].radius+0.1
+    ROB_RAD = agents[0].radius+0.01
        
     for i in range(len(X)):
         try:
@@ -136,18 +137,14 @@ def intersect(pA, vA, RVO_BA_all):
     norm_v = distance(vA, [0, 0])
     suitable_V = []
     unsuitable_V = []
-    for theta in np.arange(0, 2*3.14, 0.5):
+    for theta in np.arange(0, 2*3.14, 0.2):
         for rad in np.arange(0.02, norm_v+0.02, norm_v/5.0):
             new_v = [rad*cos(theta), rad*sin(theta)]
             suit = True
             for RVO_BA in RVO_BA_all:
-                p_0 = RVO_BA[0]
-                left = RVO_BA[1]
-                right = RVO_BA[2]
-                dif = [new_v[0]+pA[0]-p_0[0], new_v[1]+pA[1]-p_0[1]]
-                theta_dif = atan2(dif[1], dif[0])
-                theta_right = atan2(right[1], right[0])
-                theta_left = atan2(left[1], left[0])
+                theta_dif = atan2(new_v[1]+pA[1]-RVO_BA[0][1], new_v[0]+pA[0]-RVO_BA[0][0])
+                theta_right = atan2(RVO_BA[2][1], RVO_BA[2][0])
+                theta_left = atan2(RVO_BA[1][1], RVO_BA[1][0])
                 if in_between(theta_right, theta_dif, theta_left):
                     suit = False
                     break
@@ -157,14 +154,10 @@ def intersect(pA, vA, RVO_BA_all):
                 unsuitable_V.append(new_v)                
     new_v = vA[:]
     suit = True
-    for RVO_BA in RVO_BA_all:                
-        p_0 = RVO_BA[0]
-        left = RVO_BA[1]
-        right = RVO_BA[2]
-        dif = [new_v[0]+pA[0]-p_0[0], new_v[1]+pA[1]-p_0[1]]
-        theta_dif = atan2(dif[1], dif[0])
-        theta_right = atan2(right[1], right[0])
-        theta_left = atan2(left[1], left[0])
+    for RVO_BA in RVO_BA_all:
+        theta_dif = atan2(new_v[1]+pA[1]-RVO_BA[0][1], new_v[0]+pA[0]-RVO_BA[0][0])
+        theta_right = atan2(RVO_BA[2][1], RVO_BA[2][0])
+        theta_left = atan2(RVO_BA[1][1], RVO_BA[1][0])
         if in_between(theta_right, theta_dif, theta_left):
             suit = False
             break
@@ -178,13 +171,9 @@ def intersect(pA, vA, RVO_BA_all):
         vA_post = min(suitable_V, key = lambda v: distance(v, vA))
         new_v = vA_post[:]
         for RVO_BA in RVO_BA_all:
-            p_0 = RVO_BA[0]
-            left = RVO_BA[1]
-            right = RVO_BA[2]
-            dif = [new_v[0]+pA[0]-p_0[0], new_v[1]+pA[1]-p_0[1]]
-            theta_dif = atan2(dif[1], dif[0])
-            theta_right = atan2(right[1], right[0])
-            theta_left = atan2(left[1], left[0])
+            theta_dif = atan2(new_v[1]+pA[1]-RVO_BA[0][1], new_v[0]+pA[0]-RVO_BA[0][0])
+            theta_right = atan2(RVO_BA[2][1], RVO_BA[2][0])
+            theta_left = atan2(RVO_BA[1][1], RVO_BA[1][0])
     else:
         # print 'Suitable not found'
         tc_V = dict()
@@ -239,23 +228,8 @@ def in_between(theta_right, theta_dif, theta_left):
                 return True
             else:
                 return False
-
-def compute_V_des(X, goal, V_max):
-    V_des = []
-    for i in range(len(X)):
-        dif_x = [goal[i][k]-X[i][k] for k in range(2)]
-        norm = distance(dif_x, [0, 0])
-        norm_dif_x = [dif_x[k]*V_max[k]/norm for k in range(2)]
-        V_des.append(norm_dif_x[:])
-        if reach(X[i], goal[i], 0.1):
-            V_des[i][0] = 0
-            V_des[i][1] = 0
-    return V_des
             
-def reach(p1, p2, bound=0.5):
-    if distance(p1,p2)< bound:
-        return True
-    else:
+
         return False
 class Agent(object):
     """A disk-shaped agent."""
@@ -617,19 +591,22 @@ class Trajectory2D(object):
         self.velocities.pop(0)
     def __len__(self):
         return len(self.positions)
-class Primitive(object):
-    class Node:
-        def __init__(self, pos, vel, cost, parent_index, coeff, itr):
+
+class Primitive_Node:
+        def __init__(self, pos, vel, cost, target, parent_index, coeff, itr):
             self.position = pos  
             self.velocity = vel 
             self.cost = cost
             self.parent_index = parent_index
             self.coeff = coeff
             self.itr = itr
+            self.total_cost = cost + 0.5*norm(pos-target) + 0.2*norm(vel)
             self.get_index()
+        def __lt__(self, other_node):
+            return self.total_cost < other_node.total_cost
         def get_index(self):
             self.index = (round(self.position[0])//5, round(self.position[1])//5, round(self.velocity[0])//2, round(self.velocity[1])//2)
-
+class Primitive(object):
     def __init__(self, drone, params):
         self.params = params
         self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 5)
@@ -643,7 +620,6 @@ class Primitive(object):
     def set_target(self, target_pos):
         self.target = target_pos
 
-
     def plan(self, start_pos, start_vel, occupancy_map, agents, update_t):
         """
         A star path search
@@ -656,18 +632,17 @@ class Primitive(object):
             rx: x position list of the final path
             ry: y position list of the final path
         """
-        gx, gy = self.target[0], self.target[1]
-        start_node = self.Node(pos=start_pos, 
-                               vel=start_vel,
-                               cost=0.0, 
-                               parent_index=-1,
-                               coeff=None,
-                               itr=0)
+        start_node = Primitive_Node(pos=start_pos, 
+                                    vel=start_vel,
+                                    cost=0, 
+                                    target=self.target,
+                                    parent_index=-1,
+                                    coeff=None,
+                                    itr=0)
 
         open_set, closed_set = dict(), dict()
         open_set[start_node.index] = start_node
         itr = 0
-        # time1 = time.time()
         while 1:
             itr += 1
             if len(open_set) == 0 or itr >= 30:
@@ -678,10 +653,10 @@ class Primitive(object):
 
             c_id = min(
                 open_set,
-                key=lambda o: (open_set[o].cost) + norm(open_set[o].position - np.array([gx, gy]))/2 + norm(open_set[o].velocity)/5)
+                key=lambda o: open_set[o].total_cost)
             current = open_set[c_id]
 
-            if norm(current.position - np.array([gx, gy])) <= self.search_threshold:
+            if norm(current.position - self.target) <= self.search_threshold:
                 # print("Find goal")
                 goal_node = current
                 success = True
@@ -694,15 +669,16 @@ class Primitive(object):
             closed_set[c_id] = current
 
             # expand_grid search grid based on motion model
-            sub_node_list = [self.Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[current.position[0], current.position[1]], [current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])), 
-                                   vel=np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]]), 
-                                   cost=current.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 10, 
-                                   parent_index=current.index,
-                                   coeff=np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]),
-                                   itr = current.itr + 1) for x_acc in self.u_space 
-                                                             for y_acc in self.u_space 
-                                                             if self.is_free(np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]), occupancy_map, agents, current.itr) and 
-                                                                norm(np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])) < self.params.drone_max_speed]
+            sub_node_list = [Primitive_Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[current.position[0], current.position[1]], [current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])), 
+                                            vel=np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]]), 
+                                            cost=current.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 10, 
+                                            target=self.target,
+                                            parent_index=current.index,
+                                            coeff=np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]),
+                                            itr = current.itr + 1) for x_acc in self.u_space 
+                                                                   for y_acc in self.u_space 
+                                                                   if self.is_free(np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]), occupancy_map, agents, current.itr) and 
+                                                                      norm(np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])) < self.params.drone_max_speed]
             for next_node in sub_node_list:
                 if next_node.index in closed_set:
                     continue
@@ -805,7 +781,7 @@ class Drone2DEnv1(gym.Env):
 
         self.obstacles = {
             'circular_obstacles'  : circular_obstacles,
-            'rectangle_obstacles' : [[100, 100, 100, 40], [400, 300, 100, 30]]
+            'rectangle_obstacles' : []
         }
         
         # Define workspace model for RVO model (approximate using circles)
