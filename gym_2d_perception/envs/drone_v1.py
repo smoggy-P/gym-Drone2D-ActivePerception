@@ -4,6 +4,7 @@ import random
 import torch
 import math
 import numpy as np
+import time
 from datetime import datetime
 from numpy import array, pi, cos, sin
 from numpy.linalg import norm
@@ -605,14 +606,14 @@ class Primitive_Node:
         def __lt__(self, other_node):
             return self.total_cost < other_node.total_cost
         def get_index(self):
-            self.index = (round(self.position[0])//5, round(self.position[1])//5, round(self.velocity[0])//2, round(self.velocity[1])//2)
+            self.index = (round(self.position[0])//10, round(self.position[1])//10, round(self.velocity[0])//2, round(self.velocity[1])//2)
 class Primitive(object):
     def __init__(self, drone, params):
         self.params = params
-        self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 5)
+        self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 10)
         # self.u_space = np.array([-15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15])
         self.dt = 2
-        self.sample_num = 30 # sampling number for collision check
+        self.sample_num = 10 # sampling number for collision check
         self.target = np.array([drone.x, drone.y])
         self.search_threshold = 10
         self.cost_ratio = 100
@@ -645,7 +646,7 @@ class Primitive(object):
         itr = 0
         while 1:
             itr += 1
-            if len(open_set) == 0 or itr >= 30:
+            if len(open_set) == 0 or itr >= 50:
                 # print("No solution found in limitied time")
                 goal_node = None
                 success = False
@@ -736,11 +737,11 @@ class Primitive(object):
                 return False
 
             for agent in agents:
-                global_t = t + itr * self.dt
-                new_position = agent.position + agent.velocity * global_t
-                if norm(position - new_position) <= self.params.drone_radius + agent.radius:
-                    # print("collision found with agent in position:", new_position)
-                    return False
+                if agent.seen:
+                    global_t = t + itr * self.dt
+                    new_position = agent.estimate_pos + agent.estimate_vel * global_t
+                    if norm(position - new_position) <= self.params.drone_radius + agent.radius:
+                        return False
 
 
         return True
