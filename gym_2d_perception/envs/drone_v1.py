@@ -611,7 +611,7 @@ class Primitive(object):
     def __init__(self, drone, params):
         self.params = params
         self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 5)
-        self.dt = 2
+        self.dt = 80 / params.drone_max_speed
         self.sample_num = 10 # sampling number for collision check
         self.target = np.array([drone.x, drone.y])
         self.search_threshold = 10
@@ -645,7 +645,7 @@ class Primitive(object):
         itr = 0
         while 1:
             itr += 1
-            if len(open_set) == 0:
+            if len(open_set) == 0 or itr >= 100:
                 # print("No solution found in limitied time")
                 goal_node = None
                 success = False
@@ -907,7 +907,6 @@ class Drone2DEnv1(gym.Env):
         # Execute trajectory
         if self.trajectory.positions != [] :
             self.drone.velocity = self.trajectory.velocities[0]
-            print("vel:", norm(self.drone.velocity))
             self.drone.x = round(self.trajectory.positions[0][0])
             self.drone.y = round(self.trajectory.positions[0][1])
             self.trajectory.pop()
