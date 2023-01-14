@@ -601,22 +601,21 @@ class Primitive_Node:
             self.parent_index = parent_index
             self.coeff = coeff
             self.itr = itr
-            self.total_cost = cost + 0.5*norm(pos-target) + 0.2*norm(vel)
+            self.total_cost = cost + 0.5*norm(pos-target) + 0.1*norm(vel)
             self.get_index()
         def __lt__(self, other_node):
             return self.total_cost < other_node.total_cost
         def get_index(self):
-            self.index = (round(self.position[0])//10, round(self.position[1])//10, round(self.velocity[0])//2, round(self.velocity[1])//2)
+            self.index = (round(self.position[0])//10, round(self.position[1])//10, round(self.velocity[0]), round(self.velocity[1]))
 class Primitive(object):
     def __init__(self, drone, params):
         self.params = params
-        self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 10)
-        # self.u_space = np.array([-15, -10, -5, -3, -1, 0, 1, 3, 5, 10, 15])
+        self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 5)
         self.dt = 2
         self.sample_num = 10 # sampling number for collision check
         self.target = np.array([drone.x, drone.y])
         self.search_threshold = 10
-        self.cost_ratio = 100
+        self.phi = 10
 
     def set_target(self, target_pos):
         self.target = target_pos
@@ -646,7 +645,7 @@ class Primitive(object):
         itr = 0
         while 1:
             itr += 1
-            if len(open_set) == 0 or itr >= 50:
+            if len(open_set) == 0:
                 # print("No solution found in limitied time")
                 goal_node = None
                 success = False
@@ -672,7 +671,7 @@ class Primitive(object):
             # expand_grid search grid based on motion model
             sub_node_list = [Primitive_Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[current.position[0], current.position[1]], [current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])), 
                                             vel=np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]]), 
-                                            cost=current.cost + (x_acc**2 + y_acc**2)/self.cost_ratio + 10, 
+                                            cost=current.cost + (x_acc**2 + y_acc**2)/100 + 10, 
                                             target=self.target,
                                             parent_index=current.index,
                                             coeff=np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]),
@@ -908,6 +907,7 @@ class Drone2DEnv1(gym.Env):
         # Execute trajectory
         if self.trajectory.positions != [] :
             self.drone.velocity = self.trajectory.velocities[0]
+            print("vel:", norm(self.drone.velocity))
             self.drone.x = round(self.trajectory.positions[0][0])
             self.drone.y = round(self.trajectory.positions[0][1])
             self.trajectory.pop()
