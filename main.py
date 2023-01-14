@@ -2,10 +2,14 @@ from experiment import Experiment
 # from stable_baselines3.common.env_checker import check_env
 import easydict
 
-# import os
-# os.environ["SDL_VIDEODRIVER"] = "dummy"
+import os
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 if __name__ == '__main__':
+
+    result_dir = './experiment/results_1.csv'
+    img_dir = './experiment/fails/new/'
+
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v1',
         'gaze_method':'Oxford',
@@ -22,8 +26,9 @@ if __name__ == '__main__':
         'drone_max_yaw_speed':80,
         'drone_view_depth' : 80,
         'drone_view_range': 90,
-        'record': False,
-        'pillar_number':3
+        'record': True,
+        'pillar_number':3,
+        'img_dir':img_dir
     })
 
     gaze_methods = ['LookAhead']
@@ -34,7 +39,7 @@ if __name__ == '__main__':
     agent_max_speeds = [20]
     drone_max_speeds = [40]
 
-    result_dir = './experiment/results.csv'
+
 
     for gaze_method in gaze_methods:
         for agent_number in agent_numbers:

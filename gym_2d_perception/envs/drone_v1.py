@@ -934,12 +934,12 @@ class Drone2DEnv1(gym.Env):
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
         if collision_state == 1:
             if self.params.record and self.params.gaze_method != 'NoControl':
-                pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
+                pygame.image.save(self.screen, self.params.img_dir+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
             reward = -1000.0
             done = True
         elif collision_state == 2:
             if self.params.record and self.params.gaze_method != 'NoControl':
-                pygame.image.save(self.screen, './experiment/fails/'+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
+                pygame.image.save(self.screen, self.params.img_dir+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
             reward = -1000.0
             done = True
         elif self.state_machine == state_machine['GOAL_REACHED']:
