@@ -2,8 +2,8 @@ from experiment import Experiment
 # from stable_baselines3.common.env_checker import check_env
 import easydict
 
-# import os
-# os.environ["SDL_VIDEODRIVER"] = "dummy"
+import os
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 if __name__ == '__main__':
 
@@ -26,16 +26,16 @@ if __name__ == '__main__':
         'drone_max_yaw_speed':80,
         'drone_view_depth' : 80,
         'drone_view_range': 90,
-        'record': False,
+        'record': True,
         'pillar_number':3,
         'img_dir':img_dir
     })
 
     gaze_methods = ['LookAhead']
-    agent_numbers = [10]
+    agent_numbers = [5, 10]
     drone_view_depths = [80]
     drone_view_ranges = [90]
-    pillar_numbers = [15]
+    pillar_numbers = [10, 15]
     agent_max_speeds = [20]
     drone_max_speeds = [20]
 
