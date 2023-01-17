@@ -276,6 +276,10 @@ class Agent(object):
             if self.seen:
                 self.var += self.dt*10
                 self.estimate_pos = self.estimate_pos + self.estimate_vel * dt
+                if self.var >= 40:
+                    self.seen = False
+                    self.estimate_vel = np.array([0,0])
+                    self.estimate_pos = np.array([0,0])
 
             
         
@@ -610,8 +614,8 @@ class Primitive_Node:
 class Primitive(object):
     def __init__(self, drone, params):
         self.params = params
-        self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 5)
-        self.dt = 80 / params.drone_max_speed
+        self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 0.4 * params.drone_max_speed - 5)
+        self.dt = 2
         self.sample_num = 10 # sampling number for collision check
         self.target = np.array([drone.x, drone.y])
         self.search_threshold = 10
@@ -794,7 +798,7 @@ class Drone2DEnv1(gym.Env):
             theta = 2 * pi * i / params.agent_number
             x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
             vel = -x * params.agent_max_speed
-            pos = (random.uniform(self.dim[0] / 2 - 100, self.dim[0] / 2 +100), random.uniform(self.dim[1] / 2 - 100, self.dim[1] / 2 +100))
+            pos = (random.uniform(20, self.dim[0]-20), random.uniform(20, self.dim[1]-20))
             new_agent = Agent(pos, (0., 0.), params.agent_radius, params.agent_max_speed, vel, self.dt)
             if check_collision(self.agents, new_agent, self.ws_model):
                 self.agents.append(new_agent)
