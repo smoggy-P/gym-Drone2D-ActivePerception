@@ -64,6 +64,7 @@ class ImgStateExtractor(BaseFeaturesExtractor):
     def __init__(
         self,
         observation_space: gym.spaces.Dict,
+        device: th.device,
         cnn_encoder_name: str = "CnnEncoder",
         cnn_output_dim: int = 512,
         state_output_dim: int = 32
