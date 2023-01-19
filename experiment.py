@@ -3,12 +3,13 @@ import numpy as np
 import pandas as pd
 # from tqdm import tqdm
 from yaw_planner import Oxford, LookAhead, NoControl
+from stable_baselines3 import PPO
 # import matplotlib.pyplot as plt
 
 policy_list = {
     'LookAhead': LookAhead,
     'NoControl': NoControl,
-    'Oxford': Oxford
+    'Oxford': Oxford,
 }
 
 def add_to_csv(dir, index, flag):
@@ -34,6 +35,12 @@ class Experiment:
         self.policy.__init__(self.policy, params)
         self.max_step = 20000
         self.result_dir = dir
+        self.model = None
+
+        if self.params.trained_policy:
+            self.model = PPO.load(path='./trained_policy/lookahead.zip')
+            self.model.set_env(self.env)
+
         # self.model = Qnet(action_dim=self.action_space.shape[0])
 
 
@@ -42,12 +49,13 @@ class Experiment:
         steps = []
         success = 0
         fail = 0
-        self.env.reset()
+        state = self.env.reset()
         for i in range(self.max_step):
-            a = self.policy.plan(self.policy, self.env.info)
+            if self.params.trained_policy:
+                a, state_ = self.model.predict(state, deterministic=True)
+            else:
+                a = self.policy.plan(self.policy, self.env.info)
             state, reward, done, info = self.env.step(a)
-
-            # print(state['local_map'].shape == state['swep_map'].shape)
 
             if self.params.record:
                 index = (self.params.gaze_method,
@@ -87,8 +95,10 @@ if __name__ == '__main__':
     img_dir = './experiment/fails/new/'
 
     cfg = easydict.EasyDict({
-        'env':'gym-2d-perception-v2',
+        'env':'gym-2d-perception-v1',
         'gaze_method':'Oxford',
+        'trained_policy':True,
+        'policy_dir':'./trained_policy/lookahead.zip',
         'render':True,
         'dt':0.1,
         'map_scale':10,
@@ -103,6 +113,7 @@ if __name__ == '__main__':
         'drone_view_depth' : 80,
         'drone_view_range': 90,
         'record': False,
+        'record_img': False,
         'pillar_number':3,
         'img_dir':img_dir
     })
