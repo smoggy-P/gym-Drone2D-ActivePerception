@@ -39,6 +39,7 @@ env = gym.make('gym-2d-perception-v1', params=params)
 
 model = PPO.load(path='./trained_policy/lookahead.zip')
 model.set_env(env)
-
-model.learn(total_timesteps=10000)
+print("Start training")
+model.learn(total_timesteps=5000)
 model.save('./trained_policy/lookahead.zip')
+print("successfully write model")
