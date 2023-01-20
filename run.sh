@@ -3,7 +3,7 @@
 #SBATCH --job-name="run"
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH --mem=8G
+#SBATCH --mem=4G
 #SBATCH --time=10:00:00 
 #SBATCH --account=education-3me-msc-ro
 

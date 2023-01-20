@@ -958,6 +958,9 @@ class Drone2DEnv1(gym.Env):
         view_angle = math.radians(self.drone.yaw_range / 2)
         view_map = np.where(np.logical_or((self.drone.x - x)**2 + (self.drone.y - y)**2 <= 0, np.logical_and(np.arccos(((x - self.drone.x)*vec_yaw[0] + (y - self.drone.y)*vec_yaw[1]) / np.sqrt((self.drone.x - x)**2 + (self.drone.y - y)**2)) <= view_angle, ((self.drone.x - x)**2 + (self.drone.y - y)**2 <= self.drone.yaw_depth ** 2))), 1, 0)
         reward = float(np.sum(view_map * np.where(swep_map == 0, 0, 1)))
+
+        if collision_state == 2:
+            reward = -200
             
         # wrap up information
         self.info = {
