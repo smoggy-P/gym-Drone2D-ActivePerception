@@ -12,6 +12,7 @@ if __name__ == '__main__':
 
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v1',
+        'trained_policy':False,
         'gaze_method':'Oxford',
         'render':True,
         'dt':0.1,
@@ -32,7 +33,7 @@ if __name__ == '__main__':
         'img_dir':img_dir
     })
 
-    gaze_methods = ['Oxford']
+    gaze_methods = ['LookAhead']
     agent_numbers = [5, 10]
     drone_view_depths = [80]
     drone_view_ranges = [90]
