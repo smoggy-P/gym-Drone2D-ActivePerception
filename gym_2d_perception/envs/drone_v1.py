@@ -399,9 +399,8 @@ class Raycast:
 
         self.half_rays_number = self.rays_number//2
 
-
     def castRays(self, player, truth_grid_map, agents):
-        rays = [self.castRay(player, pi*2 - radians(player.yaw), atan((-self.half_rays_number+i) * self.strip_width / self.distance_to_plane), truth_grid_map, agents) for i in range(self.rays_number)]
+        rays = [self.castRay(player, pi*2 - radians(player.yaw), -self.FOV/2 + self.FOV/self.rays_number*i, truth_grid_map, agents) for i in range(self.rays_number)]
         hit_list = torch.zeros(len(agents), dtype=torch.int8)
 
         for ray in rays:
