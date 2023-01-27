@@ -33,10 +33,10 @@ if __name__ == '__main__':
         'img_dir':img_dir
     })
 
-    gaze_methods = ['LookAhead']
+    gaze_methods = ['NoControl']
     agent_numbers = [5, 10]
     drone_view_depths = [80]
-    drone_view_ranges = [90]
+    drone_view_ranges = [360]
     pillar_numbers = [10, 15]
     agent_max_speeds = [20, 30]
     drone_max_speeds = [20, 30, 40]
