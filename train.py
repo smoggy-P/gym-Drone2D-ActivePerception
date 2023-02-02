@@ -21,7 +21,7 @@ if __name__ == '__main__':
             'dt':0.1,
             'map_scale':10,
             'map_size':[640,480],
-            'agent_number':10,
+            'agent_number':0,
             'agent_max_speed':20,
             'agent_radius':10,
             'drone_max_speed':40,
@@ -32,7 +32,7 @@ if __name__ == '__main__':
             'drone_view_range': 90,
             'record': False,
             'record_img':False,
-            'pillar_number':3
+            'pillar_number':5
         })
 
 env = gym.make('gym-2d-perception-v1', params=params) 
