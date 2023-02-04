@@ -244,7 +244,7 @@ class Agent(object):
             self.estimate_pos = self.position
         else:
             if self.seen:
-                self.var += self.dt*10
+                self.var += dt*10
                 self.estimate_pos = self.estimate_pos + self.estimate_vel * dt
                 if self.var >= 40:
                     self.seen = False
@@ -721,8 +721,11 @@ class Drone2DEnv2(gym.Env):
      
     def __init__(self, params):
         np.seterr(divide='ignore', invalid='ignore')
+        gym.logger.set_level(40)
         plt.ion()
 
+        self.steps = 0
+        self.max_steps = params.max_steps
         self.params = params
         self.dt = params.dt
 
@@ -806,21 +809,25 @@ class Drone2DEnv2(gym.Env):
         local_map_size = 4 * (params.drone_view_depth // params.map_scale) + 1
         self.observation_space = gym.spaces.Dict(
             {
-                'yaw_angle' : gym.spaces.Box(np.array([0]), np.array([360]), shape=(1,), dtype=np.float32), 
-                'local_map' : gym.spaces.Box(np.zeros((1, local_map_size, local_map_size)), 
-                                                       4*np.ones((1, local_map_size,local_map_size)), 
-                                                       shape=(1, local_map_size, local_map_size),
-                                                       dtype=np.float32),
-                'swep_map'  : gym.spaces.Box(np.zeros((1, local_map_size, local_map_size)), 
-                                                       10*np.ones((1, local_map_size,local_map_size)), 
-                                                       shape=(1, local_map_size, local_map_size),
-                                                       dtype=np.float32)
+                'yaw_angle' : gym.spaces.Box(low=np.array([0], dtype=np.float32), 
+                                             high=np.array([360], dtype=np.float32), 
+                                             shape=(1,), 
+                                             dtype=np.float32), 
+                'local_map' : gym.spaces.Box(low=np.zeros((1, local_map_size, local_map_size), dtype=np.float32), 
+                                             high=np.float32(4*np.ones((1, local_map_size,local_map_size))), 
+                                             shape=(1, local_map_size, local_map_size),
+                                             dtype=np.float32),
+                'swep_map'  : gym.spaces.Box(low=np.zeros((1, local_map_size, local_map_size), dtype=np.float32), 
+                                             high=np.float32(10*np.ones((1, local_map_size,local_map_size), dtype=np.float32)), 
+                                             shape=(1, local_map_size, local_map_size),
+                                             dtype=np.float32)
             }
         )
     
     def step(self, a):
         done = False
         self.state_changed = False
+        self.steps += 1
         # Update state machine
         if self.state_machine == state_machine['GOAL_REACHED']:
             self.state_machine = state_machine['WAIT_FOR_GOAL']
@@ -898,8 +905,6 @@ class Drone2DEnv2(gym.Env):
         #         print("state: executing trajectory")
 
         # Return reward
-
-        # lookahead: 1. 给速度方向，reward定为yaw和速度方向差距 2. 加入地图信息和中间reward（减弱地图信息干扰）
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
         if collision_state == 1:
             if self.params.record and self.params.gaze_method != 'NoControl':
@@ -916,6 +921,9 @@ class Drone2DEnv2(gym.Env):
             done = False
             if self.target_list.shape[0] == 0:
                 done = True
+        if self.steps >= self.max_steps:
+             done = True
+    
         x = np.arange(int(self.params.map_size[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
         y = np.arange(int(self.params.map_size[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
 
@@ -923,6 +931,7 @@ class Drone2DEnv2(gym.Env):
         view_angle = math.radians(self.drone.yaw_range / 2)
         view_map = np.where(np.logical_or((self.drone.x - x)**2 + (self.drone.y - y)**2 <= 0, np.logical_and(np.arccos(((x - self.drone.x)*vec_yaw[0] + (y - self.drone.y)*vec_yaw[1]) / np.sqrt((self.drone.x - x)**2 + (self.drone.y - y)**2)) <= view_angle, ((self.drone.x - x)**2 + (self.drone.y - y)**2 <= self.drone.yaw_depth ** 2))), 1, 0)
         reward = float(np.sum(view_map * np.where(swep_map == 0, 0, 1)))
+        reward += 0.5 * float(np.sum(view_map * np.where(self.drone.map.grid_map == 0, 0, 1)))
             
         # wrap up information
         self.info = {
@@ -944,13 +953,13 @@ class Drone2DEnv2(gym.Env):
             'yaw_angle' : np.array([self.drone.yaw], dtype=np.float32).flatten()
         }
         time1 = time.time()
-        plt.subplot(1,2,1)
-        plt.imshow(local_swep_map.T)
-        plt.subplot(1,2,2)
-        plt.imshow(self.drone.get_local_map().T)
-        plt.show()
-        plt.pause(0.001)
-        plt.clf()
+        # plt.subplot(1,2,1)
+        # plt.imshow(local_swep_map.T)
+        # plt.subplot(1,2,2)
+        # plt.imshow(self.drone.get_local_map().T)
+        # plt.show()
+        # plt.pause(0.001)
+        # plt.clf()
         # print(time.time() - time1)
         return state, reward, done, self.info
     

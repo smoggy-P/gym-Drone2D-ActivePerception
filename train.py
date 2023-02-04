@@ -15,7 +15,7 @@ if __name__ == '__main__':
     device = th.device("cuda:0" if th.cuda.is_available() else "cpu")
 
     params = easydict.EasyDict({
-            'env':'gym-2d-perception-v1',
+            'env':'gym-2d-perception-v2',
             'gaze_method':'LookAhead',
             'render':False,
             'dt':0.1,
@@ -62,6 +62,6 @@ if __name__ == '__main__':
     # model = PPO.load(path='./trained_policy/lookahead.zip')
     # model.set_env(env)
     print("Start training")
-    model.learn(total_timesteps=1000000)
+    model.learn(total_timesteps=400000)
     model.save('./trained_policy/lookahead_fixed_episode.zip')
     print("successfully write model")

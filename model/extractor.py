@@ -85,7 +85,8 @@ class ImgStateExtractor(BaseFeaturesExtractor):
 
         # Image input settings
         self.cfg_image_keys = [
-            'swep_map'
+            'swep_map',
+            'local_map'
         ]
 
         self.cfg_vector_keys = [

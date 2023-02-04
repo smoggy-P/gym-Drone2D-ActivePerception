@@ -76,7 +76,6 @@ class Experiment:
                     # add_dynamic_collision(self.result_dir,index)
 
             if done:
-                print(self.env.steps)
                 self.env.reset()
                 
 
@@ -99,7 +98,7 @@ if __name__ == '__main__':
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v2',
         'gaze_method':'Oxford',
-        'trained_policy':False,
+        'trained_policy':True,
         'policy_dir':'./trained_policy/lookahead.zip',
         'render':True,
         'dt':0.1,
