@@ -97,9 +97,9 @@ if __name__ == '__main__':
     img_dir = './experiment/fails/new/'
 
     cfg = easydict.EasyDict({
-        'env':'gym-2d-perception-v1',
+        'env':'gym-2d-perception-v2',
         'gaze_method':'Oxford',
-        'trained_policy':True,
+        'trained_policy':False,
         'policy_dir':'./trained_policy/lookahead.zip',
         'render':True,
         'dt':0.1,
