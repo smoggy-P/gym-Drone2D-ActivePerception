@@ -65,35 +65,6 @@ def check_in_view(drone, position):
     else:
         return False
 
-def obs_dict_to_ws_model(obs_dict):
-    """Transfer obstacle dictionary to ws_model; approximate the rectangle
-
-    Args:
-        obs_dict (dictionary): obstacles dictionary with keys of "rectangle_obstacles" and "circular_obstacles"
-    """
-    
-    ws_model = {
-        'circular_obstacles' : []
-    }
-    
-    ws_model['circular_obstacles'] += obs_dict['circular_obstacles']
-    
-    for rect in obs_dict['rectangle_obstacles']:
-        edge1, edge2 = rect[2:]
-        edge_max = max(edge1, edge2)
-        edge_min = min(edge1, edge2)
-        
-        if edge_max <= 2 *edge_min:
-            ws_model['circular_obstacles'].append([rect[0]+rect[2]/2, rect[1]+rect[3]/2, edge_max/2])
-        elif edge1 > edge2:
-            ws_model['circular_obstacles'].append([rect[0]+rect[2]/4, rect[1]+rect[3]/2, edge_max/4])
-            ws_model['circular_obstacles'].append([rect[0]+rect[2]/4*3, rect[1]+rect[3]/2, edge_max/4])
-        else:
-            ws_model['circular_obstacles'].append([rect[0]+rect[2]/2, rect[1]+rect[3]/4, edge_max/4])
-            ws_model['circular_obstacles'].append([rect[0]+rect[2]/2, rect[1]+rect[3]/4*3, edge_max/4])
-    
-    return ws_model
-    
 def draw_static_obstacle(surface, obs_dict, color):
     if 'circular_obstacles' in obs_dict:
         for obs in obs_dict['circular_obstacles']:
@@ -234,9 +205,8 @@ def in_between(theta_right, theta_dif, theta_left):
         return False
 class Agent(object):
     """A disk-shaped agent."""
-    def __init__(self, position, velocity, radius, max_speed, pref_velocity, dt):
+    def __init__(self, position, velocity, radius, max_speed, pref_velocity):
         super(Agent, self).__init__()
-        self.dt = dt
         self.position = np.array(position, dtype=np.float)
         self.velocity = np.array(velocity, dtype=np.float)
         self.radius = radius
@@ -518,19 +488,18 @@ class Raycast:
         result = {'coords':(x_hit,y_hit), 'wall':wall_hit, 'hit_list':hit_list}
         return result
 class Drone2D():
-    def __init__(self, init_x, init_y, init_yaw, dt, dim, params):
+    def __init__(self, init_x, init_y, init_yaw, dt, params):
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw % 360
         self.yaw_range = params.drone_view_range
         self.yaw_depth = params.drone_view_depth
         self.radius = params.drone_radius
-        self.map = OccupancyGridMap(params.map_scale, dim, 0)
-        # self.view_map = np.zeros((dim[0]//params.map_scale, dim[1]//params.map_scale))
+        self.map = OccupancyGridMap(params.map_scale, params.map_size, 0)
         self.velocity = np.array([0, 0])
         self.dt = dt
         self.rays = {}
-        self.raycast = Raycast(dim, self)
+        self.raycast = Raycast(params.map_size, self)
         self.params = params
 
     def step_yaw(self, action):
@@ -616,7 +585,7 @@ class Primitive(object):
         self.params = params
         self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 0.4 * params.drone_max_speed - 5)
         self.dt = 2
-        self.sample_num = 10 # sampling number for collision check
+        self.sample_num = params.drone_max_speed * self.dt // params.map_scale # sampling number for collision check
         self.target = np.array([drone.x, drone.y])
         self.search_threshold = 10
         self.phi = 10
@@ -758,64 +727,73 @@ class Drone2DEnv2(gym.Env):
         self.dt = params.dt
 
         # Setup pygame environment
-        self.dim = params.map_size
         self.is_render = params.render
         if self.is_render:
             pygame.init()
-            self.screen = pygame.display.set_mode(self.dim)
+            self.screen = pygame.display.set_mode(params.map_size)
             self.clock = pygame.time.Clock()
         
-        self.target_list = [np.array([520, 100]), np.array([120, 50]), np.array([120, 380]), np.array([520, 380])]
-        random.shuffle(self.target_list)
+        # Set target list to visit, random order
+        self.target_list = np.array([[120,50],
+                                     [120,380],
+                                     [520,50],
+                                     [520,380]])
+        np.random.shuffle(self.target_list)
 
-        self.drone = Drone2D(self.dim[0] / 2, params.drone_radius + params.map_scale, -90, self.dt, self.dim, params)
+        # Generate drone
+        self.drone = Drone2D(init_x=params.map_size[0]/2, 
+                             init_y=params.drone_radius+params.map_scale, 
+                             init_yaw=-90, 
+                             dt=self.dt, 
+                             params=params)
 
+        # Generate pillars
         circular_obstacles = []
-        for i in range(self.params.pillar_number):
+        for i in range(params.pillar_number):
             collision_free = False
             while not collision_free:
-                obs = np.array([random.randint(50,self.dim[0]-50), random.randint(50,self.dim[1]-50), random.randint(30,50)])
+                obs = np.array([random.randint(50,params.map_size[0]-50), 
+                                random.randint(50,params.map_size[1]-50), 
+                                random.randint(30,50)])
                 collision_free = True
                 for target in self.target_list:
                     if norm(target - obs[:-1]) <= params.drone_radius + 20 + obs[-1]:
                         collision_free = False
                         break
-                if norm(np.array([self.drone.x, self.drone.y]) - obs[:-1]) <= params.drone_radius + 10 + obs[-1]:
+                if norm(np.array([self.drone.x, self.drone.y]) - obs[:-1]) <= params.drone_radius + 70:
                     collision_free = False
-                
             circular_obstacles.append(obs)
-
         self.obstacles = {
             'circular_obstacles'  : circular_obstacles,
             'rectangle_obstacles' : []
         }
         
-        # Define workspace model for RVO model (approximate using circles)
-        self.ws_model = obs_dict_to_ws_model(self.obstacles)
-        
-        # Define physical setup
+        # Generate dynamic obstacles
         self.agents = []
-        i = 1
-        while(i <= params.agent_number):
-            theta = 2 * pi * i / params.agent_number
-            x = array((cos(theta), sin(theta))) #+ random.uniform(-1, 1)
+        while(len(self.agents) <= params.agent_number):
+            x = array([cos(2*pi*len(self.agents) / params.agent_number), 
+                       sin(2*pi*len(self.agents) / params.agent_number)])
             vel = -x * params.agent_max_speed
-            pos = (random.uniform(20, self.dim[0]-20), random.uniform(20, self.dim[1]-20))
-            new_agent = Agent(pos, (0., 0.), params.agent_radius, params.agent_max_speed, vel, self.dt)
-            if check_collision(self.agents, new_agent, self.ws_model):
+            pos = (random.uniform(20, params.map_size[0]-20), random.uniform(20, params.map_size[1]-20))
+            new_agent = Agent(position=pos, 
+                              velocity=(0., 0.), 
+                              radius=params.agent_radius, 
+                              max_speed=params.agent_max_speed, 
+                              pref_velocity=vel)
+            if check_collision(self.agents, new_agent, self.obstacles):
                 self.agents.append(new_agent)
-                i += 1
 
-        self.map_gt = OccupancyGridMap(params.map_scale, self.dim, 2)
+        # Generate ground truth grid map
+        self.map_gt = OccupancyGridMap(params.map_scale, params.map_size, 2)
         self.map_gt.init_obstacles(self.obstacles, self.agents)
-    
+
+        # Define planner
         self.planner = Primitive(self.drone, params)
-        
         self.trajectory = Trajectory2D()
-        self.swep_map = np.zeros([64, 48])
+        self.swep_map = np.zeros(array(params.map_size)//params.map_scale)
         self.state_machine = state_machine['WAIT_FOR_GOAL']
         self.state_changed = False
-        self.failed_plan = 0
+        self.fail_count = 0
 
         # Define action and observation space
         self.info = {
@@ -828,7 +806,6 @@ class Drone2DEnv2(gym.Env):
         local_map_size = 4 * (params.drone_view_depth // params.map_scale) + 1
         self.observation_space = gym.spaces.Dict(
             {
-                # 'local_map' : gym.spaces.MultiDiscrete(4*np.ones((1, local_map_size, local_map_size))),
                 'yaw_angle' : gym.spaces.Box(np.array([0]), np.array([360]), shape=(1,), dtype=np.float32), 
                 'local_map' : gym.spaces.Box(np.zeros((1, local_map_size, local_map_size)), 
                                                        4*np.ones((1, local_map_size,local_map_size)), 
@@ -856,44 +833,30 @@ class Drone2DEnv2(gym.Env):
 
         # Update moving agent position
         if len(self.agents) > 0:
-            if RVO_update(self.agents, self.ws_model):
+            if RVO_update(self.agents, self.obstacles):
                 for agent in self.agents:
-                    agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.dim[0], self.dim[1],  self.dt)
+                    agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.params.map_size[0], self.params.map_size[1],  self.dt)
             else:
                 done = True
         
         # Set target point
         if self.state_machine == state_machine['WAIT_FOR_GOAL']:
             self.planner.set_target(self.target_list[-1])
-            self.target_list.pop()
+            self.target_list = np.delete(arr=self.target_list, obj=-1, axis=0)
             self.state_machine = state_machine['PLANNING']
-        # mouse = pygame.mouse.get_pressed()
-        # if mouse[0]:
-        #     success = False
-        #     x, y = pygame.mouse.get_pos()
-        #     self.planner.set_target(np.array([x, y]))
-        #     self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
-        #     self.state_changed = True
-        #     if not success:
-        #         self.drone.brake()
-        #         self.state_machine = state_machine['PLANNING']
-        #     else:
-        #         self.state_machine = state_machine['EXECUTING']
 
         #Plan
         if self.state_machine == state_machine['PLANNING']:
             self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
             if not success:
                 self.drone.brake()
-                self.failed_plan += 1
-                if self.failed_plan >= 3 and norm(self.drone.velocity)==0:
+                self.fail_count += 1
+                if self.fail_count >= 3 and norm(self.drone.velocity)==0:
                     done = True
-                # print("path not found, replanning")
             else:
-                # print("path found")
                 self.state_changed = True
                 self.state_machine = state_machine['EXECUTING']
-                self.failed_plan = 0
+                self.fail_count = 0
 
         # If collision detected for planned trajectory, replan
         swep_map = np.zeros_like(self.map_gt.grid_map)
@@ -951,10 +914,10 @@ class Drone2DEnv2(gym.Env):
         elif self.state_machine == state_machine['GOAL_REACHED']:
             reward = 100.0
             done = False
-            if len(self.target_list) == 0:
+            if self.target_list.shape[0] == 0:
                 done = True
-        x = np.arange(int(self.dim[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
-        y = np.arange(int(self.dim[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
+        x = np.arange(int(self.params.map_size[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
+        y = np.arange(int(self.params.map_size[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
 
         vec_yaw = np.array([math.cos(math.radians(self.drone.yaw)), -math.sin(math.radians(self.drone.yaw))])
         view_angle = math.radians(self.drone.yaw_range / 2)
