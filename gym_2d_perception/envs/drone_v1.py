@@ -613,9 +613,9 @@ class Primitive_Node:
 class Primitive(object):
     def __init__(self, drone, params):
         self.params = params
-        self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 0.4 * params.drone_max_speed - 5)
+        self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 2)
         self.dt = 2
-        self.sample_num = 10 # sampling number for collision check
+        self.sample_num = params.drone_max_speed * self.dt // params.map_scale # sampling number for collision check
         self.target = np.array([drone.x, drone.y])
         self.search_threshold = 10
         self.phi = 10
@@ -753,6 +753,8 @@ class Drone2DEnv1(gym.Env):
         np.seterr(divide='ignore', invalid='ignore')
         self.params = params
         self.dt = params.dt
+        self.steps = 0
+        self.max_steps = params.max_steps
 
         # Setup pygame environment
         self.dim = params.map_size
@@ -938,18 +940,20 @@ class Drone2DEnv1(gym.Env):
         if collision_state == 1:
             if self.params.record_img and self.params.gaze_method != 'NoControl':
                 pygame.image.save(self.screen, self.params.img_dir+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
-            reward = -1000.0
             done = True
         elif collision_state == 2:
             if self.params.record_img and self.params.gaze_method != 'NoControl':
                 pygame.image.save(self.screen, self.params.img_dir+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
-            reward = -1000.0
             done = True
         elif self.state_machine == state_machine['GOAL_REACHED']:
-            reward = 100.0
             done = False
             if len(self.target_list) == 0:
                 done = True
+        self.steps += 1
+        if self.steps >= self.max_steps:
+            done = True
+
+        # Calculate reward
         x = np.arange(int(self.dim[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
         y = np.arange(int(self.dim[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
 

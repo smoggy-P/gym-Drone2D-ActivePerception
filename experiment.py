@@ -76,7 +76,9 @@ class Experiment:
                     # add_dynamic_collision(self.result_dir,index)
 
             if done:
+                print(self.env.steps)
                 self.env.reset()
+                
 
             rewards.append(reward)
             steps.append(i)
@@ -106,7 +108,7 @@ if __name__ == '__main__':
         'agent_number':10,
         'agent_max_speed':20,
         'agent_radius':10,
-        'drone_max_speed':40,
+        'drone_max_speed':30,
         'drone_max_acceleration':20,
         'drone_radius':5,
         'drone_max_yaw_speed':80,
@@ -115,16 +117,17 @@ if __name__ == '__main__':
         'record': False,
         'record_img': False,
         'pillar_number':3,
-        'img_dir':img_dir
+        'img_dir':img_dir,
+        'max_steps':800
     })
 
     gaze_methods = ['LookAhead']
     agent_numbers = [10]
     drone_view_depths = [80]
     drone_view_ranges = [90]
-    pillar_numbers = [15]
-    agent_max_speeds = [20]
-    drone_max_speeds = [40]
+    pillar_numbers = [5]
+    agent_max_speeds = [30]
+    drone_max_speeds = [20]
 
 
 
