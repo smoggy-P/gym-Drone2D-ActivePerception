@@ -77,6 +77,7 @@ class Experiment:
 
             if done:
                 self.env.reset()
+                self.policy.__init__(self.policy, self.params)
                 
 
             rewards.append(reward)
@@ -98,13 +99,13 @@ if __name__ == '__main__':
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v2',
         'gaze_method':'Oxford',
-        'trained_policy':True,
+        'trained_policy':False,
         'policy_dir':'./trained_policy/lookahead.zip',
         'render':True,
         'dt':0.1,
         'map_scale':10,
         'map_size':[640,480],
-        'agent_number':10,
+        'agent_number':5,
         'agent_max_speed':20,
         'agent_radius':10,
         'drone_max_speed':30,
@@ -120,7 +121,7 @@ if __name__ == '__main__':
         'max_steps':800
     })
 
-    gaze_methods = ['LookAhead']
+    gaze_methods = ['Oxford']
     agent_numbers = [10]
     drone_view_depths = [80]
     drone_view_ranges = [90]
