@@ -21,7 +21,7 @@ if __name__ == '__main__':
             'dt':0.1,
             'map_scale':10,
             'map_size':[640,480],
-            'agent_number':10,
+            'agent_number':8,
             'agent_max_speed':30,
             'agent_radius':10,
             'drone_max_speed':20,
@@ -36,7 +36,7 @@ if __name__ == '__main__':
             'max_steps':800
         })
 
-    env = gym.make('gym-2d-perception-v1', params=params) 
+    env = gym.make('gym-2d-perception-v2', params=params) 
     alg_params = {
         "policy_kwargs": dict(
             net_arch=[512, dict(pi=[256], vf=[256])],
@@ -62,6 +62,6 @@ if __name__ == '__main__':
     # model = PPO.load(path='./trained_policy/lookahead.zip')
     # model.set_env(env)
     print("Start training")
-    model.learn(total_timesteps=400000)
-    model.save('./trained_policy/lookahead_fixed_episode.zip')
+    model.learn(total_timesteps=1000000)
+    model.save('./trained_policy/policy_v2.zip')
     print("successfully write model")
