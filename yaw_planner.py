@@ -1,6 +1,6 @@
 import numpy as np
 import math
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import random
 from gym_2d_perception.envs.drone_v0 import Drone2D
 
@@ -43,7 +43,7 @@ class Oxford(object):
     """
     def __init__(self, params):
         self.params = params
-        self.last_time_observed_map = np.inf * np.ones((params.map_size[0]//params.map_scale, params.map_size[1]//params.map_scale))
+        self.last_time_observed_map = 5 * np.ones((params.map_size[0]//params.map_scale, params.map_size[1]//params.map_scale))
         self.swep_map = np.zeros((params.map_size[0]//params.map_scale, params.map_size[1]//params.map_scale))
         self.dim = params.map_size
         self.dt = params.dt
@@ -92,6 +92,14 @@ class Oxford(object):
         self.last_time_observed_map = np.where(view_map,
                                                0,
                                                self.last_time_observed_map + (1 - view_map) * self.dt)
+
+        plt.subplot(1,2,1)
+        plt.imshow(self.last_time_observed_map.T)
+        plt.subplot(1,2,2)
+        plt.imshow(self.swep_map.T)
+        plt.show()
+        plt.pause(0.001)
+        plt.clf()
 
         # calculate reward
         reward_map = np.where((self.swep_map > 0) & (self.swep_map <= self.tau_s) & (self.last_time_observed_map >= self.tau_c), self.c1, 

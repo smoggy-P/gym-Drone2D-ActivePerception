@@ -36,7 +36,7 @@ if __name__ == '__main__':
             'max_steps':800
         })
 
-    env = gym.make('gym-2d-perception-v1', params=params) 
+    env = gym.make('gym-2d-perception-v2', params=params) 
     alg_params = {
         "policy_kwargs": dict(
             net_arch=[512, dict(pi=[256], vf=[256])],
