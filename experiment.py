@@ -2,7 +2,7 @@ import gym
 import numpy as np
 import pandas as pd
 # from tqdm import tqdm
-from yaw_planner import Oxford, LookAhead, NoControl
+from yaw_planner import Oxford, LookAhead, NoControl, Rotating
 from stable_baselines3 import PPO
 # import matplotlib.pyplot as plt
 
@@ -10,6 +10,7 @@ policy_list = {
     'LookAhead': LookAhead,
     'NoControl': NoControl,
     'Oxford': Oxford,
+    'Rotating': Rotating
 }
 
 def add_to_csv(dir, index, flag):
@@ -121,23 +122,25 @@ if __name__ == '__main__':
         'max_steps':800
     })
 
-    gaze_methods = ['Oxford']
-    agent_numbers = [10]
-    drone_view_depths = [80]
-    drone_view_ranges = [90]
-    pillar_numbers = [5]
-    agent_max_speeds = [30]
-    drone_max_speeds = [20]
+    gaze_methods = ['Rotating']
+    agent_numbers = [5, 10, 15]
+    drone_view_depths = [80, 120]
+    drone_view_ranges = [90, 120]
+    pillar_numbers = [10, 10]
+    agent_max_speeds = [20, 30]
+    drone_max_speeds = [20, 30, 40]
+    yaw_max_speeds = [80, 90]
 
 
 
-    for gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_number, agent_speed, drone_speed in zip(gaze_methods, 
-                                                                                                                      agent_numbers, 
-                                                                                                                      drone_view_depths, 
-                                                                                                                      drone_view_ranges, 
-                                                                                                                      pillar_numbers, 
-                                                                                                                      agent_max_speeds, 
-                                                                                                                      drone_max_speeds):
+    for gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_number, agent_speed, drone_speed, yaw_speed in zip(gaze_methods, 
+                                                                                                                                 agent_numbers, 
+                                                                                                                                 drone_view_depths, 
+                                                                                                                                 drone_view_ranges, 
+                                                                                                                                 pillar_numbers, 
+                                                                                                                                 agent_max_speeds, 
+                                                                                                                                 drone_max_speeds,
+                                                                                                                                 yaw_max_speeds):
         cfg.gaze_method = gaze_method
         cfg.agent_number = agent_number
         cfg.drone_view_depth = drone_view_depth
@@ -145,5 +148,6 @@ if __name__ == '__main__':
         cfg.pillar_number = pillar_number
         cfg.agent_max_speed = agent_speed
         cfg.drone_max_speed = drone_speed
+        cfg.drone_max_yaw_speed = yaw_speed
         runner = Experiment(cfg, result_dir)
         runner.run()
