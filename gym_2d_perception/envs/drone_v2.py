@@ -214,7 +214,7 @@ class Agent(object):
         self.pref_velocity = np.array(pref_velocity)
         self.seen = False
         self.in_view = False
-        self.var = 0
+        self.var = 5
         self.estimate_vel = np.array([0,0])
         self.estimate_pos = np.array([0,0])
         
@@ -239,7 +239,7 @@ class Agent(object):
         
         # Check if the pedestrian is seen
         if self.in_view is True:
-            self.var = 0
+            self.var = (self.var - dt*10) if (self.var - dt*10) > 0 else 0
             self.estimate_vel = self.velocity
             self.estimate_pos = self.position
         else:
@@ -371,7 +371,7 @@ class Raycast:
 
 
     def castRays(self, player, truth_grid_map, agents):
-        rays = [self.castRay(player, pi*2 - radians(player.yaw), atan((-self.half_rays_number+i) * self.strip_width / self.distance_to_plane), truth_grid_map, agents) for i in range(self.rays_number)]
+        rays = [self.castRay(player, pi*2 - radians(player.yaw), -self.FOV/2 + self.FOV/self.rays_number*i, truth_grid_map, agents) for i in range(self.rays_number)]
         hit_list = torch.zeros(len(agents), dtype=torch.int8)
 
         for ray in rays:

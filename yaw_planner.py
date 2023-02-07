@@ -130,8 +130,13 @@ class Oxford(object):
         # plt.clf()
 
         
-        
-        
+class Rotating(object):
+    
+    def __init__(self, params):
+        self.params = params
+    
+    def plan(self, observation):
+        return 1
 
 
         
