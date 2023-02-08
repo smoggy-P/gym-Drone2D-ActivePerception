@@ -88,9 +88,10 @@ class Experiment:
         return success, fail
 
 import easydict
+import time
 
-# import os
-# os.environ["SDL_VIDEODRIVER"] = "dummy"
+import os
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 if __name__ == '__main__':
 
@@ -115,32 +116,25 @@ if __name__ == '__main__':
         'drone_max_yaw_speed':80,
         'drone_view_depth' : 80,
         'drone_view_range': 90,
-        'record': False,
+        'record': True,
         'record_img': False,
         'pillar_number':3,
         'img_dir':img_dir,
-        'max_steps':800
+        'max_steps':8000
     })
 
     gaze_methods = ['Rotating']
     agent_numbers = [5, 10, 15]
-    drone_view_depths = [80, 120]
-    drone_view_ranges = [90, 120]
-    pillar_numbers = [10, 10]
+    drone_view_depths = [80]
+    drone_view_ranges = [90]
+    pillar_numbers = [5, 10]
     agent_max_speeds = [20, 30]
     drone_max_speeds = [20, 30, 40]
-    yaw_max_speeds = [80, 90]
+    yaw_max_speeds = [80]
 
 
-
-    for gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_number, agent_speed, drone_speed, yaw_speed in zip(gaze_methods, 
-                                                                                                                                 agent_numbers, 
-                                                                                                                                 drone_view_depths, 
-                                                                                                                                 drone_view_ranges, 
-                                                                                                                                 pillar_numbers, 
-                                                                                                                                 agent_max_speeds, 
-                                                                                                                                 drone_max_speeds,
-                                                                                                                                 yaw_max_speeds):
+    time1 = time.time()
+    for gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_number, agent_speed, drone_speed, yaw_speed in zip(gaze_methods, agent_numbers, drone_view_depths, drone_view_ranges, pillar_numbers, agent_max_speeds, drone_max_speeds, yaw_max_speeds):
         cfg.gaze_method = gaze_method
         cfg.agent_number = agent_number
         cfg.drone_view_depth = drone_view_depth
@@ -151,3 +145,5 @@ if __name__ == '__main__':
         cfg.drone_max_yaw_speed = yaw_speed
         runner = Experiment(cfg, result_dir)
         runner.run()
+        print("one round finished, time:", time.time()-time1)
+        time1 = time.time()
