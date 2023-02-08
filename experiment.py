@@ -133,21 +133,21 @@ if __name__ == '__main__':
 
 
 
-    for gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_number, agent_speed, drone_speed, yaw_speed in zip(gaze_methods, 
-                                                                                                                                 agent_numbers, 
-                                                                                                                                 drone_view_depths, 
-                                                                                                                                 drone_view_ranges, 
-                                                                                                                                 pillar_numbers, 
-                                                                                                                                 agent_max_speeds, 
-                                                                                                                                 drone_max_speeds,
-                                                                                                                                 yaw_max_speeds):
-        cfg.gaze_method = gaze_method
-        cfg.agent_number = agent_number
-        cfg.drone_view_depth = drone_view_depth
-        cfg.drone_view_range = drone_view_range
-        cfg.pillar_number = pillar_number
-        cfg.agent_max_speed = agent_speed
-        cfg.drone_max_speed = drone_speed
-        cfg.drone_max_yaw_speed = yaw_speed
-        runner = Experiment(cfg, result_dir)
-        runner.run()
+    # for gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_number, agent_speed, drone_speed in zip(gaze_methods, 
+    #                                                                                                                 agent_numbers, 
+    #                                                                                                                 drone_view_depths, 
+    #                                                                                                                 drone_view_ranges, 
+    #                                                                                                                 pillar_numbers, 
+    #                                                                                                                 agent_max_speeds, 
+    #                                                                                                                 drone_max_speeds):
+    #     print(1)
+        # cfg.gaze_method = gaze_method
+        # cfg.agent_number = agent_number
+        # cfg.drone_view_depth = drone_view_depth
+        # cfg.drone_view_range = drone_view_range
+        # cfg.pillar_number = pillar_number
+        # cfg.agent_max_speed = agent_speed
+        # cfg.drone_max_speed = drone_speed
+        # cfg.drone_max_yaw_speed = yaw_speed
+        # runner = Experiment(cfg, result_dir)
+        # runner.run()
