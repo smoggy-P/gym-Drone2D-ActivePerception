@@ -50,7 +50,7 @@ def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_
 
 if __name__ == '__main__':
 
-    gaze_methods = ['Oxford']
+    gaze_methods = ['Oxford', 'Rotating']
     agent_numbers = [5, 10, 15]
     drone_view_depths = [80]
     drone_view_ranges = [90]
