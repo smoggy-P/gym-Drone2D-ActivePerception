@@ -14,7 +14,7 @@ policy_list = {
 }
 
 def add_to_csv(dir, index, flag):
-    df = pd.read_csv(dir, index_col=['Method','Number of agents','Number of pillars', 'View depth', 'View range', 'Agent speed', 'Drone speed']).T
+    df = pd.read_csv(dir, index_col=['Method','Number of agents','Number of pillars', 'View depth', 'View range', 'Agent speed', 'Drone speed', 'Yaw speed']).T
     
     if index in df.T.index:
         df[index][flag] += 1
@@ -65,7 +65,8 @@ class Experiment:
                          self.params.drone_view_depth, 
                          self.params.drone_view_range, 
                          self.params.agent_max_speed,
-                         self.params.drone_max_speed)
+                         self.params.drone_max_speed,
+                         self.params.drone_max_yaw_speed)
                 if info['state_machine'] == 1:
                     add_to_csv(self.result_dir,index,'Success')
                     # add_success(self.result_dir,index)
@@ -86,46 +87,4 @@ class Experiment:
             if self.params.render:
                 self.env.render()
         return success, fail
-
-import easydict
-import time
-
-if __name__ == '__main__':
-
-    result_dir = './experiment/results_1.csv'
-    img_dir = './experiment/fails/new/'
-
-    cfg = easydict.EasyDict({
-        'env':'gym-2d-perception-v2',
-        'gaze_method':'Oxford',
-        'trained_policy':False,
-        'policy_dir':'./trained_policy/lookahead.zip',
-        'render':True,
-        'dt':0.1,
-        'map_scale':10,
-        'map_size':[640,480],
-        'agent_number':5,
-        'agent_max_speed':20,
-        'agent_radius':10,
-        'drone_max_speed':30,
-        'drone_max_acceleration':20,
-        'drone_radius':5,
-        'drone_max_yaw_speed':80,
-        'drone_view_depth' : 80,
-        'drone_view_range': 90,
-        'record': True,
-        'record_img': False,
-        'pillar_number':3,
-        'img_dir':img_dir,
-        'max_steps':8000
-    })
-
-    gaze_methods = ['Rotating']
-    agent_numbers = [5, 10, 15]
-    drone_view_depths = [80]
-    drone_view_ranges = [90]
-    pillar_numbers = [5, 10]
-    agent_max_speeds = [20, 30]
-    drone_max_speeds = [20, 30, 40]
-    yaw_max_speeds = [80]
 
