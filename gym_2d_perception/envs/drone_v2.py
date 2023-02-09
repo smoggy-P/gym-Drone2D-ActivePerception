@@ -217,6 +217,9 @@ class Agent(object):
         self.var = 5
         self.estimate_vel = np.array([0,0])
         self.estimate_pos = np.array([0,0])
+    
+    def estimated_pos(self, t):
+        return self.estimate_pos + t*self.estimate_vel
         
     def step(self, edge_size_x, edge_size_y, map_width, map_height, dt):
         new_position = self.position + self.velocity * dt
@@ -565,6 +568,10 @@ class Trajectory2D(object):
         self.velocities.pop(0)
     def __len__(self):
         return len(self.positions)
+    def get_swep_map(self, swep_map):
+        for i, pos in enumerate(self.positions):
+            # unparam
+            swep_map[int(pos[0]//10), int(pos[1]//10)] = i * 0.1
 
 class Primitive_Node:
         def __init__(self, pos, vel, cost, target, parent_index, coeff, itr):
@@ -589,6 +596,11 @@ class Primitive(object):
         self.target = np.array([drone.x, drone.y])
         self.search_threshold = 10
         self.phi = 10
+        self.replan = True
+        self.trajectory = Trajectory2D()
+    
+    def check_replan():
+        return True
 
     def set_target(self, target_pos):
         self.target = target_pos
@@ -605,6 +617,7 @@ class Primitive(object):
             rx: x position list of the final path
             ry: y position list of the final path
         """
+        self.trajectory = Trajectory2D()
         start_node = Primitive_Node(pos=start_pos, 
                                     vel=start_vel,
                                     cost=0, 
@@ -663,18 +676,17 @@ class Primitive(object):
                         # This path is the best until now. record it
                         open_set[next_node.index] = next_node
         # print("planning time:", time.time()-time1)
-        trajectory = Trajectory2D()
         if success:
             cur_node = goal_node
             
             while(cur_node!=start_node): 
-                trajectory.positions.extend([waypoint_from_traj(cur_node.coeff, t).position for t in np.arange(self.dt, 0, -update_t)])
-                trajectory.velocities.extend([waypoint_from_traj(cur_node.coeff, t).velocity for t in np.arange(self.dt, 0, -update_t)])
+                self.trajectory.positions.extend([waypoint_from_traj(cur_node.coeff, t).position for t in np.arange(self.dt, 0, -update_t)])
+                self.trajectory.velocities.extend([waypoint_from_traj(cur_node.coeff, t).velocity for t in np.arange(self.dt, 0, -update_t)])
                 cur_node = closed_set[cur_node.parent_index]
-            trajectory.positions.reverse()
-            trajectory.velocities.reverse()
-
-        return trajectory, success
+            self.trajectory.positions.reverse()
+            self.trajectory.velocities.reverse()
+        
+        return success
 
     
     def is_free(self, coeff, occupancy_map, agents, itr):
@@ -792,7 +804,6 @@ class Drone2DEnv2(gym.Env):
 
         # Define planner
         self.planner = Primitive(self.drone, params)
-        self.trajectory = Trajectory2D()
         self.swep_map = np.zeros(array(params.map_size)//params.map_scale)
         self.state_machine = state_machine['WAIT_FOR_GOAL']
         self.state_changed = False
@@ -801,7 +812,7 @@ class Drone2DEnv2(gym.Env):
         # Define action and observation space
         self.info = {
             'drone':self.drone,
-            'trajectory':self.trajectory,
+            'trajectory':self.planner.trajectory,
             'state_machine':self.state_machine,
             'collision_flag':0
         }
@@ -854,7 +865,7 @@ class Drone2DEnv2(gym.Env):
 
         #Plan
         if self.state_machine == state_machine['PLANNING']:
-            self.trajectory, success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
+            success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
             if not success:
                 self.drone.brake()
                 self.fail_count += 1
@@ -867,26 +878,25 @@ class Drone2DEnv2(gym.Env):
 
         # If collision detected for planned trajectory, replan
         swep_map = np.zeros_like(self.map_gt.grid_map)
-        for i, pos in enumerate(self.trajectory.positions):
+        for i, pos in enumerate(self.planner.trajectory.positions):
             swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.dt
             for agent in self.agents:
                 if agent.seen:
                     estimate_pos = agent.estimate_pos + i * self.dt * agent.estimate_vel
                     if norm(estimate_pos - pos) <= self.drone.radius + agent.radius:
                         self.state_machine = state_machine['PLANNING']
-                        self.state_changed = True   
-        obs_map = np.where((self.drone.map.grid_map==0) | (self.drone.map.grid_map==2), 0, 1)
-        if np.sum(obs_map * swep_map) > 0:
+                        self.state_changed = True 
+        if np.sum(np.where((self.drone.map.grid_map==1),1, 0) * swep_map) > 0:
             self.state_machine = state_machine['PLANNING']
             self.state_changed = True
 
         # Execute trajectory
-        if self.trajectory.positions != [] :
-            self.drone.velocity = self.trajectory.velocities[0]
-            self.drone.x = round(self.trajectory.positions[0][0])
-            self.drone.y = round(self.trajectory.positions[0][1])
-            self.trajectory.pop()
-            if self.trajectory.positions == []:
+        if self.planner.trajectory.positions != [] :
+            self.drone.velocity = self.planner.trajectory.velocities[0]
+            self.drone.x = round(self.planner.trajectory.positions[0][0])
+            self.drone.y = round(self.planner.trajectory.positions[0][1])
+            self.planner.trajectory.pop()
+            if self.planner.trajectory.positions == []:
                 self.state_changed = True
                 self.state_machine = state_machine['GOAL_REACHED']
         
@@ -936,7 +946,7 @@ class Drone2DEnv2(gym.Env):
         # wrap up information
         self.info = {
             'drone':self.drone,
-            'trajectory':self.trajectory,
+            'trajectory':self.planner.trajectory,
             'swep_map':self.swep_map,
             'state_machine':self.state_machine,
             'collision_flag':collision_state
@@ -991,8 +1001,8 @@ class Drone2DEnv2(gym.Env):
             )
             draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
             
-            if len(self.trajectory.positions) > 1:
-                pygame.draw.lines(self.screen, (100,100,100), False, self.trajectory.positions)
+            if len(self.planner.trajectory.positions) > 1:
+                pygame.draw.lines(self.screen, (100,100,100), False, self.planner.trajectory.positions)
 
             if len(self.agents) > 0:
                 for agent in self.agents:

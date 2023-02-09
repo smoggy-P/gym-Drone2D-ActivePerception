@@ -2,7 +2,7 @@ import numpy as np
 import cvxpy as cp
 
 # Define the prediction horizon and control horizon
-N = 10
+N = 4
 M = 5
 
 # Define the state and control constraints
@@ -12,7 +12,7 @@ u_min = np.array([-1, -1])
 u_max = np.array([1, 1])
 
 # Define the initial state
-x0 = np.array([5, 5, 1, 0])
+x0 = np.array([7, 7, 1, 0])
 
 # Define the system dynamics
 A = np.array([[1, 0, 1, 0],
@@ -29,8 +29,8 @@ Q = np.eye(4)
 R = np.eye(2)
 
 # Define the obstacle constraints
-obstacle_x = np.array([5, 5])
-obstacle_r = 1
+obstacle_x = np.array([5, 3])
+obstacle_r = 5
 
 # Define the optimization variables
 x = cp.Variable((4, N+1))

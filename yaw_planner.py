@@ -93,13 +93,13 @@ class Oxford(object):
                                                0,
                                                self.last_time_observed_map + (1 - view_map) * self.dt)
 
-        plt.subplot(1,2,1)
-        plt.imshow(self.last_time_observed_map.T)
-        plt.subplot(1,2,2)
-        plt.imshow(self.swep_map.T)
-        plt.show()
-        plt.pause(0.001)
-        plt.clf()
+        # plt.subplot(1,2,1)
+        # plt.imshow(self.last_time_observed_map.T)
+        # plt.subplot(1,2,2)
+        # plt.imshow(self.swep_map.T)
+        # plt.show()
+        # plt.pause(0.001)
+        # plt.clf()
 
         # calculate reward
         reward_map = np.where((self.swep_map > 0) & (self.swep_map <= self.tau_s) & (self.last_time_observed_map >= self.tau_c), self.c1, 
