@@ -4,9 +4,10 @@ from experiment import Experiment
 from threading import Thread
 
 import os
+from datetime import datetime
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ['SDL_AUDIODRIVER'] = 'dsp'
-result_dir = './experiment/results_3.csv'
+result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 img_dir = './experiment/fails/new/'
 
 def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_number, agent_speed, drone_speed, yaw_speed):

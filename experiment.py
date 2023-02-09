@@ -4,6 +4,7 @@ import pandas as pd
 # from tqdm import tqdm
 from yaw_planner import Oxford, LookAhead, NoControl, Rotating
 from stable_baselines3 import PPO
+from datetime import datetime
 # import matplotlib.pyplot as plt
 
 policy_list = {
@@ -37,6 +38,20 @@ class Experiment:
         self.max_step = 10000
         self.result_dir = dir
         self.model = None
+
+        d = {'Method':[],
+            'Number of agents':[],
+            'Number of pillars':[], 
+            'View depth':[], 
+            'View range':[], 
+            'Agent speed':[], 
+            'Drone speed':[], 
+            'Yaw speed':[],
+            'Success':[],
+            'Static Collision':[],
+            'Dynamic Collision':[]}
+        df = pd.DataFrame(d)
+        df.to_csv(dir, index=False)
 
         if self.params.trained_policy:
             self.model = PPO.load(path='./trained_policy/lookahead.zip')
@@ -87,4 +102,3 @@ class Experiment:
             if self.params.render:
                 self.env.render()
         return success, fail
-
