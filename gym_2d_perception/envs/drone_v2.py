@@ -6,6 +6,7 @@ import math
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+import cvxpy as cp
 from datetime import datetime
 from numpy import array, pi, cos, sin
 from numpy.linalg import norm
@@ -596,11 +597,8 @@ class Primitive(object):
         self.target = np.array([drone.x, drone.y])
         self.search_threshold = 10
         self.phi = 10
-        self.replan = True
         self.trajectory = Trajectory2D()
     
-    def check_replan():
-        return True
 
     def set_target(self, target_pos):
         self.target = target_pos
@@ -617,6 +615,8 @@ class Primitive(object):
             rx: x position list of the final path
             ry: y position list of the final path
         """
+        if len(self.trajectory) != 0:
+            return True
         self.trajectory = Trajectory2D()
         start_node = Primitive_Node(pos=start_pos, 
                                     vel=start_vel,
@@ -729,6 +729,87 @@ class Primitive(object):
 
 
         return True
+
+class MPC(object):
+
+    def __init__(self, drone, params):
+        self.params = params
+        self.target = np.array([drone.x, drone.y])
+        # Define the prediction horizon and control horizon
+        self.N = 5
+
+        # Define the state and control constraints
+        self.v_max = params.drone_max_speed
+        self.x_max = params.map_size[0]
+        self.y_max = params.map_size[1]
+        self.u_max = params.drone_max_acceleration
+        self.dt = 2
+
+        # Define the system dynamics
+        self.A = np.array([[1, 0, self.dt, 0],
+                           [0, 1, 0, self.dt],
+                           [0, 0, 1, 0],
+                           [0, 0, 0, 1]])
+        self.B = np.array([[0.5*self.dt**2, 0],
+                           [0, 0.5*self.dt**2],
+                           [self.dt, 0],
+                           [0, self.dt]])
+
+        # Define the cost function matrices
+        self.Q = np.eye(4)
+        self.R = np.eye(2)
+
+        self.trajectory = Trajectory2D()
+
+    def set_target(self, target):
+        self.target = np.zeros(4)
+        self.target[:2] = target
+    def plan(self, start_pos, start_vel, occupancy_map, agents, dt):
+        if len(self.trajectory) != 0:
+            return True
+
+        x0 = np.array([start_pos[0], start_pos[1], start_vel[0], start_vel[1]])
+        
+        # Define the optimization variables
+        x = cp.Variable((4, self.N+1))
+        u = cp.Variable((2, self.N))
+
+        # Define the constraints
+        constraints = []
+        for i in range(self.N):
+            constraints += [x[:,i+1] == self.A@x[:,i] + self.B@u[:,i]]
+            # constraints += [cp.norm(x[:2,i+1] - obstacle_x)**2 >= obstacle_r**2]
+            constraints += [np.zeros(2) <= x[:2,i], x[:2,i] <= np.array(self.params.map_size)]
+            constraints += [cp.norm(x[2:,i]) <= self.v_max]
+            constraints += [cp.norm(u[:,i]) <= self.u_max]
+        constraints += [x[:,0] == x0]
+
+        # Define the cost function
+        cost = 0
+        for i in range(self.N):
+            cost += cp.quad_form(x[:,i] - self.target, self.Q) + cp.quad_form(u[:,i], self.R)
+
+        # Form the optimization problem
+        prob = cp.Problem(cp.Minimize(cost), constraints)
+
+        # Solve the optimization problem
+        result = prob.solve()
+        
+        u_opt = u.value
+
+        # Simulate the system to get the state trajectory
+        self.trajectory = Trajectory2D()
+        x = x0
+        for i in range(self.N):
+            for j in np.arange(0, self.dt, self.params.dt): 
+                t = j + self.params.dt
+                self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
+                self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
+            x = self.A@x + self.B@u_opt[:,i]
+
+
+        return True
+
 class Drone2DEnv2(gym.Env):
      
     def __init__(self, params):
@@ -803,10 +884,9 @@ class Drone2DEnv2(gym.Env):
         self.map_gt.init_obstacles(self.obstacles, self.agents)
 
         # Define planner
-        self.planner = Primitive(self.drone, params)
+        self.planner = MPC(self.drone, params)
         self.swep_map = np.zeros(array(params.map_size)//params.map_scale)
         self.state_machine = state_machine['WAIT_FOR_GOAL']
-        self.state_changed = False
         self.fail_count = 0
 
         # Define action and observation space
@@ -837,12 +917,10 @@ class Drone2DEnv2(gym.Env):
     
     def step(self, a):
         done = False
-        self.state_changed = False
         self.steps += 1
         # Update state machine
         if self.state_machine == state_machine['GOAL_REACHED']:
             self.state_machine = state_machine['WAIT_FOR_GOAL']
-            self.state_changed = True
         # Update gridmap for dynamic obstacles
         self.map_gt.update_dynamic_grid(self.agents)
 
@@ -864,17 +942,17 @@ class Drone2DEnv2(gym.Env):
             self.state_machine = state_machine['PLANNING']
 
         #Plan
-        if self.state_machine == state_machine['PLANNING']:
-            success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
-            if not success:
-                self.drone.brake()
-                self.fail_count += 1
-                if self.fail_count >= 3 and norm(self.drone.velocity)==0:
-                    done = True
-            else:
-                self.state_changed = True
-                self.state_machine = state_machine['EXECUTING']
-                self.fail_count = 0
+        # if self.state_machine == state_machine['PLANNING']:
+        success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
+        if not success:
+            self.drone.brake()
+            self.fail_count += 1
+            if self.fail_count >= 3 and norm(self.drone.velocity)==0:
+                done = True
+        else:
+            self.state_changed = True
+            self.state_machine = state_machine['EXECUTING']
+            self.fail_count = 0
 
         # If collision detected for planned trajectory, replan
         swep_map = np.zeros_like(self.map_gt.grid_map)
@@ -884,11 +962,11 @@ class Drone2DEnv2(gym.Env):
                 if agent.seen:
                     estimate_pos = agent.estimate_pos + i * self.dt * agent.estimate_vel
                     if norm(estimate_pos - pos) <= self.drone.radius + agent.radius:
-                        self.state_machine = state_machine['PLANNING']
-                        self.state_changed = True 
+                        self.planner.trajectory.positions = []
+                        self.planner.trajectory.velocities = []
         if np.sum(np.where((self.drone.map.grid_map==1),1, 0) * swep_map) > 0:
-            self.state_machine = state_machine['PLANNING']
-            self.state_changed = True
+            self.planner.trajectory.positions = []
+            self.planner.trajectory.velocities = []
 
         # Execute trajectory
         if self.planner.trajectory.positions != [] :
@@ -896,23 +974,11 @@ class Drone2DEnv2(gym.Env):
             self.drone.x = round(self.planner.trajectory.positions[0][0])
             self.drone.y = round(self.planner.trajectory.positions[0][1])
             self.planner.trajectory.pop()
-            if self.planner.trajectory.positions == []:
-                self.state_changed = True
+            if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10:
                 self.state_machine = state_machine['GOAL_REACHED']
         
         # Execute gaze control
         self.drone.step_yaw(a*self.params.drone_max_yaw_speed)
-        
-        # Print state machine
-        # if self.state_changed:
-        #     if self.state_machine == state_machine['GOAL_REACHED']:
-        #         print("state: goal reached")
-        #     elif self.state_machine == state_machine['WAIT_FOR_GOAL']:
-        #         print("state: wait for goal")
-        #     elif self.state_machine == state_machine['PLANNING']:
-        #         print("state: planning")
-        #     elif self.state_machine == state_machine['EXECUTING']:
-        #         print("state: executing trajectory")
 
         # Return reward
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
@@ -1007,7 +1073,7 @@ class Drone2DEnv2(gym.Env):
             if len(self.agents) > 0:
                 for agent in self.agents:
                     agent.render(self.screen)
-            pygame.draw.circle(self.screen, (0,0,255), self.planner.target, self.drone.radius)
+            pygame.draw.circle(self.screen, (0,0,255), self.planner.target[:2], self.drone.radius)
             default_font = pygame.font.SysFont('Arial', 15)
             pygame.Surface.blit(self.screen,
                 default_font.render('STATE: '+list(state_machine.keys())[list(state_machine.values()).index(self.state_machine)], False, (0, 102, 0)),
