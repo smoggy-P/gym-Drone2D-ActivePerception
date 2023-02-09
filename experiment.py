@@ -1,6 +1,7 @@
 import gym
 import numpy as np
 import pandas as pd
+import os
 # from tqdm import tqdm
 from yaw_planner import Oxford, LookAhead, NoControl, Rotating
 from stable_baselines3 import PPO
@@ -38,20 +39,20 @@ class Experiment:
         self.max_step = 10000
         self.result_dir = dir
         self.model = None
-
-        d = {'Method':[],
-            'Number of agents':[],
-            'Number of pillars':[], 
-            'View depth':[], 
-            'View range':[], 
-            'Agent speed':[], 
-            'Drone speed':[], 
-            'Yaw speed':[],
-            'Success':[],
-            'Static Collision':[],
-            'Dynamic Collision':[]}
-        df = pd.DataFrame(d)
-        df.to_csv(dir, index=False)
+        if not os.path.isfile(dir):
+            d = {'Method':[],
+                'Number of agents':[],
+                'Number of pillars':[], 
+                'View depth':[], 
+                'View range':[], 
+                'Agent speed':[], 
+                'Drone speed':[], 
+                'Yaw speed':[],
+                'Success':[],
+                'Static Collision':[],
+                'Dynamic Collision':[]}
+            df = pd.DataFrame(d)
+            df.to_csv(dir, index=False)
 
         if self.params.trained_policy:
             self.model = PPO.load(path='./trained_policy/lookahead.zip')
