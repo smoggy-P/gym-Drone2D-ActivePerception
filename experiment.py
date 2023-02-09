@@ -90,9 +90,6 @@ class Experiment:
 import easydict
 import time
 
-import os
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-
 if __name__ == '__main__':
 
     result_dir = './experiment/results_1.csv'
