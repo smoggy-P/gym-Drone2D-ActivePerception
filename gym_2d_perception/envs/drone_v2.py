@@ -743,7 +743,7 @@ class MPC(object):
         self.x_max = params.map_size[0]
         self.y_max = params.map_size[1]
         self.u_max = params.drone_max_acceleration
-        self.dt = 2
+        self.dt = 0.5
 
         # Define the system dynamics
         self.A = np.array([[1, 0, self.dt, 0],
@@ -764,6 +764,18 @@ class MPC(object):
     def set_target(self, target):
         self.target = np.zeros(4)
         self.target[:2] = target
+
+    def get_coeff(self, p,r_drone,p_obs,r_obs):
+            point=p_obs+(r_drone+r_obs)*(p-p_obs)/np.linalg.norm(p-p_obs)
+            a=-(p-p_obs)[0]/(p-p_obs)[1]
+            b=point[1]-a*point[0]
+            A=np.array([-a,1])
+            if np.dot(A,p) > b:
+                A=-A
+                b=-b
+            A+=np.random.normal(0, 0.01, 1)
+            return A,b
+
     def plan(self, start_pos, start_vel, occupancy_map, agents, dt):
         if len(self.trajectory) != 0:
             return True
@@ -773,12 +785,18 @@ class MPC(object):
         # Define the optimization variables
         x = cp.Variable((4, self.N+1))
         u = cp.Variable((2, self.N))
-
+        
         # Define the constraints
         constraints = []
+        
         for i in range(self.N):
             constraints += [x[:,i+1] == self.A@x[:,i] + self.B@u[:,i]]
             # constraints += [cp.norm(x[:2,i+1] - obstacle_x)**2 >= obstacle_r**2]
+            for agent in agents:
+                if agent.seen:
+                    p_obs = agent.estimated_pos(i*self.dt)
+                    A, b = self.get_coeff(x0[:2], 5, p_obs, agent.radius)
+                    constraints += [A@x[:2,i+1] <= b.flatten()]
             constraints += [np.zeros(2) <= x[:2,i], x[:2,i] <= np.array(self.params.map_size)]
             constraints += [cp.norm(x[2:,i]) <= self.v_max]
             constraints += [cp.norm(u[:,i]) <= self.u_max]
@@ -796,7 +814,8 @@ class MPC(object):
         result = prob.solve()
         
         u_opt = u.value
-
+        if u_opt is None:
+            return False
         # Simulate the system to get the state trajectory
         self.trajectory = Trajectory2D()
         x = x0
