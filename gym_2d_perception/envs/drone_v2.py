@@ -746,7 +746,7 @@ class MPC(object):
         self.x_max = params.map_size[0]
         self.y_max = params.map_size[1]
         self.u_max = params.drone_max_acceleration
-        self.dt = 1
+        self.dt = 0.5
 
         # Define the system dynamics
         self.A = np.array([[1, 0, self.dt, 0],
@@ -763,6 +763,7 @@ class MPC(object):
         self.R = np.eye(2)
 
         self.trajectory = Trajectory2D()
+        self.full_trajectory = Trajectory2D()
 
     def set_target(self, target):
         self.target = np.zeros(4)
@@ -805,6 +806,8 @@ class MPC(object):
         for i in range(self.N):
             constraints += [x[:,i+1] == self.A@x[:,i] + self.B@u[:,i]]
             if A_static.shape[0] > 0:
+                if (A_static @ x0[:2] >= b_static).any():
+                    return False
                 constraints += [A_static@x[:2,i+1] <= b_static.flatten()]
 
             for agent in agents:
@@ -833,12 +836,16 @@ class MPC(object):
             return False
         # Simulate the system to get the state trajectory
         self.trajectory = Trajectory2D()
+        self.full_trajectory = Trajectory2D()
         x = x0
-        for i in range(2):
+        for i in range(self.N):
             for j in np.arange(0, self.dt, self.params.dt): 
                 t = j + self.params.dt
-                self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
-                self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
+                self.full_trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
+                self.full_trajectory.velocities.append(x[2:]+t*u_opt[:,i])
+                if i <= 0:
+                    self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
+                    self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
             x = self.A@x + self.B@u_opt[:,i]
 
 
@@ -909,8 +916,6 @@ def binary_image_clustering(image, eps, min_samples, start_pos):
 
             position, r, x2, y2 = approx_circle_from_ellipse(center[0], center[1], width/2, height/2, math.radians(angle), start_pos[0], start_pos[1])
             plt.scatter(x2, y2, c='y')
-            print(center[0], center[1], width/2, height/2, angle, start_pos[0], start_pos[1])
-
             ell = Circle(position, r, color='r', fill=False)
             plt.gca().add_artist(ell)
         rs.append(r)
@@ -922,7 +927,10 @@ def binary_image_clustering(image, eps, min_samples, start_pos):
     
     plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
     plt.axis([0,640,480,0])
+    
     plt.show()
+    plt.pause(0.1)
+    plt.clf()
 
     return positions, rs
 
@@ -936,7 +944,7 @@ class Drone2DEnv2(gym.Env):
     def __init__(self, params):
         np.seterr(divide='ignore', invalid='ignore')
         gym.logger.set_level(40)
-        # plt.ion()
+        plt.ion()
 
         self.steps = 0
         self.max_steps = params.max_steps
@@ -987,7 +995,7 @@ class Drone2DEnv2(gym.Env):
         
         # Generate dynamic obstacles
         self.agents = []
-        while(len(self.agents) <= params.agent_number):
+        while(len(self.agents) < params.agent_number):
             x = array([cos(2*pi*len(self.agents) / params.agent_number), 
                        sin(2*pi*len(self.agents) / params.agent_number)])
             vel = -x * params.agent_max_speed
@@ -1058,7 +1066,7 @@ class Drone2DEnv2(gym.Env):
         
         # If collision detected for planned trajectory, replan
         swep_map = np.zeros_like(self.map_gt.grid_map)
-        for i, pos in enumerate(self.planner.trajectory.positions):
+        for i, pos in enumerate(self.planner.full_trajectory.positions):
             swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.dt
             for agent in self.agents:
                 if agent.seen:
@@ -1081,6 +1089,7 @@ class Drone2DEnv2(gym.Env):
         if not success:
             self.drone.brake()
             self.fail_count += 1
+            print("fail plan, fail count:", self.fail_count)
             if self.fail_count >= 3 and norm(self.drone.velocity)==0:
                 done = True
         else:
@@ -1160,6 +1169,7 @@ class Drone2DEnv2(gym.Env):
         # plt.pause(0.001)
         # plt.clf()
         # print(time.time() - time1)
+        # time.sleep(0.1)
         return state, reward, done, self.info
     
     def reset(self):
@@ -1190,8 +1200,8 @@ class Drone2DEnv2(gym.Env):
             # )
             draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
             
-            if len(self.planner.trajectory.positions) > 1:
-                pygame.draw.lines(self.screen, (100,100,100), False, self.planner.trajectory.positions)
+            if len(self.planner.full_trajectory.positions) > 1:
+                pygame.draw.lines(self.screen, (100,100,100), False, self.planner.full_trajectory.positions)
 
             if len(self.agents) > 0:
                 for agent in self.agents:
