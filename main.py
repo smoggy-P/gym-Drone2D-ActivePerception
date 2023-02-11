@@ -14,10 +14,14 @@ img_dir = './experiment/fails/new/'
 def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_number, agent_speed, drone_speed, yaw_speed):
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v2',
-        'gaze_method':'Oxford',
+        'render':True,
+        'record': False,
+        'record_img': False,
         'trained_policy':False,
+        'planner':'MPC',
         'policy_dir':'./trained_policy/lookahead.zip',
-        'render':False,
+
+        'gaze_method':'Oxford',
         'dt':0.1,
         'map_scale':10,
         'map_size':[640,480],
@@ -30,8 +34,6 @@ def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_
         'drone_max_yaw_speed':80,
         'drone_view_depth' : 80,
         'drone_view_range': 90,
-        'record': True,
-        'record_img': False,
         'pillar_number':3,
         'img_dir':img_dir,
         'max_steps':8000
@@ -49,7 +51,6 @@ def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_
 
 
 if __name__ == '__main__':
-
     gaze_methods = ['Oxford']
     agent_numbers = [15]
     drone_view_depths = [80]

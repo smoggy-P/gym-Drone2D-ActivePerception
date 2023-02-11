@@ -9,8 +9,11 @@ import matplotlib.pyplot as plt
 import cvxpy as cp
 from datetime import datetime
 from numpy import array, pi, cos, sin
-from numpy.linalg import norm
+from numpy.linalg import norm, inv
 from math import cos, sin, atan2, asin, sqrt, radians, tan, ceil, atan
+from sklearn.cluster import DBSCAN
+from matplotlib.patches import Circle, Ellipse
+
 color_dict = {
     'OCCUPIED'   : (150, 150, 150),
     'UNOCCUPIED' : (50, 50, 50),
@@ -736,7 +739,7 @@ class MPC(object):
         self.params = params
         self.target = np.array([drone.x, drone.y])
         # Define the prediction horizon and control horizon
-        self.N = 5
+        self.N = 10
 
         # Define the state and control constraints
         self.v_max = params.drone_max_speed
@@ -760,6 +763,7 @@ class MPC(object):
         self.R = np.eye(2)
 
         self.trajectory = Trajectory2D()
+        self.full_trajectory = Trajectory2D()
 
     def set_target(self, target):
         self.target = np.zeros(4)
@@ -780,6 +784,8 @@ class MPC(object):
         if len(self.trajectory) != 0:
             return True
 
+        positions, rs = binary_image_clustering(np.where(occupancy_map.grid_map == grid_type['OCCUPIED'], 1, 0), 1.5, 1, start_pos)
+
         x0 = np.array([start_pos[0], start_pos[1], start_vel[0], start_vel[1]])
         
         # Define the optimization variables
@@ -788,16 +794,28 @@ class MPC(object):
         
         # Define the constraints
         constraints = []
-        
+        A_static, b_static = [], []
+        for pos, r in zip(positions, rs):
+                A_s, b_s = self.get_coeff(x0[:2], self.params.drone_radius, pos, r)
+                A_static.append(A_s)
+                b_static.append(b_s)
+
+        A_static = np.array(A_static)
+        b_static = np.array(b_static)
+
         for i in range(self.N):
             constraints += [x[:,i+1] == self.A@x[:,i] + self.B@u[:,i]]
-            # constraints += [cp.norm(x[:2,i+1] - obstacle_x)**2 >= obstacle_r**2]
+            if A_static.shape[0] > 0:
+                if (A_static @ x0[:2] >= b_static).any():
+                    return False
+                constraints += [A_static@x[:2,i+1] <= b_static.flatten()]
+
             for agent in agents:
                 if agent.seen:
                     p_obs = agent.estimated_pos(i*self.dt)
-                    A, b = self.get_coeff(x0[:2], 5, p_obs, agent.radius)
+                    A, b = self.get_coeff(x0[:2], self.params.drone_radius, p_obs, agent.radius)
                     constraints += [A@x[:2,i+1] <= b.flatten()]
-            constraints += [np.zeros(2) <= x[:2,i], x[:2,i] <= np.array(self.params.map_size)]
+            constraints += [15*np.ones(2) <= x[:2,i], x[:2,i] <= np.array(self.params.map_size)-15]
             constraints += [cp.norm(x[2:,i]) <= self.v_max]
             constraints += [cp.norm(u[:,i]) <= self.u_max]
         constraints += [x[:,0] == x0]
@@ -818,17 +836,109 @@ class MPC(object):
             return False
         # Simulate the system to get the state trajectory
         self.trajectory = Trajectory2D()
+        self.full_trajectory = Trajectory2D()
         x = x0
         for i in range(self.N):
             for j in np.arange(0, self.dt, self.params.dt): 
                 t = j + self.params.dt
-                self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
-                self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
+                self.full_trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
+                self.full_trajectory.velocities.append(x[2:]+t*u_opt[:,i])
+                if i <= 0:
+                    self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
+                    self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
             x = self.A@x + self.B@u_opt[:,i]
 
 
         return True
+def approx_circle_from_ellipse(x0, y0, a, b, theta, x1, y1):
 
+    a = 10 if a <= 0 else a
+    b = 10 if b <= 0 else b
+
+    A = inv(np.array([
+        [cos(theta), -sin(theta)],
+        [sin(theta), cos(theta)]
+    ]))
+
+    import cvxpy as cp
+
+    x = cp.Variable((2))
+    constraint = [cp.quad_form(A@(x-np.array([x0, y0])), np.array([[1/a**2,0],[0,1/b**2]])) <= 1]
+
+
+    cost = cp.norm(x - np.array([x1, y1]))
+    prob = cp.Problem(cp.Minimize(cost), constraint)
+
+    # Solve the optimization problem
+    result = prob.solve()
+    x2, y2 = x.value[0], x.value[1]
+    x3, y3 = 2*x0 - x2, 2*y0-y2
+    k = -(x1-x2)/(y1-y2)
+    r = abs(k*(x3-x2)+y2-y3)/sqrt(k**2+1)/2
+    dis = sqrt((x2-x1)**2+(y2-y1)**2)
+
+    x4 = (r/dis)*(x2-x1)+x2
+    y4 = (r/dis)*(y2-y1)+y2
+    return (x4, y4), r, x2, y2
+
+def binary_image_clustering(image, eps, min_samples, start_pos):
+    image[0,:] = 0
+    image[-1,:] = 0
+    image[:,0] = 0
+    image[:,-1] = 0
+    binary_indices = np.array(np.where(image == 1)).T
+
+    if binary_indices.shape[0] == 0:
+        return [],[]
+
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(binary_indices)
+    labels = dbscan.labels_
+    unique_labels = set(labels)
+
+    rs = []
+    positions = []
+
+    for k in unique_labels:
+        class_member_mask = (labels == k)
+        xy = binary_indices[class_member_mask]
+
+        if xy.shape[0] == 1:
+            r = 1.5
+            position = 5 + 10*xy[0]
+        else:
+            cov = np.cov(xy, rowvar=False)
+            eig_vals, eig_vecs = np.linalg.eigh(cov)
+            angle = np.degrees(np.arctan2(*eig_vecs[:, 0][::-1]))
+            width, height = 45 * np.sqrt(eig_vals)
+            center = 5+10*xy.mean(axis=0)
+            ell = Ellipse(center, width, height, angle)
+            plt.gca().add_artist(ell)
+
+            position, r, x2, y2 = approx_circle_from_ellipse(center[0], center[1], width/2, height/2, math.radians(angle), start_pos[0], start_pos[1])
+            plt.scatter(x2, y2, c='y')
+            ell = Circle(position, r, color='r', fill=False)
+            plt.gca().add_artist(ell)
+        rs.append(r)
+        positions.append(position)
+        # ell = Circle(position, r)
+        # ell = Ellipse(xy.mean(axis=0), r, r, angle, color=col)
+    #     plt.gca().add_artist(ell)
+    plt.scatter(start_pos[0], start_pos[1], c='r')
+    
+    plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
+    plt.axis([0,640,480,0])
+    
+    plt.show()
+    plt.pause(0.1)
+    plt.clf()
+
+    return positions, rs
+
+
+planner_list = {
+    'Primitive': Primitive,
+    'MPC': MPC
+}
 class Drone2DEnv2(gym.Env):
      
     def __init__(self, params):
@@ -869,7 +979,7 @@ class Drone2DEnv2(gym.Env):
             while not collision_free:
                 obs = np.array([random.randint(50,params.map_size[0]-50), 
                                 random.randint(50,params.map_size[1]-50), 
-                                random.randint(30,50)])
+                                random.randint(30,40)])
                 collision_free = True
                 for target in self.target_list:
                     if norm(target - obs[:-1]) <= params.drone_radius + 20 + obs[-1]:
@@ -885,7 +995,7 @@ class Drone2DEnv2(gym.Env):
         
         # Generate dynamic obstacles
         self.agents = []
-        while(len(self.agents) <= params.agent_number):
+        while(len(self.agents) < params.agent_number):
             x = array([cos(2*pi*len(self.agents) / params.agent_number), 
                        sin(2*pi*len(self.agents) / params.agent_number)])
             vel = -x * params.agent_max_speed
@@ -903,7 +1013,7 @@ class Drone2DEnv2(gym.Env):
         self.map_gt.init_obstacles(self.obstacles, self.agents)
 
         # Define planner
-        self.planner = MPC(self.drone, params)
+        self.planner = planner_list[params.planner](self.drone, params)
         self.swep_map = np.zeros(array(params.map_size)//params.map_scale)
         self.state_machine = state_machine['WAIT_FOR_GOAL']
         self.fail_count = 0
@@ -954,6 +1064,19 @@ class Drone2DEnv2(gym.Env):
             else:
                 done = True
         
+        # If collision detected for planned trajectory, replan
+        swep_map = np.zeros_like(self.map_gt.grid_map)
+        for i, pos in enumerate(self.planner.full_trajectory.positions):
+            swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.dt
+            for agent in self.agents:
+                if agent.seen:
+                    if norm(agent.estimated_pos(i * self.dt) - pos) <= self.drone.radius + agent.radius:
+                        self.planner.trajectory.positions = []
+                        self.planner.trajectory.velocities = []
+        if np.sum(np.where((self.drone.map.grid_map==1),1, 0) * swep_map) > 0:
+            self.planner.trajectory.positions = []
+            self.planner.trajectory.velocities = []
+
         # Set target point
         if self.state_machine == state_machine['WAIT_FOR_GOAL']:
             self.planner.set_target(self.target_list[-1])
@@ -966,6 +1089,7 @@ class Drone2DEnv2(gym.Env):
         if not success:
             self.drone.brake()
             self.fail_count += 1
+            print("fail plan, fail count:", self.fail_count)
             if self.fail_count >= 3 and norm(self.drone.velocity)==0:
                 done = True
         else:
@@ -973,19 +1097,6 @@ class Drone2DEnv2(gym.Env):
             self.state_machine = state_machine['EXECUTING']
             self.fail_count = 0
 
-        # If collision detected for planned trajectory, replan
-        swep_map = np.zeros_like(self.map_gt.grid_map)
-        for i, pos in enumerate(self.planner.trajectory.positions):
-            swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.dt
-            for agent in self.agents:
-                if agent.seen:
-                    estimate_pos = agent.estimate_pos + i * self.dt * agent.estimate_vel
-                    if norm(estimate_pos - pos) <= self.drone.radius + agent.radius:
-                        self.planner.trajectory.positions = []
-                        self.planner.trajectory.velocities = []
-        if np.sum(np.where((self.drone.map.grid_map==1),1, 0) * swep_map) > 0:
-            self.planner.trajectory.positions = []
-            self.planner.trajectory.velocities = []
 
         # Execute trajectory
         if self.planner.trajectory.positions != [] :
@@ -994,6 +1105,8 @@ class Drone2DEnv2(gym.Env):
             self.drone.y = round(self.planner.trajectory.positions[0][1])
             self.planner.trajectory.pop()
             if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10:
+                self.planner.trajectory.positions = []
+                self.planner.trajectory.velocities = []
                 self.state_machine = state_machine['GOAL_REACHED']
         
         # Execute gaze control
@@ -1056,6 +1169,7 @@ class Drone2DEnv2(gym.Env):
         # plt.pause(0.001)
         # plt.clf()
         # print(time.time() - time1)
+        # time.sleep(0.1)
         return state, reward, done, self.info
     
     def reset(self):
@@ -1077,17 +1191,17 @@ class Drone2DEnv2(gym.Env):
         if self.is_render:
             self.drone.map.render(self.screen, color_dict)
             self.drone.render(self.screen)
-            for ray in self.drone.rays:
-                pygame.draw.line(
-                    self.screen,
-                    (100,100,100),
-                    (self.drone.x, self.drone.y),
-                    ((ray['coords'][0]), (ray['coords'][1]))
-            )
+            # for ray in self.drone.rays:
+            #     pygame.draw.line(
+            #         self.screen,
+            #         (100,100,100),
+            #         (self.drone.x, self.drone.y),
+            #         ((ray['coords'][0]), (ray['coords'][1]))
+            # )
             draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
             
-            if len(self.planner.trajectory.positions) > 1:
-                pygame.draw.lines(self.screen, (100,100,100), False, self.planner.trajectory.positions)
+            if len(self.planner.full_trajectory.positions) > 1:
+                pygame.draw.lines(self.screen, (100,100,100), False, self.planner.full_trajectory.positions)
 
             if len(self.agents) > 0:
                 for agent in self.agents:
