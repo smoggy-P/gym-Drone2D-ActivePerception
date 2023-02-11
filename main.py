@@ -6,7 +6,7 @@ from threading import Thread
 import os
 from datetime import datetime
 # os.environ["SDL_VIDEODRIVER"] = "dummy"
-os.environ['SDL_AUDIODRIVER'] = 'dsp'
+# os.environ['SDL_AUDIODRIVER'] = 'dsp'
 result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 result_dir = './experiment/results_3.csv'
 img_dir = './experiment/fails/new/'
@@ -14,10 +14,15 @@ img_dir = './experiment/fails/new/'
 def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_number, agent_speed, drone_speed, yaw_speed):
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v2',
-        'gaze_method':'Oxford',
-        'trained_policy':False,
-        'policy_dir':'./trained_policy/lookahead.zip',
         'render':True,
+        'record': False,
+        'record_img': False,
+        'trained_policy':False,
+        'planner':'MPC',
+        'policy_dir':'./trained_policy/lookahead.zip',
+        
+
+        'gaze_method':'Oxford',
         'dt':0.1,
         'map_scale':10,
         'map_size':[640,480],
@@ -30,8 +35,6 @@ def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_
         'drone_max_yaw_speed':80,
         'drone_view_depth' : 80,
         'drone_view_range': 90,
-        'record': False,
-        'record_img': False,
         'pillar_number':3,
         'img_dir':img_dir,
         'max_steps':8000
@@ -54,7 +57,7 @@ if __name__ == '__main__':
     agent_numbers = [5, 10, 15]
     drone_view_depths = [80]
     drone_view_ranges = [360]
-    pillar_numbers = [0, 5, 10]
+    pillar_numbers = [10, 10]
     agent_max_speeds = [30, 30]
     drone_max_speeds = [20, 30, 40]
     yaw_max_speeds = [100]
