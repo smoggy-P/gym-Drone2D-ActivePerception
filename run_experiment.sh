@@ -12,4 +12,5 @@ module load python/3.8.12
 module load py-matplotlib
 module load py-numpy
 module load openmpi py-torch
+module load py-scikit-learn
 srun python main.py 

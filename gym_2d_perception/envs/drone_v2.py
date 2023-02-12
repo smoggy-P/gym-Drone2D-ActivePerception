@@ -601,7 +601,7 @@ class Primitive(object):
         self.search_threshold = 10
         self.phi = 10
         self.trajectory = Trajectory2D()
-    
+        self.full_trajectory = self.trajectory
 
     def set_target(self, target_pos):
         self.target = target_pos
@@ -688,7 +688,7 @@ class Primitive(object):
                 cur_node = closed_set[cur_node.parent_index]
             self.trajectory.positions.reverse()
             self.trajectory.velocities.reverse()
-        
+        self.full_trajectory = self.trajectory
         return success
 
     
@@ -1089,7 +1089,7 @@ class Drone2DEnv2(gym.Env):
         if not success:
             self.drone.brake()
             self.fail_count += 1
-            print("fail plan, fail count:", self.fail_count)
+            # print("fail plan, fail count:", self.fail_count)
             if self.fail_count >= 3 and norm(self.drone.velocity)==0:
                 done = True
         else:

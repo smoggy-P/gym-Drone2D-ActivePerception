@@ -8,17 +8,17 @@ from datetime import datetime
 # os.environ["SDL_VIDEODRIVER"] = "dummy"
 # os.environ['SDL_AUDIODRIVER'] = 'dsp'
 result_dir = './experiment/results_'+str(datetime.now())+'.csv'
-result_dir = './experiment/results_3.csv'
+# result_dir = './experiment/results_3.csv'
 img_dir = './experiment/fails/new/'
 
 def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_number, agent_speed, drone_speed, yaw_speed):
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v2',
-        'render':True,
-        'record': False,
+        'render':False,
+        'record': True,
         'record_img': False,
         'trained_policy':False,
-        'planner':'MPC',
+        'planner':'Primitive',
         'policy_dir':'./trained_policy/lookahead.zip',
 
         'gaze_method':'Oxford',
@@ -51,14 +51,14 @@ def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_
 
 
 if __name__ == '__main__':
-    gaze_methods = ['Oxford']
+    gaze_methods = ['LookAhead']
     agent_numbers = [15]
     drone_view_depths = [80]
     drone_view_ranges = [90]
-    pillar_numbers = [10]
+    pillar_numbers = [5, 10]
     agent_max_speeds = [20, 30]
     drone_max_speeds = [20, 30, 40]
-    yaw_max_speeds = [100]
+    yaw_max_speeds = [80]
 
 
     ths = []
