@@ -1,0 +1,10 @@
+Method,Number of agents,Number of pillars,View depth,View range,Agent speed,Drone speed,Yaw speed,Success,Static Collision,Dynamic Collision
+LookAhead,5,5,80,90,20,20,80,40,15,6
+LookAhead,5,5,80,90,20,30,80,60,14,4
+LookAhead,5,5,80,90,20,40,80,72,13,5
+LookAhead,5,5,80,90,30,20,80,41,7,15
+LookAhead,5,5,80,90,30,30,80,55,11,15
+LookAhead,5,5,80,90,30,40,80,68,15,13
+LookAhead,10,5,80,90,20,20,80,36,13,8
+LookAhead,10,5,80,90,20,30,80,53,15,10
+LookAhead,10,5,80,90,20,40,80,12,5,8

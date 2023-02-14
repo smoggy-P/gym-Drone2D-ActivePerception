@@ -3,6 +3,8 @@ import math
 import matplotlib.pyplot as plt
 import random
 from gym_2d_perception.envs.drone_v0 import Drone2D
+from math import cos, sin, radians, atan2, degrees
+from numpy.linalg import norm
 
 class NoControl(object):
     def __init__(self, params):
@@ -132,15 +134,88 @@ class Oxford(object):
         
 class Rotating(object):
     
-    def __init__(self, params):
-        self.params = params
+    
     
     def plan(self, observation):
         return 1
 
+def angle_between(angle1, angle2):
+    angle1 = angle1 % 360
+    angle2 = angle2 % 360
+    diff = abs(angle1 - angle2)
+    diff = np.minimum(diff, 360 - diff)
+    return diff
 
+class Owl(object):
+
+    def __init__(self, params):
+        self.params = params
         
+        self.dt = 0.5
+        self.u = []
+        # weights for different costs
+        self.lamb = np.array([0.2, 0.9, 1, 0.1, 0.4])
 
+        self.u_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/10)
+        self.theta_h = params.drone_view_range
+        self.l_hit = 0.4
+        self.l_miss = -0.05
+        self.beta = 1
+
+        self.U_list = np.zeros(36)
+    @classmethod
+    def G(self, theta):
+        if angle_between(theta, 0) <= self.theta_h / 2:
+            return 0
+        else:
+            return radians(angle_between(theta, self.theta_h / 2)) * radians(angle_between(theta, -self.theta_h / 2))
+    @classmethod
+    def update_U(self, drone, dt):
+        delta_p = drone.velocity * dt
+        for i, d_i in enumerate(np.arange(0, 360, 10)):
+            d_i_hat = np.array([cos(radians(d_i)), sin(radians(d_i))])
+            L_yt = - delta_p.dot(d_i_hat) / self.params.drone_view_depth
+            L_yt += self.l_hit if angle_between(d_i, -drone.yaw) < self.theta_h / 2 else self.l_miss
+            self.U_list[i] = max(min(self.U_list[i] + L_yt,1),0)
+    @classmethod
+    def U(self, theta):
+        idx = np.argmin(angle_between(np.arange(0, 360, 10), theta))
+        return self.U_list[idx]
+
+    def plan(self, observation):
+
+        if len(self.u) != 0:
+            u = self.u[-1]
+            self.u.pop()
+            return u / self.params.drone_max_yaw_speed
+
+        drone = observation['drone']
+        target = observation['target']
+        agents = observation['seen_agents']
+        
+        self.update_U(drone, self.dt)
+
+        d_g = degrees(atan2(target[1]-drone.y, target[0]-drone.x))
+        d_v = degrees(atan2(*((drone.velocity / norm(drone.velocity))[::-1])))
+        d_o = [degrees(atan2(*((agent.estimate_pos - np.array([drone.x, drone.y]))[::-1]))) for agent in agents]
+
+        yaws = -(drone.yaw + self.u_space * self.dt)
+        costs = np.ones_like(yaws) 
+        f = np.zeros([yaws.shape[0], 5])
+        for i, yaw in enumerate(yaws):
+            f[i, 0] = self.G(yaw - d_g) * (1-self.U(d_g))
+            f[i, 1] = norm(drone.velocity/10)**2 * self.G(yaw - d_v)*(1-self.U(d_v))
+            for d_o_i, agent in zip(d_o, agents):
+                f[i, 2] += self.beta * norm(agent.velocity) / norm(agent.position - np.array([drone.x, drone.y])) * self.G(yaw - d_o_i)
+            f[i, 3] = self.U(yaw)
+            f[i ,4] = abs(radians(self.u_space[i] * self.dt))
+
+            costs[i] = np.sum(f[i, :].dot(self.lamb))
+        idx = np.argmin(costs)
+        print(f[:,3])
+        for i in range(int(self.dt // self.params.dt) - 1):
+            self.u.append(self.u_space[idx])
+        return self.u_space[idx] / self.params.drone_max_yaw_speed
         
 
 

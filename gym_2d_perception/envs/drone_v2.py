@@ -928,9 +928,9 @@ def binary_image_clustering(image, eps, min_samples, start_pos):
     plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
     plt.axis([0,640,480,0])
     
-    plt.show()
-    plt.pause(0.1)
-    plt.clf()
+    # plt.show()
+    # plt.pause(0.1)
+    # plt.clf()
 
     return positions, rs
 
@@ -1021,8 +1021,10 @@ class Drone2DEnv2(gym.Env):
         # Define action and observation space
         self.info = {
             'drone':self.drone,
+            'seen_agents':[agent for agent in self.agents if agent.seen],
             'trajectory':self.planner.trajectory,
             'state_machine':self.state_machine,
+            'target':self.planner.target,
             'collision_flag':0
         }
         self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
@@ -1147,7 +1149,9 @@ class Drone2DEnv2(gym.Env):
             'trajectory':self.planner.trajectory,
             'swep_map':self.swep_map,
             'state_machine':self.state_machine,
-            'collision_flag':collision_state
+            'collision_flag':collision_state,
+            'target':self.planner.target,
+            'seen_agents':[agent for agent in self.agents if agent.seen]
         }
 
         drone_idx = (int(self.drone.x // self.params.map_scale), int(self.drone.y // self.params.map_scale))

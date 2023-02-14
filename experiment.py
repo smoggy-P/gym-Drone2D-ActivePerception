@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import os
 # from tqdm import tqdm
-from yaw_planner import Oxford, LookAhead, NoControl, Rotating
+from yaw_planner import Oxford, LookAhead, NoControl, Rotating, Owl
 from stable_baselines3 import PPO
 from datetime import datetime
 # import matplotlib.pyplot as plt
@@ -12,7 +12,8 @@ policy_list = {
     'LookAhead': LookAhead,
     'NoControl': NoControl,
     'Oxford': Oxford,
-    'Rotating': Rotating
+    'Rotating': Rotating,
+    'Owl' : Owl
 }
 
 def add_to_csv(dir, index, flag):
