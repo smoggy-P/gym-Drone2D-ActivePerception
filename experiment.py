@@ -40,7 +40,7 @@ class Experiment:
         self.max_step = 10000
         self.result_dir = dir
         self.model = None
-        if not os.path.isfile(dir):
+        if (not os.path.isfile(dir)) and (params.record):
             d = {'Method':[],
                 'Number of agents':[],
                 'Number of pillars':[], 

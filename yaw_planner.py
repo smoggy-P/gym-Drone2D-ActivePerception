@@ -151,7 +151,7 @@ class Owl(object):
     def __init__(self, params):
         self.params = params
         
-        self.dt = 0.5
+        self.dt = 0.1
         self.u = []
         # weights for different costs
         self.lamb = np.array([0.2, 0.9, 1, 0.1, 0.4])
@@ -212,7 +212,7 @@ class Owl(object):
 
             costs[i] = np.sum(f[i, :].dot(self.lamb))
         idx = np.argmin(costs)
-        print(f[:,3])
+        # print(f[:,3])
         for i in range(int(self.dt // self.params.dt) - 1):
             self.u.append(self.u_space[idx])
         return self.u_space[idx] / self.params.drone_max_yaw_speed
