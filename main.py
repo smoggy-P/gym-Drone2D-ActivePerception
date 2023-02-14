@@ -18,7 +18,7 @@ def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_
         'record': False,
         'record_img': False,
         'trained_policy':False,
-        'planner':'Primitive',#3
+        'planner':'MPC',#3
         'policy_dir':'./trained_policy/lookahead.zip',
 
         'gaze_method':'Oxford',#5

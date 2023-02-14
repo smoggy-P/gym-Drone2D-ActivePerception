@@ -577,7 +577,8 @@ class Trajectory2D(object):
             # unparam
             swep_map[int(pos[0]//10), int(pos[1]//10)] = i * 0.1
 
-class Primitive_Node:
+class Primitive(object):
+    class Primitive_Node:
         def __init__(self, pos, vel, cost, target, parent_index, coeff, itr):
             self.position = pos  
             self.velocity = vel 
@@ -591,7 +592,7 @@ class Primitive_Node:
             return self.total_cost < other_node.total_cost
         def get_index(self):
             self.index = (round(self.position[0])//10, round(self.position[1])//10, round(self.velocity[0]), round(self.velocity[1]))
-class Primitive(object):
+    
     def __init__(self, drone, params):
         self.params = params
         self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 0.4 * params.drone_max_speed - 5)
@@ -621,13 +622,13 @@ class Primitive(object):
         if len(self.trajectory) != 0:
             return True
         self.trajectory = Trajectory2D()
-        start_node = Primitive_Node(pos=start_pos, 
-                                    vel=start_vel,
-                                    cost=0, 
-                                    target=self.target,
-                                    parent_index=-1,
-                                    coeff=None,
-                                    itr=0)
+        start_node = self.Primitive_Node(pos=start_pos, 
+                                        vel=start_vel,
+                                        cost=0, 
+                                        target=self.target,
+                                        parent_index=-1,
+                                        coeff=None,
+                                        itr=0)
 
         open_set, closed_set = dict(), dict()
         open_set[start_node.index] = start_node
@@ -658,16 +659,16 @@ class Primitive(object):
             closed_set[c_id] = current
 
             # expand_grid search grid based on motion model
-            sub_node_list = [Primitive_Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[current.position[0], current.position[1]], [current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])), 
-                                            vel=np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]]), 
-                                            cost=current.cost + (x_acc**2 + y_acc**2)/100 + 10, 
-                                            target=self.target,
-                                            parent_index=current.index,
-                                            coeff=np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]),
-                                            itr = current.itr + 1) for x_acc in self.u_space 
-                                                                   for y_acc in self.u_space 
-                                                                   if self.is_free(np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]), occupancy_map, agents, current.itr) and 
-                                                                      norm(np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])) < self.params.drone_max_speed]
+            sub_node_list = [self.Primitive_Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[current.position[0], current.position[1]], [current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])), 
+                                                vel=np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]]), 
+                                                cost=current.cost + (x_acc**2 + y_acc**2)/100 + 10, 
+                                                target=self.target,
+                                                parent_index=current.index,
+                                                coeff=np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]),
+                                                itr = current.itr + 1) for x_acc in self.u_space 
+                                                                    for y_acc in self.u_space 
+                                                                    if self.is_free(np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]), occupancy_map, agents, current.itr) and 
+                                                                        norm(np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])) < self.params.drone_max_speed]
             for next_node in sub_node_list:
                 if next_node.index in closed_set:
                     continue
@@ -732,9 +733,8 @@ class Primitive(object):
 
 
         return True
-
 class MPC(object):
-
+    
     def __init__(self, drone, params):
         self.params = params
         self.target = np.array([drone.x, drone.y])
@@ -765,6 +765,92 @@ class MPC(object):
         self.trajectory = Trajectory2D()
         self.full_trajectory = Trajectory2D()
 
+    @classmethod
+    def approx_circle_from_ellipse(self, x0, y0, a, b, theta, x1, y1):
+
+        a = 10 if a <= 0 else a
+        b = 10 if b <= 0 else b
+
+        A = inv(np.array([
+            [cos(theta), -sin(theta)],
+            [sin(theta), cos(theta)]
+        ]))
+
+        import cvxpy as cp
+
+        x = cp.Variable((2))
+        constraint = [cp.quad_form(A@(x-np.array([x0, y0])), np.array([[1/a**2,0],[0,1/b**2]])) <= 1]
+
+
+        cost = cp.norm(x - np.array([x1, y1]))
+        prob = cp.Problem(cp.Minimize(cost), constraint)
+
+        # Solve the optimization problem
+        result = prob.solve()
+        x2, y2 = x.value[0], x.value[1]
+        x3, y3 = 2*x0 - x2, 2*y0-y2
+        k = -(x1-x2)/(y1-y2)
+        r = abs(k*(x3-x2)+y2-y3)/sqrt(k**2+1)/2
+        dis = sqrt((x2-x1)**2+(y2-y1)**2)
+
+        x4 = (r/dis)*(x2-x1)+x2
+        y4 = (r/dis)*(y2-y1)+y2
+        return (x4, y4), r, x2, y2
+
+    @classmethod
+    def binary_image_clustering(self, image, eps, min_samples, start_pos):
+        image[0,:] = 0
+        image[-1,:] = 0
+        image[:,0] = 0
+        image[:,-1] = 0
+        binary_indices = np.array(np.where(image == 1)).T
+
+        if binary_indices.shape[0] == 0:
+            return [],[]
+
+        dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(binary_indices)
+        labels = dbscan.labels_
+        unique_labels = set(labels)
+
+        rs = []
+        positions = []
+
+        for k in unique_labels:
+            class_member_mask = (labels == k)
+            xy = binary_indices[class_member_mask]
+
+            if xy.shape[0] == 1:
+                r = 1.5
+                position = 5 + 10*xy[0]
+            else:
+                cov = np.cov(xy, rowvar=False)
+                eig_vals, eig_vecs = np.linalg.eigh(cov)
+                angle = np.degrees(np.arctan2(*eig_vecs[:, 0][::-1]))
+                width, height = 45 * np.sqrt(eig_vals)
+                center = 5+10*xy.mean(axis=0)
+                ell = Ellipse(center, width, height, angle)
+                plt.gca().add_artist(ell)
+
+                position, r, x2, y2 = self.approx_circle_from_ellipse(center[0], center[1], width/2, height/2, math.radians(angle), start_pos[0], start_pos[1])
+                plt.scatter(x2, y2, c='y')
+                ell = Circle(position, r, color='r', fill=False)
+                plt.gca().add_artist(ell)
+            rs.append(r)
+            positions.append(position)
+            # ell = Circle(position, r)
+            # ell = Ellipse(xy.mean(axis=0), r, r, angle, color=col)
+        #     plt.gca().add_artist(ell)
+        plt.scatter(start_pos[0], start_pos[1], c='r')
+        
+        plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
+        plt.axis([0,640,480,0])
+        
+        # plt.show()
+        # plt.pause(0.1)
+        # plt.clf()
+
+        return positions, rs
+
     def set_target(self, target):
         self.target = np.zeros(4)
         self.target[:2] = target
@@ -784,7 +870,7 @@ class MPC(object):
         if len(self.trajectory) != 0:
             return True
 
-        positions, rs = binary_image_clustering(np.where(occupancy_map.grid_map == grid_type['OCCUPIED'], 1, 0), 1.5, 1, start_pos)
+        positions, rs = self.binary_image_clustering(np.where(occupancy_map.grid_map == grid_type['OCCUPIED'], 1, 0), 1.5, 1, start_pos)
 
         x0 = np.array([start_pos[0], start_pos[1], start_vel[0], start_vel[1]])
         
@@ -850,98 +936,77 @@ class MPC(object):
 
 
         return True
-def approx_circle_from_ellipse(x0, y0, a, b, theta, x1, y1):
 
-    a = 10 if a <= 0 else a
-    b = 10 if b <= 0 else b
-
-    A = inv(np.array([
-        [cos(theta), -sin(theta)],
-        [sin(theta), cos(theta)]
-    ]))
-
-    import cvxpy as cp
-
-    x = cp.Variable((2))
-    constraint = [cp.quad_form(A@(x-np.array([x0, y0])), np.array([[1/a**2,0],[0,1/b**2]])) <= 1]
-
-
-    cost = cp.norm(x - np.array([x1, y1]))
-    prob = cp.Problem(cp.Minimize(cost), constraint)
-
-    # Solve the optimization problem
-    result = prob.solve()
-    x2, y2 = x.value[0], x.value[1]
-    x3, y3 = 2*x0 - x2, 2*y0-y2
-    k = -(x1-x2)/(y1-y2)
-    r = abs(k*(x3-x2)+y2-y3)/sqrt(k**2+1)/2
-    dis = sqrt((x2-x1)**2+(y2-y1)**2)
-
-    x4 = (r/dis)*(x2-x1)+x2
-    y4 = (r/dis)*(y2-y1)+y2
-    return (x4, y4), r, x2, y2
-
-def binary_image_clustering(image, eps, min_samples, start_pos):
-    image[0,:] = 0
-    image[-1,:] = 0
-    image[:,0] = 0
-    image[:,-1] = 0
-    binary_indices = np.array(np.where(image == 1)).T
-
-    if binary_indices.shape[0] == 0:
-        return [],[]
-
-    dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(binary_indices)
-    labels = dbscan.labels_
-    unique_labels = set(labels)
-
-    rs = []
-    positions = []
-
-    for k in unique_labels:
-        class_member_mask = (labels == k)
-        xy = binary_indices[class_member_mask]
-
-        if xy.shape[0] == 1:
-            r = 1.5
-            position = 5 + 10*xy[0]
-        else:
-            cov = np.cov(xy, rowvar=False)
-            eig_vals, eig_vecs = np.linalg.eigh(cov)
-            angle = np.degrees(np.arctan2(*eig_vecs[:, 0][::-1]))
-            width, height = 45 * np.sqrt(eig_vals)
-            center = 5+10*xy.mean(axis=0)
-            ell = Ellipse(center, width, height, angle)
-            plt.gca().add_artist(ell)
-
-            position, r, x2, y2 = approx_circle_from_ellipse(center[0], center[1], width/2, height/2, math.radians(angle), start_pos[0], start_pos[1])
-            plt.scatter(x2, y2, c='y')
-            ell = Circle(position, r, color='r', fill=False)
-            plt.gca().add_artist(ell)
-        rs.append(r)
-        positions.append(position)
-        # ell = Circle(position, r)
-        # ell = Ellipse(xy.mean(axis=0), r, r, angle, color=col)
-    #     plt.gca().add_artist(ell)
-    plt.scatter(start_pos[0], start_pos[1], c='r')
+class Jerk_Primitive(object):
+    def __init__(self, drone, params):
+        self.params = params
+        self.target = np.zeros(4)
     
-    plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
-    plt.axis([0,640,480,0])
-    
-    # plt.show()
-    # plt.pause(0.1)
-    # plt.clf()
+    def set_target(self, target):
+        self.target = np.zeros(4)
+        self.target[:2] = target
 
-    return positions, rs
+    def plan(self, start_pos, start_vel, occupancy_map, agents, dt):
+        p0 = start_pos
+        v0 = start_vel
 
+        d = dt
 
-planner_list = {
-    'Primitive': Primitive,
-    'MPC': MPC
-}
+        delt_x = d * np.cos(theta_h + yaw0)
+        delt_y = d * np.sin(theta_h + yaw0)
+        pf = p0 + np.array([delt_x, delt_y, delt_z])
+
+        l = goal - pf
+        vf = (v_max / np.linalg.norm(l)) * l
+        vf[2] = 0  # Note: 0 maybe better, for the p curve wont go down to meet the vf
+        af = np.array([0, 0, 0])
+
+        print(pf)
+        print(vf)
+
+        # Choose the time as running in average velocity
+        decay_parameter = 0.5
+        T1 = 2 * delt_x / (vf[0] + v0[0]) * decay_parameter
+        T2 = 2 * delt_y / (vf[1] + v0[1]) * decay_parameter
+        T3 = 2 * delt_z / (vf[2] + v0[2]) * decay_parameter
+        if T1 > 1000:  # eliminate infinite value
+            T1 = 0
+        if T2 > 1000:
+            T2 = 0
+        if T3 > 1000:
+            T3 = 0
+        T = max([T1, T2, T3])
+        times = int(np.floor(T / delt_t))
+        p = np.zeros((times, 3))
+        v = np.zeros((times, 3))
+        a = np.zeros((times, 3))
+        t = np.arange(delt_t, times * delt_t + delt_t, delt_t)
+
+        # calculate optimal jerk controls by Mark W. Miller
+        for ii in range(3):  # x, y, z axis
+            delt_a = af[ii] - a0[ii]
+            delt_v = vf[ii] - v0[ii] - a0[ii] * T
+            delt_p = pf[ii] - p0[ii] - v0[ii] * T - 0.5 * a0[ii] * T ** 2
+            # if vf is not free
+            alpha = delt_a * 60 / T ** 3 - delt_v * 360 / T ** 4 + delt_p * 720 / T ** 5
+            beta = -delt_a * 24 / T ** 2 + delt_v * 168 / T ** 3 - delt_p * 360 / T ** 4
+            gamma = delt_a * 3 / T - delt_v * 24 / T ** 2 + delt_p * 60 / T ** 3
+
+            # if vf is free
+            # alpha = -delt_a * 7.5 / T ** 3 + delt_p * 45 / T ** 5
+            # beta = delt_a * 7.5 / T ** 2 - delt_p * 45 / T ** 4
+            # gamma = -delt_a * 1.5 / T + delt_p * 15 / T ** 3
+            for jj in range(times):
+                tt = t[jj]
+                p[jj, ii] = (alpha / 120)
+
 class Drone2DEnv2(gym.Env):
      
     def __init__(self, params):
+        planner_list = {
+            'Primitive': Primitive,
+            'MPC': MPC
+        }
         np.seterr(divide='ignore', invalid='ignore')
         gym.logger.set_level(40)
         plt.ion()
