@@ -503,7 +503,8 @@ class Drone2D():
         self.yaw_depth = params.drone_view_depth
         self.radius = params.drone_radius
         self.map = OccupancyGridMap(params.map_scale, params.map_size, 0)
-        self.velocity = np.array([0, 0])
+        self.velocity = np.zeros(2)
+        self.acceleration = np.zeros(2)
         self.dt = dt
         self.rays = {}
         self.raycast = Raycast(params.map_size, self)
@@ -567,9 +568,11 @@ class Trajectory2D(object):
     def __init__(self):
         self.positions = []
         self.velocities = []
+        self.accelerations = []
     def pop(self):
         self.positions.pop(0)
         self.velocities.pop(0)
+        self.accelerations.pop(0)
     def __len__(self):
         return len(self.positions)
     def get_swep_map(self, swep_map):
@@ -607,7 +610,7 @@ class Primitive(object):
     def set_target(self, target_pos):
         self.target = target_pos
 
-    def plan(self, start_pos, start_vel, occupancy_map, agents, update_t):
+    def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, update_t):
         """
         A star path search
         input:
@@ -686,6 +689,7 @@ class Primitive(object):
             while(cur_node!=start_node): 
                 self.trajectory.positions.extend([waypoint_from_traj(cur_node.coeff, t).position for t in np.arange(self.dt, 0, -update_t)])
                 self.trajectory.velocities.extend([waypoint_from_traj(cur_node.coeff, t).velocity for t in np.arange(self.dt, 0, -update_t)])
+                self.trajectory.accelerations.extend([np.array([0, 0]) for t in np.arange(self.dt, 0, -update_t)])
                 cur_node = closed_set[cur_node.parent_index]
             self.trajectory.positions.reverse()
             self.trajectory.velocities.reverse()
@@ -866,7 +870,7 @@ class MPC(object):
             A+=np.random.normal(0, 0.01, 1)
             return A,b
 
-    def plan(self, start_pos, start_vel, occupancy_map, agents, dt):
+    def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, dt):
         if len(self.trajectory) != 0:
             return True
 
@@ -929,61 +933,59 @@ class MPC(object):
                 t = j + self.params.dt
                 self.full_trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
                 self.full_trajectory.velocities.append(x[2:]+t*u_opt[:,i])
+                self.full_trajectory.accelerations.append(np.array([0, 0]))
                 if i <= 0:
                     self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
                     self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
+                    self.trajectory.accelerations.append(np.array([0, 0]))
             x = self.A@x + self.B@u_opt[:,i]
 
 
         return True
-
 class Jerk_Primitive(object):
     def __init__(self, drone, params):
         self.params = params
         self.target = np.zeros(4)
-    
+        self.theta_range = np.arange(0, 360, 10)
+        self.d = 10
+
     def set_target(self, target):
         self.target = np.zeros(4)
         self.target[:2] = target
 
-    def plan(self, start_pos, start_vel, occupancy_map, agents, dt):
+    def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, dt):
         p0 = start_pos
         v0 = start_vel
+        a0 = start_acc
 
-        d = dt
+        delt_t = dt
 
-        delt_x = d * np.cos(theta_h + yaw0)
-        delt_y = d * np.sin(theta_h + yaw0)
-        pf = p0 + np.array([delt_x, delt_y, delt_z])
+        delt_x = self.d * np.cos(theta_h)
+        delt_y = self.d * np.sin(theta_h)
+        pf = p0 + np.array([delt_x, delt_y])
 
-        l = goal - pf
-        vf = (v_max / np.linalg.norm(l)) * l
-        vf[2] = 0  # Note: 0 maybe better, for the p curve wont go down to meet the vf
-        af = np.array([0, 0, 0])
-
-        print(pf)
-        print(vf)
+        l = self.target[:2] - pf
+        vf = (self.params.drone_max_speed / np.linalg.norm(l)) * l
+        af = np.array([0, 0])
 
         # Choose the time as running in average velocity
         decay_parameter = 0.5
         T1 = 2 * delt_x / (vf[0] + v0[0]) * decay_parameter
         T2 = 2 * delt_y / (vf[1] + v0[1]) * decay_parameter
-        T3 = 2 * delt_z / (vf[2] + v0[2]) * decay_parameter
         if T1 > 1000:  # eliminate infinite value
             T1 = 0
         if T2 > 1000:
             T2 = 0
-        if T3 > 1000:
-            T3 = 0
-        T = max([T1, T2, T3])
+        T = max([T1, T2])
+
         times = int(np.floor(T / delt_t))
-        p = np.zeros((times, 3))
-        v = np.zeros((times, 3))
-        a = np.zeros((times, 3))
+        p = np.zeros((times, 2))
+        v = np.zeros((times, 2))
+        a = np.zeros((times, 2))
         t = np.arange(delt_t, times * delt_t + delt_t, delt_t)
 
         # calculate optimal jerk controls by Mark W. Miller
-        for ii in range(3):  # x, y, z axis
+        for ii in range(2):  # x, y, z axis
             delt_a = af[ii] - a0[ii]
             delt_v = vf[ii] - v0[ii] - a0[ii] * T
             delt_p = pf[ii] - p0[ii] - v0[ii] * T - 0.5 * a0[ii] * T ** 2
@@ -999,7 +1001,8 @@ class Jerk_Primitive(object):
             for jj in range(times):
                 tt = t[jj]
                 p[jj, ii] = (alpha / 120)
-
+                v[jj, ii] = alpha/24*tt**4 + beta/6*tt**3 + gamma/2*tt**2 + a0[ii]*tt + v0[ii];
+                a[jj, ii] = alpha/6*tt**3 + beta/2*tt**2 + gamma*tt + a0[ii]
 class Drone2DEnv2(gym.Env):
      
     def __init__(self, params):
@@ -1152,7 +1155,7 @@ class Drone2DEnv2(gym.Env):
 
         #Plan
         # if self.state_machine == state_machine['PLANNING']:
-        success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.map, self.agents, self.dt)
+        success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.acceleration, self.drone.map, self.agents, self.dt)
         if not success:
             self.drone.brake()
             self.fail_count += 1
@@ -1167,6 +1170,7 @@ class Drone2DEnv2(gym.Env):
 
         # Execute trajectory
         if self.planner.trajectory.positions != [] :
+            self.drone.acceleration = self.planner.trajectory.accelerations[0]
             self.drone.velocity = self.planner.trajectory.velocities[0]
             self.drone.x = round(self.planner.trajectory.positions[0][0])
             self.drone.y = round(self.planner.trajectory.positions[0][1])
