@@ -990,7 +990,7 @@ class Jerk_Primitive(object):
         for agent in agents:
             if agent.seen:
                 new_position = agent.estimate_pos + agent.estimate_vel * t
-                if norm(position - new_position) <= self.params.drone_radius + agent.radius:
+                if norm(position - new_position) <= self.params.drone_radius + agent.radius + 5:
                     return False
         return True
 

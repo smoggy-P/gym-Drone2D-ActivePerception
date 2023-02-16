@@ -52,10 +52,10 @@ def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_
 
 if __name__ == '__main__':
     gaze_methods = ['LookAhead']
-    agent_numbers = [1, 15]
+    agent_numbers = [15, 15]
     drone_view_depths = [80]
     drone_view_ranges = [90]
-    pillar_numbers = [10]
+    pillar_numbers = [0]
     agent_max_speeds = [20, 30]
     drone_max_speeds = [40, 30, 40]
     yaw_max_speeds = [80]
