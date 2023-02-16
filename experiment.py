@@ -42,16 +42,16 @@ class Experiment:
         self.model = None
         if (not os.path.isfile(dir)) and (params.record):
             d = {'Method':[],
-                'Number of agents':[],
-                'Number of pillars':[], 
-                'View depth':[], 
-                'View range':[], 
-                'Agent speed':[], 
-                'Drone speed':[], 
-                'Yaw speed':[],
-                'Success':[],
-                'Static Collision':[],
-                'Dynamic Collision':[]}
+                 'Number of agents':[],
+                 'Number of pillars':[], 
+                 'View depth':[], 
+                 'View range':[], 
+                 'Agent speed':[], 
+                 'Drone speed':[], 
+                 'Yaw speed':[],
+                 'Success':[],
+                 'Static Collision':[],
+                 'Dynamic Collision':[]}
             df = pd.DataFrame(d)
             df.to_csv(dir, index=False)
 

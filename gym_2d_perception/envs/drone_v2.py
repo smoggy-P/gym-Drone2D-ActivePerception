@@ -1232,7 +1232,7 @@ class Drone2DEnv2(gym.Env):
 
         #Plan
         # if self.state_machine == state_machine['PLANNING']:
-        success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.acceleration, self.map_gt, self.agents, self.dt)
+        success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.acceleration, self.drone.map, self.agents, self.dt)
         if not success:
             self.drone.brake()
             self.fail_count += 1
