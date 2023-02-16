@@ -992,6 +992,7 @@ class Jerk_Primitive(object):
                 new_position = agent.estimate_pos + agent.estimate_vel * t
                 if norm(position - new_position) <= self.params.drone_radius + agent.radius:
                     return False
+        return True
 
     def generate_primitive(self, p0, v0, a0, theta_h, v_max, delt_t):
         delt_x = self.d * np.cos(radians(theta_h))
@@ -999,7 +1000,7 @@ class Jerk_Primitive(object):
         pf = p0 + np.array([delt_x, delt_y])
 
         l = self.target[:2] - pf
-        vf = (v_max / np.linalg.norm(l)) * l
+        vf = (0.5 * v_max / np.linalg.norm(l)) * l
         af = np.array([0, 0])
 
         # Choose the time as running in average velocity
@@ -1010,8 +1011,8 @@ class Jerk_Primitive(object):
         T1 = T1 if T1 < 1000 else 0
         T2 = T2 if T2 < 1000 else 0
         
-        # T = max([T1, T2])
-        T = 1
+        T = max([T1, T2])
+        T = T if T >= 1 else 1
 
         times = int(np.floor(T / delt_t))
         p = np.zeros((times, 2))
@@ -1035,7 +1036,7 @@ class Jerk_Primitive(object):
             # gamma = -delt_a * 1.5 / T + delt_p * 15 / T ** 3
             for jj in range(times):
                 tt = t[jj]
-                p[jj, ii] = (alpha / 120)
+                p[jj, ii] = alpha/120*tt**5 + beta/24*tt**4 + gamma/6*tt**3 + a0[ii]/2*tt**2 + v0[ii]*tt + p0[ii]
                 v[jj, ii] = alpha/24*tt**4 + beta/6*tt**3 + gamma/2*tt**2 + a0[ii]*tt + v0[ii]
                 a[jj, ii] = alpha/6*tt**3 + beta/2*tt**2 + gamma*tt + a0[ii]
         return p, v, a, t, pf, vf ,af
@@ -1059,7 +1060,7 @@ class Jerk_Primitive(object):
             ps, vs, accs, ts, pf, vf, af = self.generate_primitive(start_pos, start_vel, start_acc, cost[seq, 1], v_max, dt)
             collision = 0
             for t, position in zip(ts, ps):
-                if self.is_free(position, t, occupancy_map, agents):
+                if not self.is_free(position, t, occupancy_map, agents):
                     collision = 1
                     break
             if collision == 0:
@@ -1067,19 +1068,12 @@ class Jerk_Primitive(object):
         
         if collision:
             return False
-        
-        a0 = accs[0,:] / abs(norm(accs[0,:])) * min(self.params.drone_max_acceleration, abs(norm(accs[0,:])))
 
-        vT = vs[0, :]
-        if abs(vT[0] - start_vel[0]) > a0[0] * dt:
-            vT[0] = start_vel[0] + a0[0] * dt
-        if abs(vT[1] - start_vel[1]) > a0[1] * dt:
-            vT[1] = start_vel[1] + a0[1] * dt
+        self.trajectory.velocities.append(vs[0, :])
+        self.trajectory.accelerations.append(accs[0, :])
+        self.trajectory.positions.append(ps[0,:])
 
-        self.trajectory.velocities.append(vT)
-        self.trajectory.accelerations.append(a0)
-        pT = start_pos + (start_vel + vT) / 2 * dt
-        self.trajectory.positions.append(pT)
+        self.full_trajectory = self.trajectory
 
         return True
 
@@ -1238,7 +1232,7 @@ class Drone2DEnv2(gym.Env):
 
         #Plan
         # if self.state_machine == state_machine['PLANNING']:
-        success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.acceleration, self.drone.map, self.agents, self.dt)
+        success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.acceleration, self.map_gt, self.agents, self.dt)
         if not success:
             self.drone.brake()
             self.fail_count += 1
