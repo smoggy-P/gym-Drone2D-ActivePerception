@@ -18,7 +18,7 @@ def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_
         'record': False,
         'record_img': False,
         'trained_policy':False,
-        'planner':'MPC',#3
+        'planner':'Jerk_Primitive',#3
         'policy_dir':'./trained_policy/lookahead.zip',
 
         'gaze_method':'Oxford',#5
@@ -51,11 +51,11 @@ def myfun(gaze_method, agent_number, drone_view_depth, drone_view_range, pillar_
 
 
 if __name__ == '__main__':
-    gaze_methods = ['Owl']
-    agent_numbers = [15, 15]
+    gaze_methods = ['LookAhead']
+    agent_numbers = [0, 15]
     drone_view_depths = [80]
     drone_view_ranges = [90]
-    pillar_numbers = [0]
+    pillar_numbers = [10]
     agent_max_speeds = [20, 30]
     drone_max_speeds = [40, 30, 40]
     yaw_max_speeds = [80]

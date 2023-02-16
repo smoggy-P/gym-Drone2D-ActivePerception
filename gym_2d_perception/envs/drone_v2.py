@@ -36,6 +36,13 @@ grid_type = {
     'UNEXPLORED' : 0
 }
 
+def angle_between(angle1, angle2):
+    angle1 = angle1 % 360
+    angle2 = angle2 % 360
+    diff = abs(angle1 - angle2)
+    diff = np.minimum(diff, 360 - diff)
+    return diff
+
 def waypoint_from_traj(coeff, t):
     """Get the waypoint in trajectory with coefficient at time t
 
@@ -947,36 +954,64 @@ class Jerk_Primitive(object):
         self.params = params
         self.target = np.zeros(4)
         self.theta_range = np.arange(0, 360, 10)
-        self.d = 10
+        self.d = 30
+        self.theta_last = - drone.yaw
+        self.trajectory = Trajectory2D()
+        self.full_trajectory = Trajectory2D()
+        self.k1 = 1
+        self.k2 = 1
 
     def set_target(self, target):
         self.target = np.zeros(4)
         self.target[:2] = target
 
-    def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, dt):
-        p0 = start_pos
-        v0 = start_vel
-        a0 = start_acc
+    def is_free(self, position, t, occupancy_map, agents):
 
-        delt_t = dt
+        grid = occupancy_map.get_grid(position[0] - self.params.drone_radius, position[1])
+        if grid == 1:
+            return False
 
-        delt_x = self.d * np.cos(theta_h)
-        delt_y = self.d * np.sin(theta_h)
+        grid = occupancy_map.get_grid(position[0], position[1])
+        if grid == 1:
+            return False
+
+        grid = occupancy_map.get_grid(position[0] + self.params.drone_radius, position[1])
+        if grid == 1:
+            return False
+
+        grid = occupancy_map.get_grid(position[0], position[1] - self.params.drone_radius)
+        if grid == 1:
+            return False
+
+        grid = occupancy_map.get_grid(position[0], position[1] + self.params.drone_radius)
+        if grid == 1:
+            return False
+
+        for agent in agents:
+            if agent.seen:
+                new_position = agent.estimate_pos + agent.estimate_vel * t
+                if norm(position - new_position) <= self.params.drone_radius + agent.radius:
+                    return False
+
+    def generate_primitive(self, p0, v0, a0, theta_h, v_max, delt_t):
+        delt_x = self.d * np.cos(radians(theta_h))
+        delt_y = self.d * np.sin(radians(theta_h))
         pf = p0 + np.array([delt_x, delt_y])
 
         l = self.target[:2] - pf
-        vf = (self.params.drone_max_speed / np.linalg.norm(l)) * l
+        vf = (v_max / np.linalg.norm(l)) * l
         af = np.array([0, 0])
 
         # Choose the time as running in average velocity
         decay_parameter = 0.5
-        T1 = 2 * delt_x / (vf[0] + v0[0]) * decay_parameter
-        T2 = 2 * delt_y / (vf[1] + v0[1]) * decay_parameter
-        if T1 > 1000:  # eliminate infinite value
-            T1 = 0
-        if T2 > 1000:
-            T2 = 0
-        T = max([T1, T2])
+        T1 = 2 * delt_x / (vf[0] + v0[0]) * decay_parameter 
+        T2 = 2 * delt_y / (vf[1] + v0[1]) * decay_parameter 
+
+        T1 = T1 if T1 < 1000 else 0
+        T2 = T2 if T2 < 1000 else 0
+        
+        # T = max([T1, T2])
+        T = 1
 
         times = int(np.floor(T / delt_t))
         p = np.zeros((times, 2))
@@ -985,7 +1020,7 @@ class Jerk_Primitive(object):
         t = np.arange(delt_t, times * delt_t + delt_t, delt_t)
 
         # calculate optimal jerk controls by Mark W. Miller
-        for ii in range(2):  # x, y, z axis
+        for ii in range(2):  # x, y axis
             delt_a = af[ii] - a0[ii]
             delt_v = vf[ii] - v0[ii] - a0[ii] * T
             delt_p = pf[ii] - p0[ii] - v0[ii] * T - 0.5 * a0[ii] * T ** 2
@@ -1001,14 +1036,62 @@ class Jerk_Primitive(object):
             for jj in range(times):
                 tt = t[jj]
                 p[jj, ii] = (alpha / 120)
-                v[jj, ii] = alpha/24*tt**4 + beta/6*tt**3 + gamma/2*tt**2 + a0[ii]*tt + v0[ii];
+                v[jj, ii] = alpha/24*tt**4 + beta/6*tt**3 + gamma/2*tt**2 + a0[ii]*tt + v0[ii]
                 a[jj, ii] = alpha/6*tt**3 + beta/2*tt**2 + gamma*tt + a0[ii]
+        return p, v, a, t, pf, vf ,af
+
+    def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, dt):
+        # calculate horizontal offset angle
+        delt_p = self.target[:2] - start_pos
+        phi_h = math.degrees(atan2(delt_p[1], delt_p[0])) 
+
+        # calculate cost for sampled points
+        cost = np.zeros((self.theta_range.shape[0], 2))
+        for i, theta in enumerate(self.theta_range):
+            cost[i, 0] = self.k1*angle_between(theta, phi_h)**2
+            cost[i, 1] = theta
+
+        # Rank by cost
+        cost = cost[cost[:, 0].argsort()]
+        v_max = self.params.drone_max_speed
+
+        for seq in range(self.theta_range.shape[0]):
+            ps, vs, accs, ts, pf, vf, af = self.generate_primitive(start_pos, start_vel, start_acc, cost[seq, 1], v_max, dt)
+            collision = 0
+            for t, position in zip(ts, ps):
+                if self.is_free(position, t, occupancy_map, agents):
+                    collision = 1
+                    break
+            if collision == 0:
+                break
+        
+        if collision:
+            return False
+        
+        a0 = accs[0,:] / abs(norm(accs[0,:])) * min(self.params.drone_max_acceleration, abs(norm(accs[0,:])))
+
+        vT = vs[0, :]
+        if abs(vT[0] - start_vel[0]) > a0[0] * dt:
+            vT[0] = start_vel[0] + a0[0] * dt
+        if abs(vT[1] - start_vel[1]) > a0[1] * dt:
+            vT[1] = start_vel[1] + a0[1] * dt
+
+        self.trajectory.velocities.append(vT)
+        self.trajectory.accelerations.append(a0)
+        pT = start_pos + (start_vel + vT) / 2 * dt
+        self.trajectory.positions.append(pT)
+
+        return True
+
+        
+        
 class Drone2DEnv2(gym.Env):
      
     def __init__(self, params):
         planner_list = {
             'Primitive': Primitive,
-            'MPC': MPC
+            'MPC': MPC,
+            'Jerk_Primitive':Jerk_Primitive
         }
         np.seterr(divide='ignore', invalid='ignore')
         gym.logger.set_level(40)
