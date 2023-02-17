@@ -387,16 +387,19 @@ class Raycast:
     def castRays(self, player, truth_grid_map, agents):
         rays = [self.castRay(player, pi*2 - radians(player.yaw), -self.FOV/2 + self.FOV/self.rays_number*i, truth_grid_map, agents) for i in range(self.rays_number)]
         hit_list = torch.zeros(len(agents), dtype=torch.int8)
+        newly_tracked = 0
 
         for ray in rays:
             hit_list = hit_list | ray['hit_list']
         for i, in_view in enumerate(hit_list):
             if in_view:
+                if agents[i].seen == False:
+                    newly_tracked += 1
                 agents[i].in_view = True
                 agents[i].seen = True
             else:
                 agents[i].in_view = False
-        return rays
+        return rays, newly_tracked
 
     
     def get_positive_angle(self, angle = None):
@@ -523,7 +526,8 @@ class Drone2D():
 
     def raycasting(self, gt_map, agents):
         # self.view_map = np.zeros_like(self.view_map)
-        self.rays = self.raycast.castRays(self, gt_map, agents)
+        self.rays, newly_tracked = self.raycast.castRays(self, gt_map, agents)
+        return newly_tracked
 
     def brake(self):
         if norm(self.velocity) <= self.params.drone_max_acceleration * self.dt:
@@ -1078,7 +1082,6 @@ class Jerk_Primitive(object):
         return True
 
         
-        
 class Drone2DEnv2(gym.Env):
      
     def __init__(self, params):
@@ -1095,6 +1098,8 @@ class Drone2DEnv2(gym.Env):
         self.max_steps = params.max_steps
         self.params = params
         self.dt = params.dt
+        self.tracked_agent = 0
+        self.seen_history = []
 
         # Setup pygame environment
         self.is_render = params.render
@@ -1124,7 +1129,7 @@ class Drone2DEnv2(gym.Env):
             while not collision_free:
                 obs = np.array([random.randint(50,params.map_size[0]-50), 
                                 random.randint(50,params.map_size[1]-50), 
-                                random.randint(30,40)])
+                                random.randint(15,20)])
                 collision_free = True
                 for target in self.target_list:
                     if norm(target - obs[:-1]) <= params.drone_radius + 20 + obs[-1]:
@@ -1201,7 +1206,8 @@ class Drone2DEnv2(gym.Env):
         self.map_gt.update_dynamic_grid(self.agents)
 
         # Raycast module
-        self.drone.raycasting(self.map_gt, self.agents)
+        newly_tracked = self.drone.raycasting(self.map_gt, self.agents)
+        self.tracked_agent += newly_tracked
 
         # Update moving agent position
         if len(self.agents) > 0:
@@ -1256,7 +1262,6 @@ class Drone2DEnv2(gym.Env):
                 self.planner.trajectory.positions = []
                 self.planner.trajectory.velocities = []
                 self.state_machine = state_machine['GOAL_REACHED']
-        
         # Execute gaze control
         self.drone.step_yaw(a*self.params.drone_max_yaw_speed)
 
@@ -1290,6 +1295,7 @@ class Drone2DEnv2(gym.Env):
         reward += 0.5 * float(np.sum(view_map * np.where(self.drone.map.grid_map == 0, 0, 1)))
             
         # wrap up information
+        self.seen_history.append([1 if agent.in_view else 0 for agent in self.agents])
         self.info = {
             'drone':self.drone,
             'trajectory':self.planner.trajectory,
@@ -1310,7 +1316,6 @@ class Drone2DEnv2(gym.Env):
             'swep_map' : local_swep_map[None],
             'yaw_angle' : np.array([self.drone.yaw], dtype=np.float32).flatten()
         }
-        time1 = time.time()
         # plt.subplot(1,2,1)
         # plt.imshow(local_swep_map.T)
         # plt.subplot(1,2,2)

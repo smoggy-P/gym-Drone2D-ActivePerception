@@ -1,0 +1,9 @@
+Method,Planner,Number of agents,Number of pillars,Agent speed,Drone speed,Steps,Grid discovered,Agent tracked,Agent tracked time,Success,Static Collision,Dynamic Collision
+LookAhead,Primitive,5,0,20,20,245,581,1,35.5,1,0,0
+LookAhead,Primitive,5,0,20,20,249,485,2,33.5,1,0,0
+LookAhead,Primitive,5,0,20,20,340,426,4,26.125,1,0,0
+LookAhead,Primitive,5,0,20,20,240,299,0,26.125,1,0,0
+LookAhead,Primitive,5,0,20,20,241,557,2,12.5,1,0,0
+LookAhead,Primitive,5,0,20,20,316,559,0,22.0,1,0,0
+LookAhead,Primitive,5,0,20,20,252,312,1,17.0,1,0,0
+LookAhead,Primitive,5,0,20,20,307,329,1,16.5,1,0,0
