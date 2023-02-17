@@ -117,7 +117,7 @@ class Oxford(object):
             return 0
 
         for i, yaw in enumerate(target_yaw):
-            new_drone = Drone2D(trajectory.positions[0][0], trajectory.positions[0][1], yaw, self.dt, self.dim, self.params)
+            new_drone = Drone2D(trajectory.positions[0][0], trajectory.positions[0][1], yaw, self.dt, self.params)
             new_view_map = self.get_view_map(self, new_drone)
             if max_reward < np.sum(new_view_map*reward_map):
                 best_action = i
