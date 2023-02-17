@@ -2,7 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import random
-from gym_2d_perception.envs.drone_v0 import Drone2D
+from gym_2d_perception.envs.drone_v2 import Drone2D
 from math import cos, sin, radians, atan2, degrees
 from numpy.linalg import norm
 
@@ -134,7 +134,8 @@ class Oxford(object):
         
 class Rotating(object):
     
-    
+    def __init__(self, params):
+        self.params = params
     
     def plan(self, observation):
         return 1

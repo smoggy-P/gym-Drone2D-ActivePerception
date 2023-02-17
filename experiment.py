@@ -4,7 +4,6 @@ import pandas as pd
 import os
 # from tqdm import tqdm
 from yaw_planner import Oxford, LookAhead, NoControl, Rotating, Owl
-from stable_baselines3 import PPO
 from datetime import datetime
 # import matplotlib.pyplot as plt
 
@@ -42,7 +41,6 @@ class Experiment:
         self.policy.__init__(self.policy, params)
         self.max_step = 5000
         self.result_dir = dir
-        self.model = None
         
         self.last_step = 0
         self.last_undiscovered_grid = np.sum(np.where(self.env.drone.map.grid_map == 0, 1, 0))
@@ -65,23 +63,14 @@ class Experiment:
             df = pd.DataFrame(d)
             df.to_csv(dir, index=False)
 
-        if self.params.trained_policy:
-            self.model = PPO.load(path='./trained_policy/lookahead.zip')
-            self.model.set_env(self.env)
-
 
     def run(self):
-        rewards = []
-        steps = []
         success = 0
         fail = 0
-        state = self.env.reset()
+        self.env.reset()
         for i in range(self.max_step):
-            if self.params.trained_policy:
-                a, state_ = self.model.predict(state, deterministic=True)
-            else:
-                a = self.policy.plan(self.policy, self.env.info)
-            state, reward, done, info = self.env.step(a)
+            a = self.policy.plan(self.policy, self.env.info)
+            _, _, done, info = self.env.step(a)
 
             if self.params.record:
                 if info['state_machine'] == 1 or info['collision_flag'] == 1 or info['collision_flag'] == 2:
@@ -109,9 +98,6 @@ class Experiment:
                 self.last_agent_tracked = 0
                 self.policy.__init__(self.policy, self.params)
                 
-
-            rewards.append(reward)
-            steps.append(i)
             if self.params.render:
                 self.env.render()
         return success, fail
