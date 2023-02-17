@@ -1177,6 +1177,24 @@ class Drone2DEnv2(gym.Env):
             'target':self.planner.target,
             'collision_flag':0
         }
+        self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
+        local_map_size = 4 * (params.drone_view_depth // params.map_scale) + 1
+        self.observation_space = gym.spaces.Dict(
+            {
+                'yaw_angle' : gym.spaces.Box(low=np.array([0], dtype=np.float32), 
+                                             high=np.array([360], dtype=np.float32), 
+                                             shape=(1,), 
+                                             dtype=np.float32), 
+                'local_map' : gym.spaces.Box(low=np.zeros((1, local_map_size, local_map_size), dtype=np.float32), 
+                                             high=np.float32(4*np.ones((1, local_map_size,local_map_size))), 
+                                             shape=(1, local_map_size, local_map_size),
+                                             dtype=np.float32),
+                'swep_map'  : gym.spaces.Box(low=np.zeros((1, local_map_size, local_map_size), dtype=np.float32), 
+                                             high=np.float32(10*np.ones((1, local_map_size,local_map_size), dtype=np.float32)), 
+                                             shape=(1, local_map_size, local_map_size),
+                                             dtype=np.float32)
+            }
+        )
     
     def step(self, a):
         done = False
@@ -1275,11 +1293,25 @@ class Drone2DEnv2(gym.Env):
             'target':self.planner.target,
             'seen_agents':[agent for agent in self.agents if agent.seen]
         }
+        drone_idx = (int(self.drone.x // self.params.map_scale), int(self.drone.y // self.params.map_scale))
+        edge_len = 2 * (self.params.drone_view_depth // self.params.map_scale)
+        local_swep_map = np.pad(swep_map, ((edge_len,edge_len),(edge_len,edge_len)), 'constant', constant_values=0)
+        local_swep_map = local_swep_map[drone_idx[0] : drone_idx[0] + 2 * edge_len + 1, drone_idx[1] : drone_idx[1] + 2 * edge_len + 1]
 
-        return None, None, done, self.info
+        state = {
+            'local_map' : self.drone.get_local_map()[None],
+            'swep_map' : local_swep_map[None],
+            'yaw_angle' : np.array([self.drone.yaw], dtype=np.float32).flatten()
+        }
+
+        return state, 0, done, self.info
     
     def reset(self):
         self.__init__(params=self.params)
+        local_map_size = 4 * (self.params.drone_view_depth // self.params.map_scale) + 1
+        return {'local_map' : self.drone.get_local_map()[None], 
+                'swep_map'  : np.zeros((1, local_map_size, local_map_size)),
+                'yaw_angle' : np.array([self.drone.yaw])}
         
     def render(self, mode='human'):
         # keys = pygame.key.get_pressed()

@@ -1082,7 +1082,7 @@ class Jerk_Primitive(object):
         return True
 
         
-class Drone2DEnv2(gym.Env):
+class Drone2DEnv1(gym.Env):
      
     def __init__(self, params):
         planner_list = {
