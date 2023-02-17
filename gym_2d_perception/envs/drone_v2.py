@@ -1177,24 +1177,6 @@ class Drone2DEnv2(gym.Env):
             'target':self.planner.target,
             'collision_flag':0
         }
-        self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
-        local_map_size = 4 * (params.drone_view_depth // params.map_scale) + 1
-        self.observation_space = gym.spaces.Dict(
-            {
-                'yaw_angle' : gym.spaces.Box(low=np.array([0], dtype=np.float32), 
-                                             high=np.array([360], dtype=np.float32), 
-                                             shape=(1,), 
-                                             dtype=np.float32), 
-                'local_map' : gym.spaces.Box(low=np.zeros((1, local_map_size, local_map_size), dtype=np.float32), 
-                                             high=np.float32(4*np.ones((1, local_map_size,local_map_size))), 
-                                             shape=(1, local_map_size, local_map_size),
-                                             dtype=np.float32),
-                'swep_map'  : gym.spaces.Box(low=np.zeros((1, local_map_size, local_map_size), dtype=np.float32), 
-                                             high=np.float32(10*np.ones((1, local_map_size,local_map_size), dtype=np.float32)), 
-                                             shape=(1, local_map_size, local_map_size),
-                                             dtype=np.float32)
-            }
-        )
     
     def step(self, a):
         done = False
@@ -1270,29 +1252,17 @@ class Drone2DEnv2(gym.Env):
         if collision_state == 1:
             if self.params.record_img and self.params.gaze_method != 'NoControl':
                 pygame.image.save(self.screen, self.params.img_dir+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
-            reward = -1000.0
             done = True
         elif collision_state == 2:
             if self.params.record_img and self.params.gaze_method != 'NoControl':
                 pygame.image.save(self.screen, self.params.img_dir+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
-            reward = -1000.0
             done = True
         elif self.state_machine == state_machine['GOAL_REACHED']:
-            reward = 100.0
             done = False
             if self.target_list.shape[0] == 0:
                 done = True
         if self.steps >= self.max_steps:
              done = True
-    
-        x = np.arange(int(self.params.map_size[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
-        y = np.arange(int(self.params.map_size[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
-
-        vec_yaw = np.array([math.cos(math.radians(self.drone.yaw)), -math.sin(math.radians(self.drone.yaw))])
-        view_angle = math.radians(self.drone.yaw_range / 2)
-        view_map = np.where(np.logical_or((self.drone.x - x)**2 + (self.drone.y - y)**2 <= 0, np.logical_and(np.arccos(((x - self.drone.x)*vec_yaw[0] + (y - self.drone.y)*vec_yaw[1]) / np.sqrt((self.drone.x - x)**2 + (self.drone.y - y)**2)) <= view_angle, ((self.drone.x - x)**2 + (self.drone.y - y)**2 <= self.drone.yaw_depth ** 2))), 1, 0)
-        reward = float(np.sum(view_map * np.where(swep_map == 0, 0, 1)))
-        reward += 0.5 * float(np.sum(view_map * np.where(self.drone.map.grid_map == 0, 0, 1)))
             
         # wrap up information
         self.seen_history.append([1 if agent.in_view else 0 for agent in self.agents])
@@ -1306,33 +1276,10 @@ class Drone2DEnv2(gym.Env):
             'seen_agents':[agent for agent in self.agents if agent.seen]
         }
 
-        drone_idx = (int(self.drone.x // self.params.map_scale), int(self.drone.y // self.params.map_scale))
-        edge_len = 2 * (self.params.drone_view_depth // self.params.map_scale)
-        local_swep_map = np.pad(swep_map, ((edge_len,edge_len),(edge_len,edge_len)), 'constant', constant_values=0)
-        local_swep_map = local_swep_map[drone_idx[0] : drone_idx[0] + 2 * edge_len + 1, drone_idx[1] : drone_idx[1] + 2 * edge_len + 1]
-
-        state = {
-            'local_map' : self.drone.get_local_map()[None],
-            'swep_map' : local_swep_map[None],
-            'yaw_angle' : np.array([self.drone.yaw], dtype=np.float32).flatten()
-        }
-        # plt.subplot(1,2,1)
-        # plt.imshow(local_swep_map.T)
-        # plt.subplot(1,2,2)
-        # plt.imshow(self.drone.get_local_map().T)
-        # plt.show()
-        # plt.pause(0.001)
-        # plt.clf()
-        # print(time.time() - time1)
-        # time.sleep(0.1)
-        return state, reward, done, self.info
+        return None, None, done, self.info
     
     def reset(self):
         self.__init__(params=self.params)
-        local_map_size = 4 * (self.params.drone_view_depth // self.params.map_scale) + 1
-        return {'local_map' : self.drone.get_local_map()[None], 
-                'swep_map'  : np.zeros((1, local_map_size, local_map_size)),
-                'yaw_angle' : np.array([self.drone.yaw])}
         
     def render(self, mode='human'):
         # keys = pygame.key.get_pressed()
