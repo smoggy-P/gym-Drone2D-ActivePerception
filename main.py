@@ -27,7 +27,7 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
         'drone_radius':5,
         'drone_max_yaw_speed':80,
         'drone_view_depth' : 80,
-        'drone_view_range': 90,
+        'drone_view_range': 360,
         'img_dir':img_dir,
         'max_steps':8000,
 
