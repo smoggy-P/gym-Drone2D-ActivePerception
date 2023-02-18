@@ -968,7 +968,8 @@ class Jerk_Primitive(object):
         self.target[:2] = target
 
     def is_free(self, position, t, occupancy_map, agents):
-
+        if np.isnan(position).any():
+            return False
         grid = occupancy_map.get_grid(position[0] - self.params.drone_radius, position[1])
         if grid == 1:
             return False
@@ -1258,7 +1259,6 @@ class Drone2DEnv2(gym.Env):
             self.drone.x = round(self.planner.trajectory.positions[0][0])
             self.drone.y = round(self.planner.trajectory.positions[0][1])
             self.planner.trajectory.pop()
-            print("vel:", norm(self.drone.velocity))
             if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10:
                 self.planner.trajectory.positions = []
                 self.planner.trajectory.velocities = []
