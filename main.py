@@ -8,7 +8,9 @@ from datetime import datetime
 # os.environ["SDL_VIDEODRIVER"] = "dummy"
 # os.environ['SDL_AUDIODRIVER'] = 'dsp'
 result_dir = './experiment/results_'+str(datetime.now())+'.csv'
-# result_dir = './experiment/LookAhead_Primitive.csv'
+result_dir = './experiment/Rotating_Primitive.csv'
+result_dir = './experiment/NoControl_Primitive.csv'
+result_dir = './experiment/LookAhead_Primitive.csv'
 # result_dir = './experiment/results_3.csv'
 img_dir = './experiment/fails/new/'
 
