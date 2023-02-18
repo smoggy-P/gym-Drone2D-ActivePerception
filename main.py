@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 # os.environ["SDL_VIDEODRIVER"] = "dummy"
 # os.environ['SDL_AUDIODRIVER'] = 'dsp'
-result_dir = './experiment/results_'+str(datetime.now())+'.csv'
+result_dir = './experiment/Rotating_Primitive.csv'
 # result_dir = './experiment/results_3.csv'
 img_dir = './experiment/fails/new/'
 
@@ -46,8 +46,8 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
 if __name__ == '__main__':
     gaze_methods = ['Rotating']
     planners = ['Primitive']
-    agent_numbers = [5, 10, 15]
-    pillar_numbers = [0, 5, 10]
+    agent_numbers = [15]
+    pillar_numbers = [10]
     agent_max_speeds = [20, 30, 40]
     drone_max_speeds = [20, 30, 40]
 
