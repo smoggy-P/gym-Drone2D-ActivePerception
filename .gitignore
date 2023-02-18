@@ -4,3 +4,4 @@ gym_2d_perception.egg-info
 experiment/fails/**
 slurm-*.out
 src/**
+main.py
