@@ -17,8 +17,8 @@ img_dir = './experiment/fails/new/'
 def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, planner):
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v2',
-        'render':False,
-        'record': True,
+        'render':True,
+        'record': False,
         'record_img': False,
         'trained_policy':False,
         'policy_dir':'./trained_policy/lookahead.zip',
