@@ -39,7 +39,7 @@ class Experiment:
         self.dt = params.dt
         self.policy = policy_list[params.gaze_method]
         self.policy.__init__(self.policy, params)
-        self.max_step = 10000
+        self.max_step = int(params.experiment_time / 12 * 10000)
         self.result_dir = dir
         
         self.last_step = 0
