@@ -761,7 +761,7 @@ class MPC(object):
         self.x_max = params.map_size[0]
         self.y_max = params.map_size[1]
         self.u_max = params.drone_max_acceleration
-        self.dt = 0.5
+        self.dt = 0.1
 
         # Define the system dynamics
         self.A = np.array([[1, 0, self.dt, 0],
@@ -839,15 +839,10 @@ class MPC(object):
                 position = 5 + 10*xy[0]
             else:
                 cov = np.cov(xy, rowvar=False)
-                eig_vals, eig_vecs = np.linalg.eigh(cov)
-                angle = np.degrees(np.arctan2(*eig_vecs[:, 0][::-1]))
-                width, height = 45 * np.sqrt(eig_vals)
+                eig_vals, _ = np.linalg.eigh(cov)
+                r = 20 * max(np.sqrt(eig_vals))
                 center = 5+10*xy.mean(axis=0)
-                ell = Ellipse(center, width, height, angle)
-                plt.gca().add_artist(ell)
-
-                position, r, x2, y2 = self.approx_circle_from_ellipse(center[0], center[1], width/2, height/2, math.radians(angle), start_pos[0], start_pos[1])
-                plt.scatter(x2, y2, c='y')
+                position = center
                 ell = Circle(position, r, color='r', fill=False)
                 plt.gca().add_artist(ell)
             rs.append(r)
@@ -860,9 +855,9 @@ class MPC(object):
         plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
         plt.axis([0,640,480,0])
         
-        # plt.show()
-        # plt.pause(0.1)
-        # plt.clf()
+        plt.show()
+        plt.pause(0.1)
+        plt.clf()
 
         return positions, rs
 
@@ -871,22 +866,27 @@ class MPC(object):
         self.target[:2] = target
 
     def get_coeff(self, p,r_drone,p_obs,r_obs):
-            point=p_obs+(r_drone+r_obs)*(p-p_obs)/np.linalg.norm(p-p_obs)
-            a=-(p-p_obs)[0]/(p-p_obs)[1]
-            b=point[1]-a*point[0]
-            A=np.array([-a,1])
-            if np.dot(A,p) > b:
-                A=-A
-                b=-b
-            A+=np.random.normal(0, 0.01, 1)
-            return A,b
+        point=p_obs+(r_drone+r_obs)*(p-p_obs)/np.linalg.norm(p-p_obs)
+        a=-(p-p_obs)[0]/(p-p_obs)[1]
+        b=point[1]-a*point[0]
+        A=np.array([-a,1])
+        if np.dot(A,p) > b:
+            A=-A
+            b=-b
+        return A,b
 
     def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, dt):
         if len(self.trajectory) != 0:
             return True
+        x = np.arange(int(self.params.map_size[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
+        y = np.arange(int(self.params.map_size[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
 
-        positions, rs = self.binary_image_clustering(np.where(occupancy_map.grid_map == grid_type['OCCUPIED'], 1, 0), 1.5, 1, start_pos)
+        local_obstacle = np.where(np.logical_and((start_pos[0] - x)**2 + (start_pos[1] - y)**2 <= 50 ** 2, occupancy_map.grid_map == grid_type['OCCUPIED']), 1, 0)
 
+        positions, rs = self.binary_image_clustering(local_obstacle, 1.5, 1, start_pos)
+        for position, r in zip(positions, rs):
+            if norm(start_pos - position) < r:
+                return False
         x0 = np.array([start_pos[0], start_pos[1], start_vel[0], start_vel[1]])
         
         # Define the optimization variables
@@ -903,12 +903,10 @@ class MPC(object):
 
         A_static = np.array(A_static)
         b_static = np.array(b_static)
-
+        
         for i in range(self.N):
             constraints += [x[:,i+1] == self.A@x[:,i] + self.B@u[:,i]]
             if A_static.shape[0] > 0:
-                if (A_static @ x0[:2] >= b_static).any():
-                    return False
                 constraints += [A_static@x[:2,i+1] <= b_static.flatten()]
 
             for agent in agents:
@@ -970,7 +968,8 @@ class Jerk_Primitive(object):
         self.target[:2] = target
 
     def is_free(self, position, t, occupancy_map, agents):
-
+        if np.isnan(position).any():
+            return False
         grid = occupancy_map.get_grid(position[0] - self.params.drone_radius, position[1])
         if grid == 1:
             return False
@@ -1009,14 +1008,16 @@ class Jerk_Primitive(object):
 
         # Choose the time as running in average velocity
         decay_parameter = 0.5
-        T1 = 2 * delt_x / (vf[0] + v0[0]) * decay_parameter 
-        T2 = 2 * delt_y / (vf[1] + v0[1]) * decay_parameter 
+        T1 = delt_x / (vf[0] + v0[0]) 
+        T2 = delt_y / (vf[1] + v0[1]) 
 
         T1 = T1 if T1 < 1000 else 0
         T2 = T2 if T2 < 1000 else 0
         
-        T = max([T1, T2])
-        T = T if T >= 1 else 1
+        T = 1.2 * norm(np.array([delt_x, delt_y])) / (norm(v_max))
+
+
+        T = T if T >= 0.5 else 0.5
 
         times = int(np.floor(T / delt_t))
         p = np.zeros((times, 2))
