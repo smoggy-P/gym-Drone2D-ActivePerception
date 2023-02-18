@@ -9,6 +9,7 @@ from datetime import datetime
 # os.environ['SDL_AUDIODRIVER'] = 'dsp'
 # result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 result_dir = './experiment/NoControl_Primitive.csv'
+result_dir = './experiment/LookAhead_Primitive.csv'
 # result_dir = './experiment/results_3.csv'
 img_dir = './experiment/fails/new/'
 
@@ -45,7 +46,7 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
 
 
 if __name__ == '__main__':
-    gaze_methods = ['NoControl']
+    gaze_methods = ['Oxford']
     planners = ['Primitive']
     agent_numbers = [15]
     pillar_numbers = [5, 10]
