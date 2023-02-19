@@ -7,6 +7,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 import cvxpy as cp
+from cvxpy.error import SolverError
 from datetime import datetime
 from numpy import array, pi, cos, sin
 from numpy.linalg import norm, inv
@@ -928,7 +929,10 @@ class MPC(object):
         prob = cp.Problem(cp.Minimize(cost), constraints)
 
         # Solve the optimization problem
-        result = prob.solve()
+        try:
+            result = prob.solve()
+        except SolverError:
+            return False
         
         u_opt = u.value
         if u_opt is None:
