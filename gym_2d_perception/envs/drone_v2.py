@@ -754,14 +754,14 @@ class MPC(object):
         self.params = params
         self.target = np.array([drone.x, drone.y])
         # Define the prediction horizon and control horizon
-        self.N = 10
+        self.N = 3
 
         # Define the state and control constraints
         self.v_max = params.drone_max_speed
         self.x_max = params.map_size[0]
         self.y_max = params.map_size[1]
         self.u_max = params.drone_max_acceleration
-        self.dt = 0.1
+        self.dt = 0.5
 
         # Define the system dynamics
         self.A = np.array([[1, 0, self.dt, 0],
@@ -840,24 +840,24 @@ class MPC(object):
             else:
                 cov = np.cov(xy, rowvar=False)
                 eig_vals, _ = np.linalg.eigh(cov)
-                r = 20 * max(np.sqrt(eig_vals))
+                r =  11 * max(np.sqrt(eig_vals))
                 center = 5+10*xy.mean(axis=0)
                 position = center
-                ell = Circle(position, r, color='r', fill=False)
-                plt.gca().add_artist(ell)
+                # ell = Circle(position, r, color='r', fill=False)
+                # plt.gca().add_artist(ell)
             rs.append(r)
             positions.append(position)
             # ell = Circle(position, r)
             # ell = Ellipse(xy.mean(axis=0), r, r, angle, color=col)
         #     plt.gca().add_artist(ell)
-        plt.scatter(start_pos[0], start_pos[1], c='r')
+        # plt.scatter(start_pos[0], start_pos[1], c='r')
         
-        plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
-        plt.axis([0,640,480,0])
+        # plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
+        # plt.axis([0,640,480,0])
         
-        plt.show()
-        plt.pause(0.1)
-        plt.clf()
+        # plt.show()
+        # plt.pause(0.1)
+        # plt.clf()
 
         return positions, rs
 
@@ -883,7 +883,7 @@ class MPC(object):
 
         local_obstacle = np.where(np.logical_and((start_pos[0] - x)**2 + (start_pos[1] - y)**2 <= 50 ** 2, occupancy_map.grid_map == grid_type['OCCUPIED']), 1, 0)
 
-        positions, rs = self.binary_image_clustering(local_obstacle, 1.5, 1, start_pos)
+        positions, rs = self.binary_image_clustering(local_obstacle, 1, 1, start_pos)
         for position, r in zip(positions, rs):
             if norm(start_pos - position) < r:
                 return False
@@ -912,7 +912,7 @@ class MPC(object):
             for agent in agents:
                 if agent.seen:
                     p_obs = agent.estimated_pos(i*self.dt)
-                    A, b = self.get_coeff(x0[:2], self.params.drone_radius, p_obs, agent.radius)
+                    A, b = self.get_coeff(x0[:2], self.params.drone_radius, p_obs, agent.radius + 2)
                     constraints += [A@x[:2,i+1] <= b.flatten()]
             constraints += [15*np.ones(2) <= x[:2,i], x[:2,i] <= np.array(self.params.map_size)-15]
             constraints += [cp.norm(x[2:,i]) <= self.v_max]
