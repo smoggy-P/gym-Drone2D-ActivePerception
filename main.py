@@ -17,8 +17,8 @@ img_dir = './experiment/fails/new/'
 def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, planner):
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v2',
-        'render':False,
-        'record': True,
+        'render':True,
+        'record': False,
         'experiment_time':12,#hours
 
         'record_img': False,
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     gaze_methods = ['Oxford']
     planners = ['MPC']
     agent_numbers = [5, 10, 15]
-    pillar_numbers = [0, 5, 10]
+    pillar_numbers = [10, 5, 10]
     agent_max_speeds = [20, 30, 40]
     drone_max_speeds = [20, 30, 40]
 

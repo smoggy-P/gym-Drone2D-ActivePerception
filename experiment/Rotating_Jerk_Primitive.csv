@@ -1,3 +1,4 @@
+Method,Planner,Number of agents,Number of pillars,Agent speed,Drone speed,Steps,Grid discovered,Agent tracked,Agent tracked time,Success,Static Collision,Dynamic Collision
 Rotating,Jerk_Primitive,5,0,20,20,98,313,0,0.0,1,0,0
 Rotating,Jerk_Primitive,5,0,20,20,251,709,1,10.5,1,0,0
 Rotating,Jerk_Primitive,5,0,20,20,166,452,1,12.666666666666666,1,0,0
