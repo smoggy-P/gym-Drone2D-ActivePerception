@@ -152,10 +152,10 @@ class Owl(object):
     def __init__(self, params):
         self.params = params
         
-        self.dt = 0.5
+        self.dt = 0.8
         self.u = []
         # weights for different costs
-        self.lamb = np.array([0.2, 0.9, 1, 0.1, 0.01])
+        self.lamb = np.array([0.2, 0.9, 1, 0.1, 0])
 
         self.u_space = np.arange(-self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed, self.params.drone_max_yaw_speed/10)
         self.theta_h = params.drone_view_range
