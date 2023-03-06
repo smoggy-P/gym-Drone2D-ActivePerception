@@ -63,15 +63,47 @@ class RVO():
         
         for i in range(len(X)):
             try:
-                RVO_BA_all = [[[X[i][0]+0.5*(V_current[j][0]+V_current[i][0]), X[i][1]+0.5*(V_current[j][1]+V_current[i][1])], 
-                            [cos(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) + asin(2*ROB_RAD/norm(X[i] - X[j]))), sin(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) + asin(2*ROB_RAD/norm(X[i] - X[j])))],
-                            [cos(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) - asin(2*ROB_RAD/norm(X[i] - X[j]))), sin(atan2(X[j][1]-X[i][1], X[j][0]-X[i][0]) - asin(2*ROB_RAD/norm(X[i] - X[j])))],
-                            norm(X[i] - X[j]),
-                            2.2*ROB_RAD] for j in range(len(X)) if j != i] + [[X[i], 
-                                                                                [cos(atan2(hole[1]-X[i][1], hole[0]-X[i][0]) + asin((hole[2]*1+ROB_RAD)/norm(X[i] - hole[0:2]))), sin(atan2(hole[1]-X[i][1], hole[0]-X[i][0]) + asin((hole[2]*1+ROB_RAD)/norm(X[i] - hole[0:2])))], 
-                                                                                [cos(atan2(hole[1]-X[i][1], hole[0]-X[i][0])-asin((hole[2]*1+ROB_RAD)/norm(X[i] - hole[0:2]))), sin(atan2(hole[1]-X[i][1], hole[0]-X[i][0])-asin((hole[2]*1+ROB_RAD)/norm(X[i] - hole[0:2])))], 
-                                                                                norm(X[i] - hole[0:2]), 
-                                                                                hole[2]*1.5+ROB_RAD] for hole in ws_model['circular_obstacles']]
+                vA = array([V_current[i][0], V_current[i][1]])
+                pA = array([X[i][0], X[i][1]])
+                RVO_BA_all = []
+                for j in range(len(X)):
+                    if i!=j:
+                        vB = array([V_current[j][0], V_current[j][1]])
+                        pB = array([X[j][0], X[j][1]])
+                        # use RVO
+                        transl_vB_vA = [pA[0]+0.5*(vB[0]+vA[0]), pA[1]+0.5*(vB[1]+vA[1])]
+                        # use VO
+                        # transl_vB_vA = [pA[0]+vB[0], pA[1]+vB[1]]
+                        dist_BA = norm(pA - pB)
+                        theta_BA = atan2(pB[1]-pA[1], pB[0]-pA[0])
+                        if 2*ROB_RAD > dist_BA:
+                            dist_BA = 2*ROB_RAD
+                        theta_BAort = asin(2*ROB_RAD/dist_BA)
+                        theta_ort_left = theta_BA+theta_BAort
+                        bound_left = [cos(theta_ort_left), sin(theta_ort_left)]
+                        theta_ort_right = theta_BA-theta_BAort
+                        bound_right = [cos(theta_ort_right), sin(theta_ort_right)]
+                        RVO_BA = [transl_vB_vA, bound_left, bound_right, dist_BA, 2*ROB_RAD]
+                        RVO_BA_all.append(RVO_BA)                
+                for hole in ws_model['circular_obstacles']:
+                    # hole = [x, y, rad]
+                    vB = [0, 0]
+                    pB = hole[0:2]
+                    transl_vB_vA = [pA[0]+vB[0], pA[1]+vB[1]]
+                    dist_BA = norm(pA - pB)
+                    theta_BA = atan2(pB[1]-pA[1], pB[0]-pA[0])
+                    # over-approximation of square to circular
+                    OVER_APPROX_C2S = 1.5
+                    rad = hole[2]*OVER_APPROX_C2S
+                    if (rad+ROB_RAD) > dist_BA:
+                        dist_BA = rad+ROB_RAD
+                    theta_BAort = asin((rad+ROB_RAD)/dist_BA)
+                    theta_ort_left = theta_BA+theta_BAort
+                    bound_left = [cos(theta_ort_left), sin(theta_ort_left)]
+                    theta_ort_right = theta_BA-theta_BAort
+                    bound_right = [cos(theta_ort_right), sin(theta_ort_right)]
+                    RVO_BA = [transl_vB_vA, bound_left, bound_right, dist_BA, rad+ROB_RAD]
+                    RVO_BA_all.append(RVO_BA)
             except:
                 return False
             vA_post = self.intersect(X[i], V_des[i], RVO_BA_all)
@@ -134,7 +166,7 @@ class RVO():
                     right = RVO_BA[2]
                     dist = RVO_BA[3]
                     rad = RVO_BA[4]
-                    dif = [unsuit_v[0]+pA[0]-p_0[0], unsuit_v[1]+pA[1]-p_0[1]]
+                    dif = array([unsuit_v[0]+pA[0]-p_0[0], unsuit_v[1]+pA[1]-p_0[1]])
                     theta_dif = atan2(dif[1], dif[0])
                     theta_right = atan2(right[1], right[0])
                     theta_left = atan2(left[1], left[0])
@@ -146,7 +178,7 @@ class RVO():
                         dist_tg = abs(dist*cos(small_theta))-abs(rad*cos(big_theta))
                         if dist_tg < 0:
                             dist_tg = 0                    
-                        tc_v = dist_tg/norm(dif - [0,0])
+                        tc_v = dist_tg/norm(dif)
                         tc.append(tc_v)
                 tc_V[tuple(unsuit_v)] = min(tc)+0.001
             WT = 0.2
