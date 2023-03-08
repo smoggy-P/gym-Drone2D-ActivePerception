@@ -6,39 +6,11 @@ from numpy.linalg import norm, inv
 from math import cos, sin, sqrt, atan2, radians
 from sklearn.cluster import DBSCAN
 from cvxpy.error import SolverError
-
-grid_type = {
-    'DYNAMIC_OCCUPIED' : 3,
-    'OCCUPIED' : 1,
-    'UNOCCUPIED' : 2,
-    'UNEXPLORED' : 0
-}
-
-class Waypoint2D(object):
-    def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
-        self.position = pos
-        self.velocity = vel
-
-class Trajectory2D(object):
-    def __init__(self):
-        self.positions = []
-        self.velocities = []
-        self.accelerations = []
-    def pop(self):
-        self.positions.pop(0)
-        self.velocities.pop(0)
-        self.accelerations.pop(0)
-    def __len__(self):
-        return len(self.positions)
-    def get_swep_map(self, swep_map):
-        for i, pos in enumerate(self.positions):
-            # unparam
-            swep_map[int(pos[0]//10), int(pos[1]//10)] = i * 0.1
+from utils import Trajectory2D, Waypoint2D, grid_type
 
 class Planner:
     def __init__(self):
         self.trajectory = Trajectory2D()
-        self.full_trajectory = self.trajectory
 
     def set_target(self, target):
         self.target = np.zeros(4)
@@ -196,18 +168,6 @@ class Primitive(Planner):
                                                             itr = current.itr + 1)
                             sub_node_list.append(successor)
 
-
-
-            # sub_node_list = [self.Primitive_Node(pos=np.around(np.array([1, self.dt, self.dt**2]) @ np.array([[current.position[0], current.position[1]], [current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])), 
-            #                                     vel=np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]]), 
-            #                                     cost=current.cost + (x_acc**2 + y_acc**2)/100 + 10, 
-            #                                     target=self.target[:2],
-            #                                     parent_index=current.index,
-            #                                     coeff=np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]),
-            #                                     itr = current.itr + 1) for x_acc in self.u_space 
-            #                                                         for y_acc in self.u_space 
-            #                                                         if self.is_free(np.array([[current.position[0], current.velocity[0], x_acc / 2], [current.position[1], current.velocity[1], y_acc / 2]]), occupancy_map, agents, current.itr) and 
-            #                                                             norm(np.array([1, 2*self.dt]) @ np.array([[current.velocity[0], current.velocity[1]], [x_acc/2, y_acc/2]])) < self.params.drone_max_speed]
             for next_node in sub_node_list:
                 if next_node.index in closed_set:
                     continue
@@ -229,7 +189,6 @@ class Primitive(Planner):
                 cur_node = closed_set[cur_node.parent_index]
             self.trajectory.positions.reverse()
             self.trajectory.velocities.reverse()
-        self.full_trajectory = self.trajectory
         return success
 
 class MPC(Planner):
@@ -238,14 +197,14 @@ class MPC(Planner):
         self.params = params
         self.target = np.array([drone.x, drone.y])
         # Define the prediction horizon and control horizon
-        self.N = 3
+        self.N = 10
 
         # Define the state and control constraints
         self.v_max = params.drone_max_speed
         self.x_max = params.map_size[0]
         self.y_max = params.map_size[1]
         self.u_max = params.drone_max_acceleration
-        self.dt = 0.5
+        self.dt = 0.25
 
         # Define the system dynamics
         self.A = np.array([[1, 0, self.dt, 0],
@@ -262,7 +221,6 @@ class MPC(Planner):
         self.R = np.eye(2)
 
         self.trajectory = Trajectory2D()
-        self.full_trajectory = Trajectory2D()
 
     @classmethod
     def approx_circle_from_ellipse(self, x0, y0, a, b, theta, x1, y1):
@@ -418,18 +376,14 @@ class MPC(Planner):
             return False
         # Simulate the system to get the state trajectory
         self.trajectory = Trajectory2D()
-        self.full_trajectory = Trajectory2D()
+
         x = x0
         for i in range(self.N):
             for j in np.arange(0, self.dt, self.params.dt): 
                 t = j + self.params.dt
-                self.full_trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
-                self.full_trajectory.velocities.append(x[2:]+t*u_opt[:,i])
-                self.full_trajectory.accelerations.append(np.array([0, 0]))
-                if i <= 0:
-                    self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
-                    self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
-                    self.trajectory.accelerations.append(np.array([0, 0]))
+                self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
+                self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
+                self.trajectory.accelerations.append(np.array([0, 0]))
             x = self.A@x + self.B@u_opt[:,i]
 
 
@@ -443,7 +397,6 @@ class Jerk_Primitive(Planner):
         self.d = 30
         self.theta_last = - drone.yaw
         self.trajectory = Trajectory2D()
-        self.full_trajectory = Trajectory2D()
         self.k1 = 1
         self.k2 = 1
 
@@ -528,6 +481,5 @@ class Jerk_Primitive(Planner):
         self.trajectory.accelerations.append(accs[0, :])
         self.trajectory.positions.append(ps[0,:])
 
-        self.full_trajectory = self.trajectory
 
         return True
