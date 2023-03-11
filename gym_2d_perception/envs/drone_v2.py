@@ -701,15 +701,7 @@ class Drone2DEnv2(gym.Env):
                 done = True
         
         # If collision detected for planned trajectory, replan
-        swep_map = np.zeros_like(self.map_gt.grid_map)
-        for i, pos in enumerate(self.planner.trajectory.positions):
-            swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.dt
-            for agent in self.agents:
-                if agent.seen:
-                    if norm(agent.estimated_pos(i * self.dt) - pos) <= self.drone.radius + agent.radius:
-                        self.planner.trajectory.clear()
-        if np.sum(np.where((self.drone.map.grid_map==1),1, 0) * swep_map) > 0:
-            self.planner.trajectory.clear()
+        replan, swep_map = self.planner.replan_check(self.drone.map.grid_map, self.agents)
 
         # Set target point
         if self.state_machine == state_machine['WAIT_FOR_GOAL']:
@@ -800,17 +792,17 @@ class Drone2DEnv2(gym.Env):
         if self.is_render:
             self.drone.map.render(self.screen, color_dict)
             self.drone.render(self.screen)
-            for ray in self.drone.rays:
-                pygame.draw.line(
-                    self.screen,
-                    (100,100,100),
-                    (self.drone.x, self.drone.y),
-                    ((ray['coords'][0]), (ray['coords'][1]))
-            )
+            # for ray in self.drone.rays:
+            #     pygame.draw.line(
+            #         self.screen,
+            #         (100,100,100),
+            #         (self.drone.x, self.drone.y),
+            #         ((ray['coords'][0]), (ray['coords'][1]))
+            # )
             draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
             
-            if len(self.planner.trajectory.positions) > 1:
-                pygame.draw.lines(self.screen, (100,100,100), False, self.planner.trajectory.positions)
+            if len(self.planner.future_trajectory.positions) > 1:
+                pygame.draw.lines(self.screen, (100,100,100), False, self.planner.future_trajectory.positions)
 
             if len(self.agents) > 0:
                 for agent in self.agents:

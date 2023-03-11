@@ -51,8 +51,8 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
 if __name__ == '__main__':
     gaze_methods = ['LookAhead']
     planners = ['MPC']
-    agent_numbers = [5, 10, 15]
-    pillar_numbers = [10, 5, 10]
+    agent_numbers = [0, 10, 15]
+    pillar_numbers = [40, 5, 10]
     agent_max_speeds = [30]
     drone_max_speeds = [40]
 

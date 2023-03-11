@@ -2,6 +2,7 @@
 import numpy as np
 import cvxpy as cp
 import math
+import matplotlib.pyplot as plt
 from numpy.linalg import norm, inv
 from math import cos, sin, sqrt, atan2, radians
 from sklearn.cluster import DBSCAN
@@ -48,6 +49,9 @@ class Planner:
 
     def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, update_t):
         raise NotImplementedError("No planner implemented!")
+
+    def replan_check(self, occupancy_map, agents):
+        raise NotImplementedError("No replan checker implemented!")
 
 class Primitive(Planner):
 
@@ -191,20 +195,36 @@ class Primitive(Planner):
             self.trajectory.velocities.reverse()
         return success
 
+    def replan_check(self, occupancy_map, agents):
+        swep_map = np.zeros_like(occupancy_map)
+        for i, pos in enumerate(self.trajectory.positions):
+            swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.params.dt
+            for agent in agents:
+                if agent.seen:
+                    if norm(agent.estimated_pos(i * self.params.dt) - pos) <= self.params.drone_radius + agent.radius:
+                        self.trajectory.clear()
+                        return True, swep_map
+        if np.sum(np.where((occupancy_map==1),1, 0) * swep_map) > 0:
+            self.trajectory.clear()
+            return True, swep_map
+        return False, swep_map
+    
 class MPC(Planner):
     
     def __init__(self, drone, params):
         self.params = params
         self.target = np.array([drone.x, drone.y])
         # Define the prediction horizon and control horizon
-        self.N = 10
+        self.N = 15
+        self.M = 3
 
         # Define the state and control constraints
         self.v_max = params.drone_max_speed
         self.x_max = params.map_size[0]
         self.y_max = params.map_size[1]
         self.u_max = params.drone_max_acceleration
-        self.dt = 0.25
+        # self.u_max = 80
+        self.dt = 0.2
 
         # Define the system dynamics
         self.A = np.array([[1, 0, self.dt, 0],
@@ -221,6 +241,7 @@ class MPC(Planner):
         self.R = np.eye(2)
 
         self.trajectory = Trajectory2D()
+        self.future_trajectory = Trajectory2D()
 
     @classmethod
     def approx_circle_from_ellipse(self, x0, y0, a, b, theta, x1, y1):
@@ -282,35 +303,34 @@ class MPC(Planner):
             else:
                 cov = np.cov(xy, rowvar=False)
                 eig_vals, _ = np.linalg.eigh(cov)
-                r =  11 * max(np.sqrt(eig_vals))
+                r =  10 * max(np.sqrt(eig_vals))
                 center = 5+10*xy.mean(axis=0)
                 position = center
                 # ell = Circle(position, r, color='r', fill=False)
                 # plt.gca().add_artist(ell)
             rs.append(r)
             positions.append(position)
-            # ell = Circle(position, r)
-            # ell = Ellipse(xy.mean(axis=0), r, r, angle, color=col)
-        #     plt.gca().add_artist(ell)
-        # plt.scatter(start_pos[0], start_pos[1], c='r')
+            ell = plt.Circle(position, r)
+            plt.gca().add_artist(ell)
+        plt.scatter(start_pos[0], start_pos[1], c='r')
         
-        # plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
-        # plt.axis([0,640,480,0])
+        plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
+        plt.axis([0,640,480,0])
         
-        # plt.show()
-        # plt.pause(0.1)
-        # plt.clf()
+        plt.show()
+        plt.pause(0.1)
+        plt.clf()
 
         return positions, rs
 
     def get_coeff(self, p,r_drone,p_obs,r_obs):
-        point=p_obs+(r_drone+r_obs)*(p-p_obs)/np.linalg.norm(p-p_obs)
-        a=-(p-p_obs)[0]/(p-p_obs)[1]
-        b=point[1]-a*point[0]
-        A=np.array([-a,1])
-        if np.dot(A,p) > b:
-            A=-A
-            b=-b
+
+
+        px=p_obs+(r_drone+r_obs)*(p-p_obs)/np.linalg.norm(p-p_obs)
+
+        A = np.array(p - px)
+        b = A.dot(px)
+
         return A,b
 
     def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, dt):
@@ -319,7 +339,7 @@ class MPC(Planner):
         x = np.arange(int(self.params.map_size[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
         y = np.arange(int(self.params.map_size[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
 
-        local_obstacle = np.where(np.logical_and((start_pos[0] - x)**2 + (start_pos[1] - y)**2 <= 50 ** 2, occupancy_map.grid_map == grid_type['OCCUPIED']), 1, 0)
+        local_obstacle = np.where(np.logical_and((start_pos[0] - x)**2 + (start_pos[1] - y)**2 <= 100 ** 2, occupancy_map.grid_map == grid_type['OCCUPIED']), 1, 0)
 
         positions, rs = self.binary_image_clustering(local_obstacle, 1, 1, start_pos)
         for position, r in zip(positions, rs):
@@ -335,9 +355,9 @@ class MPC(Planner):
         constraints = []
         A_static, b_static = [], []
         for pos, r in zip(positions, rs):
-                A_s, b_s = self.get_coeff(x0[:2], self.params.drone_radius, pos, r)
-                A_static.append(A_s)
-                b_static.append(b_s)
+            A_s, b_s = self.get_coeff(x0[:2], self.params.drone_radius, pos, r)
+            A_static.append(A_s)
+            b_static.append(b_s)
 
         A_static = np.array(A_static)
         b_static = np.array(b_static)
@@ -345,7 +365,7 @@ class MPC(Planner):
         for i in range(self.N):
             constraints += [x[:,i+1] == self.A@x[:,i] + self.B@u[:,i]]
             if A_static.shape[0] > 0:
-                constraints += [A_static@x[:2,i+1] <= b_static.flatten()]
+                constraints += [A_static@x[:2,i+1] >= b_static.flatten()]
 
             for agent in agents:
                 if agent.seen:
@@ -367,7 +387,7 @@ class MPC(Planner):
 
         # Solve the optimization problem
         try:
-            result = prob.solve()
+            result = prob.solve(solver='ECOS')
         except SolverError:
             return False
         
@@ -381,14 +401,34 @@ class MPC(Planner):
         for i in range(self.N):
             for j in np.arange(0, self.dt, self.params.dt): 
                 t = j + self.params.dt
-                self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
-                self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
-                self.trajectory.accelerations.append(np.array([0, 0]))
+                if i <= self.M:
+                    self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
+                    self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
+                    self.trajectory.accelerations.append(np.array([0, 0]))
+                self.future_trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
+                self.future_trajectory.velocities.append(x[2:]+t*u_opt[:,i])
+                self.future_trajectory.accelerations.append(np.array([0, 0]))
             x = self.A@x + self.B@u_opt[:,i]
 
 
         return True
 
+    def replan_check(self, occupancy_map, agents):
+        swep_map = np.zeros_like(occupancy_map)
+        for i, pos in enumerate(self.future_trajectory.positions):
+            swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.params.dt
+            for agent in agents:
+                if agent.seen:
+                    if norm(agent.estimated_pos(i * self.params.dt) - pos) <= self.params.drone_radius + agent.radius:
+                        self.trajectory.clear()
+                        self.future_trajectory.clear()
+                        return True, swep_map
+        if np.sum(np.where((occupancy_map==1),1, 0) * swep_map) > 0:
+            self.trajectory.clear()
+            self.future_trajectory.clear()
+            return True, swep_map
+        return False, swep_map
+    
 class Jerk_Primitive(Planner):
     def __init__(self, drone, params):
         self.params = params
