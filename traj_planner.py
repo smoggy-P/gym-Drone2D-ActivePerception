@@ -8,10 +8,12 @@ from math import cos, sin, sqrt, atan2, radians
 from sklearn.cluster import DBSCAN
 from cvxpy.error import SolverError
 from utils import Trajectory2D, Waypoint2D, grid_type
+from matplotlib.patches import Circle, Ellipse
 
 class Planner:
-    def __init__(self):
+    def __init__(self, drone, params):
         self.trajectory = Trajectory2D()
+        self.params = params
 
     def set_target(self, target):
         self.target = np.zeros(4)
@@ -71,8 +73,7 @@ class Primitive(Planner):
             self.index = (round(self.position[0])//10, round(self.position[1])//10, round(self.velocity[0]), round(self.velocity[1]))
     
     def __init__(self, drone, params):
-        super(Primitive, self).__init__()
-        self.params = params
+        super(Primitive, self).__init__(drone, params)
         self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 0.4 * params.drone_max_speed - 5)
         self.dt = 2
         self.sample_num = params.drone_max_speed * self.dt // params.map_scale # sampling number for collision check
@@ -215,8 +216,8 @@ class MPC(Planner):
         self.params = params
         self.target = np.array([drone.x, drone.y])
         # Define the prediction horizon and control horizon
-        self.N = 15
-        self.M = 3
+        self.N = 10
+        self.M = 2
 
         # Define the state and control constraints
         self.v_max = params.drone_max_speed
@@ -243,115 +244,26 @@ class MPC(Planner):
         self.trajectory = Trajectory2D()
         self.future_trajectory = Trajectory2D()
 
-    @classmethod
-    def approx_circle_from_ellipse(self, x0, y0, a, b, theta, x1, y1):
-
-        a = 10 if a <= 0 else a
-        b = 10 if b <= 0 else b
-
-        A = inv(np.array([
-            [cos(theta), -sin(theta)],
-            [sin(theta), cos(theta)]
-        ]))
-
-        import cvxpy as cp
-
-        x = cp.Variable((2))
-        constraint = [cp.quad_form(A@(x-np.array([x0, y0])), np.array([[1/a**2,0],[0,1/b**2]])) <= 1]
-
-
-        cost = cp.norm(x - np.array([x1, y1]))
-        prob = cp.Problem(cp.Minimize(cost), constraint)
-
-        # Solve the optimization problem
-        result = prob.solve()
-        x2, y2 = x.value[0], x.value[1]
-        x3, y3 = 2*x0 - x2, 2*y0-y2
-        k = -(x1-x2)/(y1-y2)
-        r = abs(k*(x3-x2)+y2-y3)/sqrt(k**2+1)/2
-        dis = sqrt((x2-x1)**2+(y2-y1)**2)
-
-        x4 = (r/dis)*(x2-x1)+x2
-        y4 = (r/dis)*(y2-y1)+y2
-        return (x4, y4), r, x2, y2
-
-    @classmethod
-    def binary_image_clustering(self, image, eps, min_samples, start_pos):
-        image[0,:] = 0
-        image[-1,:] = 0
-        image[:,0] = 0
-        image[:,-1] = 0
-        binary_indices = np.array(np.where(image == 1)).T
-
-        if binary_indices.shape[0] == 0:
-            return [],[]
-
-        dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(binary_indices)
-        labels = dbscan.labels_
-        unique_labels = set(labels)
-
-        rs = []
-        positions = []
-
-        for k in unique_labels:
-            class_member_mask = (labels == k)
-            xy = binary_indices[class_member_mask]
-
-            if xy.shape[0] == 1:
-                r = 1.5
-                position = 5 + 10*xy[0]
-            else:
-                cov = np.cov(xy, rowvar=False)
-                eig_vals, _ = np.linalg.eigh(cov)
-                r =  10 * max(np.sqrt(eig_vals))
-                center = 5+10*xy.mean(axis=0)
-                position = center
-                # ell = Circle(position, r, color='r', fill=False)
-                # plt.gca().add_artist(ell)
-            rs.append(r)
-            positions.append(position)
-            ell = plt.Circle(position, r)
-            plt.gca().add_artist(ell)
-        plt.scatter(start_pos[0], start_pos[1], c='r')
-        
-        plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
-        plt.axis([0,640,480,0])
-        
-        plt.show()
-        plt.pause(0.1)
-        plt.clf()
-
-        return positions, rs
-
-    def get_coeff(self, p,r_drone,p_obs,r_obs):
-
-
-        px=p_obs+(r_drone+r_obs)*(p-p_obs)/np.linalg.norm(p-p_obs)
-
-        A = np.array(p - px)
-        b = A.dot(px)
-
-        return A,b
-
     def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, dt):
         if len(self.trajectory) != 0:
             return True
+        
         x = np.arange(int(self.params.map_size[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
         y = np.arange(int(self.params.map_size[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
 
         local_obstacle = np.where(np.logical_and((start_pos[0] - x)**2 + (start_pos[1] - y)**2 <= 100 ** 2, occupancy_map.grid_map == grid_type['OCCUPIED']), 1, 0)
-
-        positions, rs = self.binary_image_clustering(local_obstacle, 1, 1, start_pos)
+        positions, rs = self.binary_image_clustering(self, local_obstacle, 1, 1, start_pos)
         for position, r in zip(positions, rs):
             if norm(start_pos - position) < r:
                 return False
+        
         x0 = np.array([start_pos[0], start_pos[1], start_vel[0], start_vel[1]])
         
         # Define the optimization variables
         x = cp.Variable((4, self.N+1))
         u = cp.Variable((2, self.N))
         
-        # Define the constraints
+    # Define the constraints
         constraints = []
         A_static, b_static = [], []
         for pos, r in zip(positions, rs):
@@ -386,10 +298,7 @@ class MPC(Planner):
         prob = cp.Problem(cp.Minimize(cost), constraints)
 
         # Solve the optimization problem
-        try:
-            result = prob.solve(solver='ECOS')
-        except SolverError:
-            return False
+        result = prob.solve(solver='ECOS')
         
         u_opt = u.value
         if u_opt is None:
@@ -412,6 +321,101 @@ class MPC(Planner):
 
 
         return True
+    
+    @staticmethod
+    def approx_circle_from_ellipse(x0, y0, a, b, theta, x1, y1):
+
+        a = 10 if a <= 0 else a
+        b = 10 if b <= 0 else b
+
+        A = inv(np.array([
+            [cos(theta), -sin(theta)],
+            [sin(theta), cos(theta)]
+        ]))
+
+        x = cp.Variable((2))
+        constraint = [cp.quad_form(A@(x-np.array([x0, y0])), np.array([[1/a**2,0],[0,1/b**2]])) <= 1]
+
+
+        cost = cp.norm(x - np.array([x1, y1]))
+        prob = cp.Problem(cp.Minimize(cost), constraint)
+
+        # Solve the optimization problem
+        result = prob.solve()
+        x2, y2 = x.value[0], x.value[1]
+        x3, y3 = 2*x0 - x2, 2*y0-y2
+        k = -(x1-x2)/(y1-y2)
+        r = abs(k*(x3-x2)+y2-y3)/sqrt(k**2+1)/2
+        dis = sqrt((x2-x1)**2+(y2-y1)**2)
+
+        x4 = (r/dis)*(x2-x1)+x2
+        y4 = (r/dis)*(y2-y1)+y2
+        return (x4, y4), r, x2, y2
+
+    @staticmethod
+    def binary_image_clustering(self, image, eps, min_samples, start_pos):
+        image[0,:] = 0
+        image[-1,:] = 0
+        image[:,0] = 0
+        image[:,-1] = 0
+        binary_indices = np.array(np.where(image == 1)).T
+
+        if binary_indices.shape[0] == 0:
+            return [],[]
+
+        dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(binary_indices)
+        labels = dbscan.labels_
+        unique_labels = set(labels)
+
+        rs = []
+        positions = []
+
+        for k in unique_labels:
+            class_member_mask = (labels == k)
+            xy = binary_indices[class_member_mask]
+
+            if xy.shape[0] == 1:
+                r = 1.5
+                position = 5 + 10*xy[0]
+            else:
+                cov = np.cov(xy, rowvar=False)
+                eig_vals, eig_vecs = np.linalg.eigh(cov)
+                angle = np.degrees(np.arctan2(*eig_vecs[:, 0][::-1]))
+                width, height = 40 * np.sqrt(eig_vals)
+                center = 5+10*xy.mean(axis=0)
+                ell = Ellipse(center, width, height, angle)
+                plt.gca().add_artist(ell)
+
+                position, r, x2, y2 = self.approx_circle_from_ellipse(center[0], center[1], width/2, height/2, math.radians(angle), start_pos[0], start_pos[1])
+                plt.scatter(x2, y2, c='y')
+
+                ell = Circle(position, r, color='r', fill=False)
+                plt.gca().add_artist(ell)
+            rs.append(r)
+            positions.append(position)
+            # ell = Circle(position, r)
+            # ell = Ellipse(xy.mean(axis=0), r, r, angle, color=col)
+        #     plt.gca().add_artist(ell)
+        plt.scatter(start_pos[0], start_pos[1], c='r')
+        
+        # plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
+        plt.axis([0,self.params.map_size[0],self.params.map_size[1],0])
+        plt.show()
+        plt.pause(0.1)
+        plt.clf()
+
+        return positions, rs
+
+    def get_coeff(self, p,r_drone,p_obs,r_obs):
+
+
+        px=p_obs+(r_drone+r_obs)*(p-p_obs)/np.linalg.norm(p-p_obs)
+
+        A = np.array(p - px)
+        b = A.dot(px)
+
+        return A,b
+
 
     def replan_check(self, occupancy_map, agents):
         swep_map = np.zeros_like(occupancy_map)
@@ -434,7 +438,7 @@ class Jerk_Primitive(Planner):
         self.params = params
         self.target = np.zeros(4)
         self.theta_range = np.arange(0, 360, 10)
-        self.d = 30
+        self.d = 50
         self.theta_last = - drone.yaw
         self.trajectory = Trajectory2D()
         self.k1 = 1
@@ -523,3 +527,17 @@ class Jerk_Primitive(Planner):
 
 
         return True
+
+    def replan_check(self, occupancy_map, agents):
+        swep_map = np.zeros_like(occupancy_map)
+        for i, pos in enumerate(self.trajectory.positions):
+            swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.params.dt
+            for agent in agents:
+                if agent.seen:
+                    if norm(agent.estimated_pos(i * self.params.dt) - pos) <= self.params.drone_radius + agent.radius:
+                        self.trajectory.clear()
+                        return True, swep_map
+        if np.sum(np.where((occupancy_map==1),1, 0) * swep_map) > 0:
+            self.trajectory.clear()
+            return True, swep_map
+        return False, swep_map

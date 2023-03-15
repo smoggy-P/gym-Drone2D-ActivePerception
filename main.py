@@ -26,7 +26,7 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
         'policy_dir':'./trained_policy/lookahead.zip',
         'dt':0.1,
         'map_scale':10,
-        'map_size':[640,480],
+        'map_size':[480,640],
         'agent_radius':10,
         'drone_max_acceleration':20,
         'drone_radius':5,
@@ -50,9 +50,9 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
 
 if __name__ == '__main__':
     gaze_methods = ['LookAhead']
-    planners = ['MPC']
-    agent_numbers = [0, 10, 15]
-    pillar_numbers = [40, 5, 10]
+    planners = ['Jerk_Primitive']
+    agent_numbers = [15, 10, 15]
+    pillar_numbers = [20, 5, 10]
     agent_max_speeds = [30]
     drone_max_speeds = [40]
 

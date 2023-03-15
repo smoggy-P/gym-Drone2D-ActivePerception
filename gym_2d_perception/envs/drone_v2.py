@@ -592,11 +592,7 @@ class Drone2DEnv2(gym.Env):
             self.clock = pygame.time.Clock()
         
         # Set target list to visit, random order
-        self.target_list = np.array([[120,50],
-                                     [120,380],
-                                     [520,50],
-                                     [520,380]])
-        np.random.shuffle(self.target_list)
+        self.target_list = np.array([[params.map_size[0]/2, params.map_size[1]-(params.drone_radius+params.map_scale+20)]])
 
         # Generate drone
         self.drone = Drone2D(init_x=params.map_size[0]/2, 
@@ -801,8 +797,8 @@ class Drone2DEnv2(gym.Env):
             # )
             draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
             
-            if len(self.planner.future_trajectory.positions) > 1:
-                pygame.draw.lines(self.screen, (100,100,100), False, self.planner.future_trajectory.positions)
+            if len(self.planner.trajectory.positions) > 1:
+                pygame.draw.lines(self.screen, (100,100,100), False, self.planner.trajectory.positions)
 
             if len(self.agents) > 0:
                 for agent in self.agents:
