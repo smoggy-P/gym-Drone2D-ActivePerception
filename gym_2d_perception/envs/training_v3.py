@@ -62,16 +62,20 @@ class Drone2DEnv2(gym.Env):
         # Generate dynamic obstacles
         self.agents = []
         while(len(self.agents) < params.agent_number):
-            x = array([cos(2*pi*len(self.agents) / params.agent_number), 
-                       sin(2*pi*len(self.agents) / params.agent_number)])
-            vel = -x * params.agent_max_speed
-            pos = (random.uniform(20, params.map_size[0]-20), random.uniform(20, params.map_size[1]-20))
-            new_agent = Agent(position=pos, 
+            new_agent = Agent(position=(random.uniform(20, params.map_size[0]-20), random.uniform(20, params.map_size[1]-20)), 
                               velocity=(0., 0.), 
                               radius=params.agent_radius, 
                               max_speed=params.agent_max_speed, 
-                              pref_velocity=vel)
-            if check_collision(self.agents, new_agent, self.obstacles):
+                              pref_velocity=-params.agent_max_speed * array([cos(2*pi*len(self.agents) / params.agent_number), 
+                                                                             sin(2*pi*len(self.agents) / params.agent_number)]))
+            collision_free = True
+            for agent_ in self.agents:
+                if norm(agent_.position - new_agent.position) <= agent_.radius + new_agent.radius:
+                    collision_free = False
+            for obs in self.obstacles:
+                if norm(np.array([obs[0], obs[1]]) - new_agent.position) <= obs[2] + new_agent.radius + 10:
+                    collision_free = False
+            if collision_free:
                 self.agents.append(new_agent)
 
         # Generate ground truth grid map
@@ -231,7 +235,8 @@ class Drone2DEnv2(gym.Env):
         #         (self.drone.x, self.drone.y),
         #         ((ray['coords'][0]), (ray['coords'][1]))
         # )
-        draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
+        for ob in self.obstacles:
+            pygame.draw.circle(self.screen, (200, 200, 200), center=[ob[0], ob[1]], radius=ob[2])
         
         if len(self.planner.trajectory.positions) > 1:
             pygame.draw.lines(self.screen, (100,100,100), False, self.planner.trajectory.positions)

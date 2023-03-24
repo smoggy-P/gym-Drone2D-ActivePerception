@@ -9,6 +9,39 @@ from numpy.linalg import norm
 from traj_planner import MPC, Primitive, Jerk_Primitive
 from utils import *
 class Drone2DEnv2(gym.Env):
+    
+    @staticmethod
+    def init_obstacles(self):
+        while len(self.obstacles) < self.params.pillar_number:
+            obs = np.array([random.randint(50,self.params.map_size[0]-50), 
+                            random.randint(50,self.params.map_size[1]-50), 
+                            random.randint(15,20)])
+            collision_free = True
+            for target in self.target_list:
+                if norm(target - obs[:-1]) <= self.params.drone_radius + 20 + obs[-1]:
+                    collision_free = False
+                    break
+            if norm(np.array([self.drone.x, self.drone.y]) - obs[:-1]) <= self.params.drone_radius + 70:
+                collision_free = False
+            if collision_free:
+                self.obstacles.append(obs)
+        
+        while(len(self.agents) < self.params.agent_number):
+            new_agent = Agent(position=(random.uniform(20, self.params.map_size[0]-20), random.uniform(20, self.params.map_size[1]-20)), 
+                              velocity=(0., 0.), 
+                              radius=self.params.agent_radius, 
+                              max_speed=self.params.agent_max_speed, 
+                              pref_velocity=-self.params.agent_max_speed * array([cos(2*pi*len(self.agents) / self.params.agent_number), 
+                                                                             sin(2*pi*len(self.agents) / self.params.agent_number)]))
+            collision_free = True
+            for agent_ in self.agents:
+                if norm(agent_.position - new_agent.position) <= agent_.radius + new_agent.radius:
+                    collision_free = False
+            for obs in self.obstacles:
+                if norm(np.array([obs[0], obs[1]]) - new_agent.position) <= obs[2] + new_agent.radius + 10:
+                    collision_free = False
+            if collision_free:
+                self.agents.append(new_agent)
      
     def __init__(self, params):
         planner_list = {
@@ -19,6 +52,13 @@ class Drone2DEnv2(gym.Env):
         np.seterr(divide='ignore', invalid='ignore')
         gym.logger.set_level(40)
         plt.ion()
+        random.seed(0)
+
+        # Setup pygame environment
+        if params.render:
+            pygame.init()
+            self.screen = pygame.display.set_mode(params.map_size)
+            self.clock = pygame.time.Clock()
 
         self.steps = 0
         self.max_steps = params.max_steps
@@ -27,14 +67,8 @@ class Drone2DEnv2(gym.Env):
         self.tracked_agent = 0
         self.seen_history = []
 
-        # Setup pygame environment
-        if params.render:
-            pygame.init()
-            self.screen = pygame.display.set_mode(params.map_size)
-            self.clock = pygame.time.Clock()
-        
-        # Set target list to visit, random order
-        self.target_list = np.array([[params.map_size[0]/2, params.map_size[1]-(params.drone_radius+params.map_scale+20)]])
+        # Set target list to visit
+        self.target_list = [array([params.map_size[0]/2, params.map_size[1]-(params.drone_radius+params.map_scale+20)])]
 
         # Generate drone
         self.drone = Drone2D(init_x=params.map_size[0]/2, 
@@ -43,36 +77,10 @@ class Drone2DEnv2(gym.Env):
                              dt=self.dt, 
                              params=params)
 
-        # Generate pillars and make sure it do not overlap with start and target point
+        # Generate obstacles
         self.obstacles = []
-        while len(self.obstacles) < params.pillar_number:
-            obs = np.array([random.randint(50,params.map_size[0]-50), 
-                            random.randint(50,params.map_size[1]-50), 
-                            random.randint(15,20)])
-            collision_free = True
-            for target in self.target_list:
-                if norm(target - obs[:-1]) <= params.drone_radius + 20 + obs[-1]:
-                    collision_free = False
-                    break
-            if norm(np.array([self.drone.x, self.drone.y]) - obs[:-1]) <= params.drone_radius + 70:
-                collision_free = False
-            if collision_free:
-                self.obstacles.append(obs)
-        
-        # Generate dynamic obstacles
         self.agents = []
-        while(len(self.agents) < params.agent_number):
-            x = array([cos(2*pi*len(self.agents) / params.agent_number), 
-                       sin(2*pi*len(self.agents) / params.agent_number)])
-            vel = -x * params.agent_max_speed
-            pos = (random.uniform(20, params.map_size[0]-20), random.uniform(20, params.map_size[1]-20))
-            new_agent = Agent(position=pos, 
-                              velocity=(0., 0.), 
-                              radius=params.agent_radius, 
-                              max_speed=params.agent_max_speed, 
-                              pref_velocity=vel)
-            if check_collision(self.agents, new_agent, self.obstacles):
-                self.agents.append(new_agent)
+        self.init_obstacles(self)
 
         # Generate ground truth grid map
         self.map_gt = OccupancyGridMap(params.map_scale, params.map_size, 2)
@@ -80,11 +88,12 @@ class Drone2DEnv2(gym.Env):
 
         # Define planner
         self.planner = planner_list[params.planner](self.drone, params)
-        self.swep_map = np.zeros(array(params.map_size)//params.map_scale)
         self.state_machine = state_machine['WAIT_FOR_GOAL']
         self.fail_count = 0
 
         # Define action and observation space
+        self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
+        self.observation_space = gym.spaces.Dict({})
         self.info = {
             'drone':self.drone,
             'seen_agents':[agent for agent in self.agents if agent.seen],
@@ -93,8 +102,7 @@ class Drone2DEnv2(gym.Env):
             'target':self.planner.target,
             'collision_flag':0
         }
-        self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
-        self.observation_space = gym.spaces.Dict({})
+        
     
     def step(self, a):
         done = False
@@ -118,7 +126,7 @@ class Drone2DEnv2(gym.Env):
                 done = True
         
         # If collision detected for planned trajectory, replan
-        self.planner.replan_check(self.drone.map.grid_map, self.agents)
+        _, swep_map = self.planner.replan_check(self.drone.map.grid_map, self.agents)
 
         # Set target point
         if self.state_machine == state_machine['WAIT_FOR_GOAL']:
@@ -155,7 +163,7 @@ class Drone2DEnv2(gym.Env):
         self.info = {
             'drone':self.drone,
             'trajectory':self.planner.trajectory,
-            'swep_map':self.swep_map,
+            'swep_map':swep_map,
             'state_machine':self.state_machine,
             'collision_flag':collision_state,
             'target':self.planner.target,
@@ -167,24 +175,23 @@ class Drone2DEnv2(gym.Env):
     
     def reset(self):
         self.__init__(params=self.params)
-        local_map_size = 4 * (self.params.drone_view_depth // self.params.map_scale) + 1
-        return {'local_map' : self.drone.get_local_map()[None], 
-                'swep_map'  : np.zeros((1, local_map_size, local_map_size)),
-                'yaw_angle' : np.array([self.drone.yaw])}
+        return {}
         
     def render(self, mode='human'):
         
         # self.map_gt.render(self.screen, color_dict)
         self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
-        # for ray in self.drone.rays:
-        #     pygame.draw.line(
-        #         self.screen,
-        #         (100,100,100),
-        #         (self.drone.x, self.drone.y),
-        #         ((ray['coords'][0]), (ray['coords'][1]))
-        # )
-        draw_static_obstacle(self.screen, self.obstacles, (200, 200, 200))
+        for ray in self.drone.rays:
+            pygame.draw.line(
+                self.screen,
+                (100,100,100),
+                (self.drone.x, self.drone.y),
+                ((ray['coords'][0]), (ray['coords'][1]))
+        )
+
+        for ob in self.obstacles:
+            pygame.draw.circle(self.screen, (200, 200, 200), center=[ob[0], ob[1]], radius=ob[2])
         
         if len(self.planner.trajectory.positions) > 1:
             pygame.draw.lines(self.screen, (100,100,100), False, self.planner.trajectory.positions)

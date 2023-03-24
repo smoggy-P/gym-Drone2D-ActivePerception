@@ -30,19 +30,6 @@ state_machine = {
         'DYNAMIC_COLLISION'    :5,
     }
 
-def check_collision(agents, agent, circular_obstacles):
-    for agent_ in agents:
-        if norm(agent_.position - agent.position) <= agent_.radius + agent.radius:
-            return False
-    for obs in circular_obstacles:
-        if norm(np.array([obs[0], obs[1]]) - agent.position) <= obs[2] + agent.radius + 10:
-            return False
-    return True
-
-def draw_static_obstacle(surface, obs, color):
-    for ob in obs:
-        pygame.draw.circle(surface, color, center=[ob[0], ob[1]], radius=ob[2])
-
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
         self.position = pos
