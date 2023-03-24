@@ -248,7 +248,10 @@ class Agent(object):
         
     def step(self, edge_size_x, edge_size_y, map_width, map_height, dt):
         new_position = self.position + self.velocity * dt
-            
+        
+        if norm(self.velocity) <= 5:
+            self.pref_velocity = (array([[cos(pi/6), sin(-pi/6)],[sin(pi/6), cos(pi/6)]]) @ (self.pref_velocity.reshape(-1, 1))).flatten()
+
         # Change reference velocity if reaching the boundary
         if new_position[0] < edge_size_x + self.radius:
             self.pref_velocity[0] = abs(self.pref_velocity[0])
