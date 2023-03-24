@@ -528,6 +528,14 @@ class Drone2D():
         self.raycast = Raycast(params.map_size, self)
         self.params = params
 
+    def step_pos(self, trajectory):
+        if trajectory.positions != []:
+            self.acceleration = trajectory.accelerations[0]
+            self.velocity = trajectory.velocities[0]
+            self.x = round(trajectory.positions[0][0])
+            self.y = round(trajectory.positions[0][1])
+            trajectory.pop()
+
     def step_yaw(self, action):
         # print(action)
         self.yaw = (self.yaw + action * self.dt) % 360

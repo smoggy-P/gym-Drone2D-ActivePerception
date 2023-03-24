@@ -94,7 +94,23 @@ class Drone2DEnv2(gym.Env):
             'collision_flag':0
         }
         self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
-        self.observation_space = gym.spaces.Dict({})
+        local_map_size = 4 * (params.drone_view_depth // params.map_scale) + 1
+        self.observation_space = gym.spaces.Dict(
+            {
+                'yaw_angle' : gym.spaces.Box(low=np.array([0], dtype=np.float32), 
+                                             high=np.array([360], dtype=np.float32), 
+                                             shape=(1,), 
+                                             dtype=np.float32), 
+                'local_map' : gym.spaces.Box(low=np.zeros((1, local_map_size, local_map_size), dtype=np.float32), 
+                                             high=np.float32(4*np.ones((1, local_map_size,local_map_size))), 
+                                             shape=(1, local_map_size, local_map_size),
+                                             dtype=np.float32),
+                'swep_map'  : gym.spaces.Box(low=np.zeros((1, local_map_size, local_map_size), dtype=np.float32), 
+                                             high=np.float32(10*np.ones((1, local_map_size,local_map_size), dtype=np.float32)), 
+                                             shape=(1, local_map_size, local_map_size),
+                                             dtype=np.float32)
+            }
+        )
     
     def step(self, a):
         done = False
@@ -118,7 +134,7 @@ class Drone2DEnv2(gym.Env):
                 done = True
         
         # If collision detected for planned trajectory, replan
-        self.planner.replan_check(self.drone.map.grid_map, self.agents)
+        replan, swep_map = self.planner.replan_check(self.drone.map.grid_map, self.agents)
 
         # Set target point
         if self.state_machine == state_machine['WAIT_FOR_GOAL']:
@@ -127,6 +143,7 @@ class Drone2DEnv2(gym.Env):
             self.state_machine = state_machine['PLANNING']
 
         #Plan
+        # if self.state_machine == state_machine['PLANNING']:
         success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.acceleration, self.drone.map, self.agents, self.dt)
         if not success:
             self.drone.brake()
@@ -134,21 +151,42 @@ class Drone2DEnv2(gym.Env):
             if self.fail_count >= 6 and norm(self.drone.velocity)==0:
                 done = True
         else:
+            self.state_changed = True
             self.state_machine = state_machine['EXECUTING']
             self.fail_count = 0
 
 
         # Execute trajectory
-        self.drone.step_pos(self.planner.trajectory)
-
+        if self.planner.trajectory.positions != [] :
+            self.drone.acceleration = self.planner.trajectory.accelerations[0]
+            self.drone.velocity = self.planner.trajectory.velocities[0]
+            self.drone.x = round(self.planner.trajectory.positions[0][0])
+            self.drone.y = round(self.planner.trajectory.positions[0][1])
+            self.planner.trajectory.pop()
+            if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10:
+                self.planner.trajectory.positions = []
+                self.planner.trajectory.velocities = []
+                self.state_machine = state_machine['GOAL_REACHED']
         # Execute gaze control
         self.drone.step_yaw(a*self.params.drone_max_yaw_speed)
+        # print("drone_vel:", norm(self.drone.velocity))
 
-        # Check done or not
+        # Return reward
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
-        done = True if (collision_state != 0) or \
-                       (norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 and self.target_list.shape[0] == 0) or \
-                       (self.steps >= self.max_steps) else done
+        if collision_state == 1:
+            if self.params.record_img and self.params.gaze_method != 'NoControl':
+                pygame.image.save(self.screen, self.params.img_dir+self.params.gaze_method+'_static_'+ str(datetime.now())+'.png')
+            done = True
+        elif collision_state == 2:
+            if self.params.record_img and self.params.gaze_method != 'NoControl':
+                pygame.image.save(self.screen, self.params.img_dir+self.params.gaze_method+'_dynamic_'+ str(datetime.now())+'.png')
+            done = True
+        elif self.state_machine == state_machine['GOAL_REACHED']:
+            done = False
+            if self.target_list.shape[0] == 0:
+                done = True
+        if self.steps >= self.max_steps:
+             done = True
             
         # wrap up information
         self.seen_history.append([1 if agent.in_view else 0 for agent in self.agents])
@@ -161,7 +199,16 @@ class Drone2DEnv2(gym.Env):
             'target':self.planner.target,
             'seen_agents':[agent for agent in self.agents if agent.seen]
         }
-        state = {}
+        drone_idx = (int(self.drone.x // self.params.map_scale), int(self.drone.y // self.params.map_scale))
+        edge_len = 2 * (self.params.drone_view_depth // self.params.map_scale)
+        local_swep_map = np.pad(swep_map, ((edge_len,edge_len),(edge_len,edge_len)), 'constant', constant_values=0)
+        local_swep_map = local_swep_map[drone_idx[0] : drone_idx[0] + 2 * edge_len + 1, drone_idx[1] : drone_idx[1] + 2 * edge_len + 1]
+
+        state = {
+            'local_map' : self.drone.get_local_map()[None],
+            'swep_map' : local_swep_map[None],
+            'yaw_angle' : np.array([self.drone.yaw], dtype=np.float32).flatten()
+        }
 
         return state, 0, done, self.info
     

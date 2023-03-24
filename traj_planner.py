@@ -416,7 +416,6 @@ class MPC(Planner):
 
         return A,b
 
-
     def replan_check(self, occupancy_map, agents):
         swep_map = np.zeros_like(occupancy_map)
         for i, pos in enumerate(self.future_trajectory.positions):
@@ -437,8 +436,8 @@ class Jerk_Primitive(Planner):
     def __init__(self, drone, params):
         self.params = params
         self.target = np.zeros(4)
-        self.theta_range = np.arange(0, 360, 10)
-        self.d = 50
+        self.theta_range = np.arange(0, 360, 5)
+        self.d = 30
         self.theta_last = - drone.yaw
         self.trajectory = Trajectory2D()
         self.k1 = 1
