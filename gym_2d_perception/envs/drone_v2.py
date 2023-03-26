@@ -110,6 +110,7 @@ class Drone2DEnv2(gym.Env):
         # Update state machine
         if self.state_machine == state_machine['GOAL_REACHED']:
             self.state_machine = state_machine['WAIT_FOR_GOAL']
+            
         # Update gridmap for dynamic obstacles
         self.map_gt.update_dynamic_grid(self.agents)
 

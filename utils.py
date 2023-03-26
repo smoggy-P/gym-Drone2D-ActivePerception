@@ -357,10 +357,6 @@ class Raycast:
     rays_number = None
     rays_angle = None
 
-    world_elem_size = None
-
-    view_angle_tan = None
-
     def __init__(self,plane_size, drone):
         self.FOV = radians(drone.yaw_range)
         self.depth = drone.yaw_depth
@@ -386,6 +382,7 @@ class Raycast:
 
         for ray in rays:
             hit_list = hit_list | ray['hit_list']
+
         for i, in_view in enumerate(hit_list):
             if in_view:
                 if agents[i].seen == False:
@@ -394,6 +391,9 @@ class Raycast:
                 agents[i].seen = True
             else:
                 agents[i].in_view = False
+
+        
+        
         return rays, newly_tracked
 
     
@@ -514,6 +514,7 @@ class Drone2D():
         self.rays = {}
         self.raycast = Raycast(params.map_size, self)
         self.params = params
+        self.tracked_agents = []
 
     def step_pos(self, trajectory):
         if trajectory.positions != []:
