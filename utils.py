@@ -6,7 +6,6 @@ import torch
 from numpy import array
 from math import atan2, asin, cos, sin, radians, tan, pi, ceil
 from numpy.linalg import norm
-from filterpy import kalman
 
 
 grid_type = {
@@ -40,15 +39,10 @@ class KalmanFilter:
         assert mu.shape == (Dx, 1)
         assert Sigma.shape == (Dx, Dx)
 
-        self.mu_preds = []
-        self.Sigma_preds = []
         self.mu_upds = []
         self.Sigma_upds = []
 
         self.ts = []
-
-        self.mu_preds.append(mu)
-        self.Sigma_preds.append(Sigma)
 
         self.mu_upds.append(mu)
         self.Sigma_upds.append(Sigma)
@@ -57,9 +51,9 @@ class KalmanFilter:
         # the dimensionality of the state vector
         self.Dx = Dx
     
-        noise_var_x_pos = 1e-1 # variance of spatial process noise
-        noise_var_x_vel = 1e-2 # variance of velocity process noise
-        noise_var_z = 3. # variance of measurement noise for z_x and z_y
+        noise_var_x_pos = 0.1 # variance of spatial process noise
+        noise_var_x_vel = 0.1 # variance of velocity process noise
+        noise_var_z = 0.1 # variance of measurement noise for z_x and z_y
 
         self.F = np.array([[1,0,0.1,0  ],
                            [0,1,0  ,0.1],
@@ -74,31 +68,37 @@ class KalmanFilter:
         self.Sigma_z = np.array([[noise_var_z,0],
                                  [0,noise_var_z]], dtype=np.float64)  
     
-    def update_step(self, z):
-        # get the latest predicted state, which should be the current time step
-        mu = self.mu_upds[-1]
-        Sigma = self.Sigma_upds[-1]
-        assert len(mu.shape) == 2
-        assert mu.shape[1] == 1
-        z = z.reshape(-1,1)
-        # Kalman Update equations go here:
-        #
-        #   Use mu and Sigma to compute the 'updated' distribution described by
-        #    mu_upd, Sigma_upd using the Kalman Update equations
+    def predict(self):
+        mu_prev = self.mu_upds[-1]
+        Sigma_prev = self.Sigma_upds[-1]
+        t = self.ts[-1]
+        mu = self.F.dot(mu_prev)
+        Sigma = self.F.dot(Sigma_prev).dot(self.F.T) + self.Sigma_x
 
-        e = z - self.H.dot(mu)
-        S = self.Sigma_z + self.H.dot(Sigma).dot(self.H.T)
-        K = Sigma.dot(self.H.T).dot(np.linalg.inv(S))
-        
-        mu_upd = mu + K.dot(e)
-        I = np.eye(4)
-        Sigma_upd = (I - K.dot(self.H)).dot(Sigma)
-        assert mu_upd.shape == mu.shape
-        assert Sigma_upd.shape == Sigma.shape
+        self.mu_upds.append(mu)
+        self.Sigma_upds.append(Sigma)
+        self.ts.append(t + 1)
+    
+    def update(self, z):
+        self.predict()
+        if not(z is None):
+            mu = self.mu_upds[-1]
+            Sigma = self.Sigma_upds[-1]
+            z = z.reshape(-1,1)
 
-        self.mu_upds[-1] = mu_upd
-        self.Sigma_upds[-1] = Sigma_upd
+            S = self.Sigma_z + self.H.dot(Sigma).dot(self.H.T)
+            K = Sigma.dot(self.H.T).dot(np.linalg.inv(S))
+            
+            mu_upd = mu + K.dot(z - self.H.dot(mu))
+            Sigma_upd = (np.eye(4) - K.dot(self.H)).dot(Sigma)
+            self.mu_upds[-1] = mu_upd
+            self.Sigma_upds[-1] = Sigma_upd
 
+S_init1 = np.diag([1, 1, 10, 10])
+tracker = KalmanFilter(mu=np.array([[0.],
+                                    [0.],
+                                    [0.],
+                                    [0.]]), Sigma=S_init1)
 
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
@@ -347,7 +347,6 @@ class Agent(object):
         else:
             pygame.draw.circle(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), int(round(self.radius)), 0)
         pygame.draw.line(surface, pygame.Color(0, 255, 0), np.rint(self.position).astype(int), np.rint((self.position + self.velocity)).astype(int), 1)
-
 class OccupancyGridMap:
     def __init__(self, grid_scale, dim, init_num):
         self.dim = dim
@@ -428,9 +427,10 @@ class Raycast:
     rays_number = None
     rays_angle = None
 
-    def __init__(self,plane_size, drone):
+    def __init__(self,plane_size, drone, sigma):
         self.FOV = radians(drone.yaw_range)
         self.depth = drone.yaw_depth
+        self.sigma = sigma
         self.initProjectionPlane(plane_size)
 
     def initProjectionPlane(self, plane_size):
@@ -454,12 +454,11 @@ class Raycast:
         for ray in rays:
             hit_list = hit_list | ray['hit_list']
 
-
         measurements = [None for i in range(len(agents))]
 
         for i, in_view in enumerate(hit_list):
             if in_view:
-                measurements[i] = agents[i].position
+                measurements[i] = agents[i].position + self.sigma * np.random.randn()
                 if agents[i].seen == False:
                     newly_tracked += 1
                 agents[i].in_view = True
@@ -585,9 +584,9 @@ class Drone2D():
         self.acceleration = np.zeros(2)
         self.dt = dt
         self.rays = {}
-        self.raycast = Raycast(params.map_size, self)
+        self.raycast = Raycast(params.map_size, self, params.var_depth)
         self.params = params
-        self.trackers = []
+        self.trackers = [None for i in range(params.agent_number)]
 
     def step_pos(self, trajectory):
         if trajectory.positions != []:

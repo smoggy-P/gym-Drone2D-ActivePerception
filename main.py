@@ -30,7 +30,8 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
         'drone_view_depth' : 80,
         'drone_view_range': 90,
         'img_dir':img_dir,
-        'max_steps':1000,
+        'max_steps': 1000,
+        'var_depth': 0.5,
 
 
         'gaze_method':gaze_method,#5

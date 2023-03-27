@@ -5,12 +5,9 @@ class KalmanFilter:
         
         # check that initial state makes sense
         Dx = mu.shape[0]
-        assert mu.shape == (Dx, 1)
-        assert Sigma.shape == (Dx, Dx)
 
         self.mu_upds = []
         self.Sigma_upds = []
-
         self.ts = []
 
         self.mu_upds.append(mu)
@@ -20,8 +17,8 @@ class KalmanFilter:
         # the dimensionality of the state vector
         self.Dx = Dx
     
-        noise_var_x_pos = 0.1 # variance of spatial process noise
-        noise_var_x_vel = 0.1 # variance of velocity process noise
+        noise_var_x_pos = 0.001 # variance of spatial process noise
+        noise_var_x_vel = 0.001 # variance of velocity process noise
         noise_var_z = 0.1 # variance of measurement noise for z_x and z_y
 
         self.F = np.array([[1,0,0.1,0  ],
@@ -63,19 +60,16 @@ class KalmanFilter:
             self.mu_upds[-1] = mu_upd
             self.Sigma_upds[-1] = Sigma_upd
 
-S_init1 = np.diag([1, 1, 10, 10])
-tracker = KalmanFilter(mu=np.array([[0.],
-                                    [0.],
-                                    [0.],
-                                    [0.]]), Sigma=S_init1)
+S_init1 = np.diag([0, 0, 40, 40])
+tracker = KalmanFilter(mu=np.zeros([4,1]), Sigma=S_init1)
 
 import matplotlib.pyplot as plt
 T = np.arange(0, 10, 0.1)
 dt = 0.1
-v = 1
+v = 10
 x0 = 0
 y0 = 0
-sigma = 0
+sigma = 0.5
 x = x0 + v * T + sigma * np.random.randn(len(T))
 y = y0 + v * T + sigma * np.random.randn(len(T))
 measured_x = []
@@ -94,7 +88,7 @@ for i, t in enumerate(T):
 # Visualize measurements
 measured_x = np.array(measured_x)
 var_x = np.array(var_x)
-plt.plot(T, var_x[:-1, 10], label='Filtered result')
+plt.plot(T, measured_x[:-1, 0], label='Filtered result')
 plt.xlabel('T')
 plt.ylabel('x')
 plt.legend()
