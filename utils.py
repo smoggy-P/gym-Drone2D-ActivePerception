@@ -6,6 +6,7 @@ import torch
 from numpy import array
 from math import atan2, asin, cos, sin, radians, tan, pi, ceil
 from numpy.linalg import norm
+from filterpy import kalman
 
 
 grid_type = {
@@ -29,6 +30,75 @@ state_machine = {
         'STATIC_COLLISION'     :4,
         'DYNAMIC_COLLISION'    :5,
     }
+
+class KalmanFilter:
+
+    def __init__(self, mu, Sigma):
+        
+        # check that initial state makes sense
+        Dx = mu.shape[0]
+        assert mu.shape == (Dx, 1)
+        assert Sigma.shape == (Dx, Dx)
+
+        self.mu_preds = []
+        self.Sigma_preds = []
+        self.mu_upds = []
+        self.Sigma_upds = []
+
+        self.ts = []
+
+        self.mu_preds.append(mu)
+        self.Sigma_preds.append(Sigma)
+
+        self.mu_upds.append(mu)
+        self.Sigma_upds.append(Sigma)
+        self.ts.append(0.) # this is time t = 0
+            
+        # the dimensionality of the state vector
+        self.Dx = Dx
+    
+        noise_var_x_pos = 1e-1 # variance of spatial process noise
+        noise_var_x_vel = 1e-2 # variance of velocity process noise
+        noise_var_z = 3. # variance of measurement noise for z_x and z_y
+
+        self.F = np.array([[1,0,0.1,0  ],
+                           [0,1,0  ,0.1],
+                           [0,0,1  ,0  ],
+                           [0,0,0  ,1  ]], dtype=np.float64) 
+        self.H = np.array([[1,0,0,0],
+                           [0,1,0,0]], dtype=np.float64) 
+        self.Sigma_x = np.array([[noise_var_x_pos,0,0,0],
+                                 [0,noise_var_x_pos,0,0],
+                                 [0,0,noise_var_x_vel,0],
+                                 [0,0,0,noise_var_x_vel]], dtype=np.float64)  
+        self.Sigma_z = np.array([[noise_var_z,0],
+                                 [0,noise_var_z]], dtype=np.float64)  
+    
+    def update_step(self, z):
+        # get the latest predicted state, which should be the current time step
+        mu = self.mu_upds[-1]
+        Sigma = self.Sigma_upds[-1]
+        assert len(mu.shape) == 2
+        assert mu.shape[1] == 1
+        z = z.reshape(-1,1)
+        # Kalman Update equations go here:
+        #
+        #   Use mu and Sigma to compute the 'updated' distribution described by
+        #    mu_upd, Sigma_upd using the Kalman Update equations
+
+        e = z - self.H.dot(mu)
+        S = self.Sigma_z + self.H.dot(Sigma).dot(self.H.T)
+        K = Sigma.dot(self.H.T).dot(np.linalg.inv(S))
+        
+        mu_upd = mu + K.dot(e)
+        I = np.eye(4)
+        Sigma_upd = (I - K.dot(self.H)).dot(Sigma)
+        assert mu_upd.shape == mu.shape
+        assert Sigma_upd.shape == Sigma.shape
+
+        self.mu_upds[-1] = mu_upd
+        self.Sigma_upds[-1] = Sigma_upd
+
 
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
@@ -277,6 +347,7 @@ class Agent(object):
         else:
             pygame.draw.circle(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), int(round(self.radius)), 0)
         pygame.draw.line(surface, pygame.Color(0, 255, 0), np.rint(self.position).astype(int), np.rint((self.position + self.velocity)).astype(int), 1)
+
 class OccupancyGridMap:
     def __init__(self, grid_scale, dim, init_num):
         self.dim = dim
@@ -383,18 +454,20 @@ class Raycast:
         for ray in rays:
             hit_list = hit_list | ray['hit_list']
 
+
+        measurements = [None for i in range(len(agents))]
+
         for i, in_view in enumerate(hit_list):
             if in_view:
+                measurements[i] = agents[i].position
                 if agents[i].seen == False:
                     newly_tracked += 1
                 agents[i].in_view = True
                 agents[i].seen = True
             else:
                 agents[i].in_view = False
-
         
-        
-        return rays, newly_tracked
+        return rays, newly_tracked, measurements
 
     
     def get_positive_angle(self, angle = None):
@@ -514,7 +587,7 @@ class Drone2D():
         self.rays = {}
         self.raycast = Raycast(params.map_size, self)
         self.params = params
-        self.tracked_agents = []
+        self.trackers = []
 
     def step_pos(self, trajectory):
         if trajectory.positions != []:
@@ -528,10 +601,9 @@ class Drone2D():
         # print(action)
         self.yaw = (self.yaw + action * self.dt) % 360
 
-    def raycasting(self, gt_map, agents):
-        # self.view_map = np.zeros_like(self.view_map)
-        self.rays, newly_tracked = self.raycast.castRays(self, gt_map, agents)
-        return newly_tracked
+    def get_measurements(self, gt_map, agents):
+        self.rays, newly_tracked, measurements = self.raycast.castRays(self, gt_map, agents)
+        return newly_tracked, measurements
 
     def brake(self):
         if norm(self.velocity) <= self.params.drone_max_acceleration * self.dt:

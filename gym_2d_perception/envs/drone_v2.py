@@ -110,12 +110,18 @@ class Drone2DEnv2(gym.Env):
         # Update state machine
         if self.state_machine == state_machine['GOAL_REACHED']:
             self.state_machine = state_machine['WAIT_FOR_GOAL']
+        
+        # Update target point
+        if self.state_machine == state_machine['WAIT_FOR_GOAL']:
+            self.planner.set_target(self.target_list[-1])
+            self.target_list = np.delete(arr=self.target_list, obj=-1, axis=0)
+            self.state_machine = state_machine['PLANNING']
             
         # Update gridmap for dynamic obstacles
         self.map_gt.update_dynamic_grid(self.agents)
 
         # Raycast module
-        newly_tracked = self.drone.raycasting(self.map_gt, self.agents)
+        newly_tracked, measurements = self.drone.get_measurements(self.map_gt, self.agents)
         self.tracked_agent += newly_tracked
 
         # Update moving agent position
@@ -128,12 +134,6 @@ class Drone2DEnv2(gym.Env):
         
         # If collision detected for planned trajectory, replan
         _, swep_map = self.planner.replan_check(self.drone.map.grid_map, self.agents)
-
-        # Set target point
-        if self.state_machine == state_machine['WAIT_FOR_GOAL']:
-            self.planner.set_target(self.target_list[-1])
-            self.target_list = np.delete(arr=self.target_list, obj=-1, axis=0)
-            self.state_machine = state_machine['PLANNING']
 
         #Plan
         success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.acceleration, self.drone.map, self.agents, self.dt)
