@@ -4,7 +4,7 @@ import math
 import torch
 
 from numpy import array
-from math import atan2, asin, cos, sin, radians, tan, pi, ceil
+from math import atan2, asin, cos, sin, radians, tan, pi, ceil, degrees
 from numpy.linalg import norm
 
 
@@ -29,6 +29,19 @@ state_machine = {
         'STATIC_COLLISION'     :4,
         'DYNAMIC_COLLISION'    :5,
     }
+
+def draw_cov(surface, mean, cov):
+    # Compute the eigenvalues and eigenvectors of the covariance matrix
+    eigenvalues, eigenvectors = np.linalg.eig(cov)
+    major_axis = 2 * np.sqrt(5.991 * eigenvalues[0])  # 95% confidence interval for major axis
+    minor_axis = 2 * np.sqrt(5.991 * eigenvalues[1])  # 95% confidence interval for minor axis
+    angle = degrees(np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0]))  # Angle between major axis and x-axis
+
+    target_rect = pygame.Rect((int(mean[0]-major_axis/2), int(mean[1]-minor_axis/2), int(major_axis), int(minor_axis)))
+    shape_surf = pygame.Surface(target_rect.size, pygame.SRCALPHA)
+    pygame.draw.ellipse(shape_surf, (255, 255, 0), (0, 0, *target_rect.size), 1)
+    rotated_surf = pygame.transform.rotate(shape_surf, angle)
+    surface.blit(rotated_surf, rotated_surf.get_rect(center = target_rect.center))
 
 class KalmanFilter:
 
@@ -70,16 +83,22 @@ class KalmanFilter:
         self.Sigma_z = np.array([[noise_var_z,0],
                                  [0,noise_var_z]], dtype=np.float64)  
     
+    def estimate_pos(self, t):
+        cur_pos = self.mu_upds[-1][:2,0]
+        cur_vel = self.mu_upds[-1][2:,0]
+        return cur_pos + t * cur_vel
+
     def predict(self):
         mu_prev = self.mu_upds[-1]
         Sigma_prev = self.Sigma_upds[-1]
         t = self.ts[-1]
         mu = self.F.dot(mu_prev)
         Sigma = self.F.dot(Sigma_prev).dot(self.F.T) + self.Sigma_x
-
         self.mu_upds.append(mu)
         self.Sigma_upds.append(Sigma)
         self.ts.append(t + 1)
+        if Sigma[0,0] >= 150:
+            self.__init__(self.params)
     
     def update(self, z):
         # Object has been tracked
@@ -102,8 +121,6 @@ class KalmanFilter:
         elif not (z is None):
             self.__init__(self.params, mu=np.vstack([z.reshape(-1, 1), np.zeros([2,1])]), Sigma=np.diag([1, 1, 10, 10]))
             self.active = True
-
-
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
         self.position = pos
@@ -344,13 +361,9 @@ class Agent(object):
                     self.estimate_pos = np.array([0,0])
 
     def render(self, surface):
-        if self.seen:
-            pygame.draw.circle(surface, pygame.Color(0, 250, 250), np.rint(self.position).astype(int), int(round(self.radius)), 0)
-            pygame.draw.circle(surface, pygame.Color(250, 0, 0), np.rint(self.estimate_pos).astype(int), int(round(self.radius+self.var)), 1)
-            pygame.draw.line(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), np.rint(self.estimate_pos).astype(int), 1)
-        else:
-            pygame.draw.circle(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), int(round(self.radius)), 0)
-        pygame.draw.line(surface, pygame.Color(0, 255, 0), np.rint(self.position).astype(int), np.rint((self.position + self.velocity)).astype(int), 1)
+        color = pygame.Color(0, 250, 250) if self.seen else pygame.Color(250, 0, 0)
+        pygame.draw.circle(surface, color, np.rint(self.position).astype(int), int(round(self.radius)), 0)
+        # pygame.draw.line(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), np.rint(self.estimate_pos).astype(int), 1)
 class OccupancyGridMap:
     def __init__(self, grid_scale, dim, init_num):
         self.dim = dim

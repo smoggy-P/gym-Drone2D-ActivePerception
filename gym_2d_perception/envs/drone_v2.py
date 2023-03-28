@@ -116,14 +116,6 @@ class Drone2DEnv2(gym.Env):
             self.planner.set_target(self.target_list[0])
             self.target_list.pop()
             self.state_machine = state_machine['PLANNING']
-            
-        # Update gridmap for dynamic obstacles
-        self.map_gt.update_dynamic_grid(self.agents)
-
-        # Perception module
-        newly_tracked, measurements = self.drone.get_measurements(self.map_gt, self.agents)
-        self.drone.update_tracker(measurements)
-        self.tracked_agent += newly_tracked
 
         # Update moving agent position
         if len(self.agents) > 0:
@@ -133,11 +125,19 @@ class Drone2DEnv2(gym.Env):
             else:
                 done = True
         
+        # Update gridmap for dynamic obstacles
+        self.map_gt.update_dynamic_grid(self.agents)
+
+        # Perception module
+        newly_tracked, measurements = self.drone.get_measurements(self.map_gt, self.agents)
+        self.drone.update_tracker(measurements)
+        self.tracked_agent += newly_tracked
+        
         # If collision detected for planned trajectory, replan
-        _, swep_map = self.planner.replan_check(self.drone.map.grid_map, self.agents)
+        _, swep_map = self.planner.replan_check(self.drone)
 
         #Plan
-        success = self.planner.plan(np.array([self.drone.x, self.drone.y]), self.drone.velocity, self.drone.acceleration, self.drone.map, self.agents, self.dt)
+        success = self.planner.plan(self.drone, self.dt)
         if not success:
             self.drone.brake()
             self.fail_count += 1
@@ -203,7 +203,9 @@ class Drone2DEnv2(gym.Env):
                 agent.render(self.screen)
         for tracker in self.drone.trackers:
             if tracker.active:
-                pygame.draw.circle(self.screen, (100, 20, 20), center=[tracker.mu_upds[-1][0,0], tracker.mu_upds[-1][1,0]], radius=4)
+                # pygame.draw.circle(self.screen, (100, 20, 20), center=[tracker.mu_upds[-1][0,0], tracker.mu_upds[-1][1,0]], radius=4)
+                draw_cov(self.screen, tracker.mu_upds[-1][:2,0], tracker.Sigma_upds[-1][:2,:2])
+
         pygame.draw.circle(self.screen, (0,0,255), self.planner.target[:2], self.drone.radius)
         default_font = pygame.font.SysFont('Arial', 15)
         pygame.Surface.blit(self.screen,

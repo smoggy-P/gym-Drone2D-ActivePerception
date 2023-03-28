@@ -9,6 +9,7 @@ from sklearn.cluster import DBSCAN
 from cvxpy.error import SolverError
 from utils import Trajectory2D, Waypoint2D, grid_type
 from matplotlib.patches import Circle, Ellipse
+from utils import *
 
 class Planner:
     def __init__(self, drone, params):
@@ -19,7 +20,7 @@ class Planner:
         self.target = np.zeros(4)
         self.target[:2] = target
 
-    def is_free(self, position, t, occupancy_map, agents):
+    def is_free(self, position, t, occupancy_map, trackers):
         if np.isnan(position).any():
             return False
         grid = occupancy_map.get_grid(position[0] - self.params.drone_radius, position[1])
@@ -42,17 +43,18 @@ class Planner:
         if grid == 1:
             return False
 
-        for agent in agents:
-            if agent.seen:
-                new_position = agent.estimate_pos + agent.estimate_vel * t
-                if norm(position - new_position) <= self.params.drone_radius + agent.radius + 5:
+        for tracker in trackers:
+            if tracker.active:
+                new_position = tracker.estimate_pos(t)
+                if norm(position - new_position) <= self.params.drone_radius + self.params.agent_radius + 5:
                     return False
         return True
 
-    def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, update_t):
+    def plan(self, drone   : Drone2D,
+                   update_t: float):
         raise NotImplementedError("No planner implemented!")
 
-    def replan_check(self, occupancy_map, agents):
+    def replan_check(self, drone):
         raise NotImplementedError("No replan checker implemented!")
 
 class Primitive(Planner):
@@ -97,20 +99,16 @@ class Primitive(Planner):
         waypoint.velocity = np.array([1, 2*t]) @ coeff[:, 1:].T
         return waypoint
 
-    def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, update_t):
-        """
-        A star path search
-        input:
-            s_x: start x position 
-            s_y: start y position 
-            gx: goal x position 
-            gy: goal y position
-        output:
-            rx: x position list of the final path
-            ry: y position list of the final path
-        """
+    def plan(self, drone   : Drone2D,
+                   update_t: float):
+        
         if len(self.trajectory) != 0:
             return True
+        
+        start_pos = np.array([drone.x, drone.y])
+        start_vel = drone.velocity
+        occupancy_map = drone.map
+        
         self.trajectory = Trajectory2D()
         start_node = self.Primitive_Node(pos=start_pos, 
                                         vel=start_vel,
@@ -159,7 +157,7 @@ class Primitive(Planner):
                         for t in np.arange(0, self.dt, self.dt / self.sample_num):
                             position = np.around(np.array([1, t, t**2]) @ coeff.T)
                             global_t = t + current.itr * self.dt
-                            if not self.is_free(position, global_t, occupancy_map, agents):
+                            if not self.is_free(position, global_t, occupancy_map, drone.trackers):
                                 add_successor = False
                                 break
                         
@@ -196,13 +194,14 @@ class Primitive(Planner):
             self.trajectory.velocities.reverse()
         return success
 
-    def replan_check(self, occupancy_map, agents):
+    def replan_check(self, drone):
+        occupancy_map = drone.map.grid_map
         swep_map = np.zeros_like(occupancy_map)
         for i, pos in enumerate(self.trajectory.positions):
             swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.params.dt
-            for agent in agents:
-                if agent.seen:
-                    if norm(agent.estimated_pos(i * self.params.dt) - pos) <= self.params.drone_radius + agent.radius:
+            for tracker in drone.trackers:
+                if tracker.active:
+                    if norm(tracker.estimate_pos(i * self.params.dt) - pos) <= self.params.drone_radius + self.params.agent_radius:
                         self.trajectory.clear()
                         return True, swep_map
         if np.sum(np.where((occupancy_map==1),1, 0) * swep_map) > 0:
@@ -244,10 +243,16 @@ class MPC(Planner):
         self.trajectory = Trajectory2D()
         self.future_trajectory = Trajectory2D()
 
-    def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, dt):
+    def plan(self, drone: Drone2D,
+                   dt   : float):
         if len(self.trajectory) != 0:
             return True
         
+        start_pos = np.array([drone.x, drone.y])
+        start_vel = drone.velocity
+        occupancy_map = drone.map
+
+
         x = np.arange(int(self.params.map_size[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
         y = np.arange(int(self.params.map_size[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
 
@@ -279,10 +284,10 @@ class MPC(Planner):
             if A_static.shape[0] > 0:
                 constraints += [A_static@x[:2,i+1] >= b_static.flatten()]
 
-            for agent in agents:
-                if agent.seen:
-                    p_obs = agent.estimated_pos(i*self.dt)
-                    A, b = self.get_coeff(x0[:2], self.params.drone_radius, p_obs, agent.radius + 2)
+            for tracker in drone.trackers:
+                if tracker.active:
+                    p_obs = tracker.estimate_pos(i*self.dt)
+                    A, b = self.get_coeff(x0[:2], self.params.drone_radius, p_obs, self.params.agent_radius + 2)
                     constraints += [A@x[:2,i+1] <= b.flatten()]
             constraints += [15*np.ones(2) <= x[:2,i], x[:2,i] <= np.array(self.params.map_size)-15]
             constraints += [cp.norm(x[2:,i]) <= self.v_max]
@@ -416,19 +421,18 @@ class MPC(Planner):
 
         return A,b
 
-    def replan_check(self, occupancy_map, agents):
+    def replan_check(self, drone):
+        occupancy_map = drone.map.grid_map
         swep_map = np.zeros_like(occupancy_map)
         for i, pos in enumerate(self.future_trajectory.positions):
             swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.params.dt
-            for agent in agents:
-                if agent.seen:
-                    if norm(agent.estimated_pos(i * self.params.dt) - pos) <= self.params.drone_radius + agent.radius:
+            for tracker in drone.trackers:
+                if tracker.active:
+                    if norm(tracker.estimate_pos(i * self.params.dt) - pos) <= self.params.drone_radius + self.params.agent_radius:
                         self.trajectory.clear()
-                        self.future_trajectory.clear()
                         return True, swep_map
         if np.sum(np.where((occupancy_map==1),1, 0) * swep_map) > 0:
             self.trajectory.clear()
-            self.future_trajectory.clear()
             return True, swep_map
         return False, swep_map
     
@@ -492,7 +496,14 @@ class Jerk_Primitive(Planner):
                 a[jj, ii] = alpha/6*tt**3 + beta/2*tt**2 + gamma*tt + a0[ii]
         return p, v, a, t, pf, vf ,af
 
-    def plan(self, start_pos, start_vel, start_acc, occupancy_map, agents, dt):
+    def plan(self, drone: Drone2D,
+                   dt   : float):
+        
+        start_pos = np.array([drone.x, drone.y])
+        start_vel = drone.velocity
+        start_acc = drone.acceleration
+        occupancy_map = drone.map
+        
         # calculate horizontal offset angle
         delt_p = self.target[:2] - start_pos
         phi_h = math.degrees(atan2(delt_p[1], delt_p[0])) 
@@ -511,7 +522,7 @@ class Jerk_Primitive(Planner):
             ps, vs, accs, ts, pf, vf, af = self.generate_primitive(start_pos, start_vel, start_acc, cost[seq, 1], v_max, dt)
             collision = 0
             for t, position in zip(ts, ps):
-                if not self.is_free(position, t, occupancy_map, agents):
+                if not self.is_free(position, t, occupancy_map, drone.trackers):
                     collision = 1
                     break
             if collision == 0:
@@ -523,17 +534,16 @@ class Jerk_Primitive(Planner):
         self.trajectory.velocities.append(vs[0, :])
         self.trajectory.accelerations.append(accs[0, :])
         self.trajectory.positions.append(ps[0,:])
-
-
         return True
 
-    def replan_check(self, occupancy_map, agents):
+    def replan_check(self, drone):
+        occupancy_map = drone.map.grid_map
         swep_map = np.zeros_like(occupancy_map)
         for i, pos in enumerate(self.trajectory.positions):
             swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.params.dt
-            for agent in agents:
-                if agent.seen:
-                    if norm(agent.estimated_pos(i * self.params.dt) - pos) <= self.params.drone_radius + agent.radius:
+            for tracker in drone.trackers:
+                if tracker.active:
+                    if norm(tracker.estimate_pos(i * self.params.dt) - pos) <= self.params.drone_radius + self.params.agent_radius:
                         self.trajectory.clear()
                         return True, swep_map
         if np.sum(np.where((occupancy_map==1),1, 0) * swep_map) > 0:
