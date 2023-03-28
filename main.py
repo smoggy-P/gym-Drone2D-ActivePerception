@@ -40,6 +40,7 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
         'agent_number':agent_number,#3
         'drone_max_speed':drone_speed,#3
         'agent_max_speed':agent_speed,#3
+        'map_id':2
     })
     runner = Experiment(cfg, result_dir)
     runner.run()

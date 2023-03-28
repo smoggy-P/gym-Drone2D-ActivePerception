@@ -52,7 +52,7 @@ class Drone2DEnv2(gym.Env):
         np.seterr(divide='ignore', invalid='ignore')
         gym.logger.set_level(40)
         plt.ion()
-        random.seed(0)
+        random.seed(params.map_id)
 
         # Setup pygame environment
         if params.render:
@@ -117,6 +117,9 @@ class Drone2DEnv2(gym.Env):
             self.target_list.pop()
             self.state_machine = state_machine['PLANNING']
 
+        ##########################
+        ### Environment module ###
+        ##########################
         # Update moving agent position
         if len(self.agents) > 0:
             if RVO.RVO_update(self.agents, self.obstacles):
@@ -124,15 +127,19 @@ class Drone2DEnv2(gym.Env):
                     agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.params.map_size[0], self.params.map_size[1],  self.dt)
             else:
                 done = True
-        
+
+        #########################
+        ### Perception module ###
+        #########################
+        newly_tracked, measurements = self.drone.get_measurements(self.map_gt, self.agents)
         # Update gridmap for dynamic obstacles
         self.map_gt.update_dynamic_grid(self.agents)
-
-        # Perception module
-        newly_tracked, measurements = self.drone.get_measurements(self.map_gt, self.agents)
         self.drone.update_tracker(measurements)
         self.tracked_agent += newly_tracked
         
+        #######################
+        ### Planning module ###
+        #######################
         # If collision detected for planned trajectory, replan
         _, swep_map = self.planner.replan_check(self.drone)
 
@@ -148,6 +155,9 @@ class Drone2DEnv2(gym.Env):
             self.fail_count = 0
 
 
+        ######################
+        ### Control module ###
+        ######################
         # Execute trajectory
         self.drone.step_pos(self.planner.trajectory)
 
@@ -198,7 +208,7 @@ class Drone2DEnv2(gym.Env):
 
         if len(self.agents) > 0:
             for i, agent in enumerate(self.agents):
-                color = pygame.Color(0, 0, 220) if self.drone.trackers[i].active else pygame.Color(250, 0, 0)
+                color = pygame.Color(0, 0, 150) if self.drone.trackers[i].active else pygame.Color(250, 0, 0)
                 pygame.draw.circle(self.screen, color, np.rint(agent.position).astype(int), int(round(agent.radius)), 0)
         for tracker in self.drone.trackers:
             if tracker.active:
