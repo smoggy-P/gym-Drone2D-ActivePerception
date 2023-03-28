@@ -197,8 +197,9 @@ class Drone2DEnv2(gym.Env):
             pygame.draw.lines(self.screen, (100,100,100), False, self.planner.trajectory.positions)
 
         if len(self.agents) > 0:
-            for agent in self.agents:
-                agent.render(self.screen)
+            for i, agent in enumerate(self.agents):
+                color = pygame.Color(0, 0, 220) if self.drone.trackers[i].active else pygame.Color(250, 0, 0)
+                pygame.draw.circle(self.screen, color, np.rint(agent.position).astype(int), int(round(agent.radius)), 0)
         for tracker in self.drone.trackers:
             if tracker.active:
                 # pygame.draw.circle(self.screen, (100, 20, 20), center=[tracker.mu_upds[-1][0,0], tracker.mu_upds[-1][1,0]], radius=4)

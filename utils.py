@@ -37,7 +37,7 @@ def draw_cov(surface, mean, cov):
     minor_axis = 2 * np.sqrt(5.991 * eigenvalues[1])  # 95% confidence interval for minor axis
     angle = degrees(np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0]))  # Angle between major axis and x-axis
 
-    target_rect = pygame.Rect((int(mean[0]-major_axis/2), int(mean[1]-minor_axis/2), int(major_axis), int(minor_axis)))
+    target_rect = pygame.Rect((int(mean[0]-major_axis/2-2), int(mean[1]-minor_axis/2-2), int(major_axis+4), int(minor_axis+4)))
     shape_surf = pygame.Surface(target_rect.size, pygame.SRCALPHA)
     pygame.draw.ellipse(shape_surf, (255, 255, 0), (0, 0, *target_rect.size), 1)
     rotated_surf = pygame.transform.rotate(shape_surf, angle)
@@ -97,7 +97,7 @@ class KalmanFilter:
         self.mu_upds.append(mu)
         self.Sigma_upds.append(Sigma)
         self.ts.append(t + 1)
-        if Sigma[0,0] >= 150:
+        if Sigma[0,0] >= 150 or (not(0 < mu[0] < self.params.map_size[0])) or (not(0 < mu[1] < self.params.map_size[1])):
             self.__init__(self.params)
     
     def update(self, z):
@@ -338,9 +338,6 @@ class Agent(object):
             
             
         self.position += np.array(self.velocity) * dt
-
-    def render(self, surface):
-        pygame.draw.circle(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), int(round(self.radius)), 0)
 class OccupancyGridMap:
     def __init__(self, grid_scale, dim, init_num):
         self.dim = dim
