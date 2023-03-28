@@ -96,7 +96,7 @@ class Drone2DEnv2(gym.Env):
         self.observation_space = gym.spaces.Dict({})
         self.info = {
             'drone':self.drone,
-            'seen_agents':[agent for agent in self.agents if agent.seen],
+            'seen_agents':[agent for i, agent in enumerate(self.agents) if self.drone.trackers[i].active],
             'trajectory':self.planner.trajectory,
             'state_machine':self.state_machine,
             'target':self.planner.target,
@@ -161,15 +161,13 @@ class Drone2DEnv2(gym.Env):
                        (self.steps >= self.max_steps) else done
             
         # wrap up information
-        self.seen_history.append([1 if agent.in_view else 0 for agent in self.agents])
         self.info = {
             'drone':self.drone,
+            'seen_agents':[agent for i, agent in enumerate(self.agents) if self.drone.trackers[i].active],
             'trajectory':self.planner.trajectory,
-            'swep_map':swep_map,
             'state_machine':self.state_machine,
-            'collision_flag':collision_state,
             'target':self.planner.target,
-            'seen_agents':[agent for agent in self.agents if agent.seen]
+            'collision_flag':0
         }
         state = {}
 

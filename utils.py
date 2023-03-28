@@ -315,55 +315,32 @@ class Agent(object):
         self.radius = radius
         self.max_speed = max_speed
         self.pref_velocity = np.array(pref_velocity)
-        self.seen = False
-        self.in_view = False
-        self.var = 5
-        self.estimate_vel = np.array([0,0])
-        self.estimate_pos = np.array([0,0])
-    
-    def estimated_pos(self, t):
-        return self.estimate_pos + t*self.estimate_vel
         
     def step(self, edge_size_x, edge_size_y, map_width, map_height, dt):
         new_position = self.position + self.velocity * dt
         
+        # If stuck, change direction
         if norm(self.velocity) <= 5:
             self.pref_velocity = (array([[cos(pi/6), sin(-pi/6)],[sin(pi/6), cos(pi/6)]]) @ (self.pref_velocity.reshape(-1, 1))).flatten()
 
         # Change reference velocity if reaching the boundary
         if new_position[0] < edge_size_x + self.radius:
             self.pref_velocity[0] = abs(self.pref_velocity[0])
-            self.seen = False
+            
         elif new_position[0] > map_width - edge_size_x - self.radius:
             self.pref_velocity[0] = -abs(self.pref_velocity[0])
-            self.seen = False
+            
         if new_position[1] < edge_size_y + self.radius:
             self.pref_velocity[1] = abs(self.pref_velocity[1])
-            self.seen = False
+            
         elif new_position[1] > map_height - edge_size_y - self.radius:
             self.pref_velocity[1] = -abs(self.pref_velocity[1])
-            self.seen = False
+            
             
         self.position += np.array(self.velocity) * dt
-        
-        # Check if the pedestrian is seen
-        if self.in_view is True:
-            self.var = (self.var - dt*10) if (self.var - dt*10) > 0 else 0
-            self.estimate_vel = self.velocity
-            self.estimate_pos = self.position
-        else:
-            if self.seen:
-                self.var += dt*10
-                self.estimate_pos = self.estimate_pos + self.estimate_vel * dt
-                if self.var >= 40:
-                    self.seen = False
-                    self.estimate_vel = np.array([0,0])
-                    self.estimate_pos = np.array([0,0])
 
     def render(self, surface):
-        color = pygame.Color(0, 250, 250) if self.seen else pygame.Color(250, 0, 0)
-        pygame.draw.circle(surface, color, np.rint(self.position).astype(int), int(round(self.radius)), 0)
-        # pygame.draw.line(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), np.rint(self.estimate_pos).astype(int), 1)
+        pygame.draw.circle(surface, pygame.Color(250, 0, 0), np.rint(self.position).astype(int), int(round(self.radius)), 0)
 class OccupancyGridMap:
     def __init__(self, grid_scale, dim, init_num):
         self.dim = dim
@@ -476,12 +453,8 @@ class Raycast:
         for i, in_view in enumerate(hit_list):
             if in_view:
                 measurements[i] = agents[i].position + self.sigma * np.random.randn(2)
-                if agents[i].seen == False:
+                if player.trackers[i].active == False:
                     newly_tracked += 1
-                agents[i].in_view = True
-                agents[i].seen = True
-            else:
-                agents[i].in_view = False
         
         return rays, newly_tracked, measurements
 
