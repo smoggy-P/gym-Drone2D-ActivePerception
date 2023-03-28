@@ -32,7 +32,9 @@ state_machine = {
 
 class KalmanFilter:
 
-    def __init__(self, mu, Sigma):
+    def __init__(self, params, mu=np.zeros([4,1]), Sigma=np.diag([1, 1, 10, 10])):
+        self.active = False
+        self.params = params
         
         # check that initial state makes sense
         Dx = mu.shape[0]
@@ -51,9 +53,9 @@ class KalmanFilter:
         # the dimensionality of the state vector
         self.Dx = Dx
     
-        noise_var_x_pos = 0.1 # variance of spatial process noise
-        noise_var_x_vel = 0.1 # variance of velocity process noise
-        noise_var_z = 0.1 # variance of measurement noise for z_x and z_y
+        noise_var_x_pos = 0.1 if params.var_cam != 0 else 0.001 # variance of spatial process noise
+        noise_var_x_vel = 0.1 if params.var_cam != 0 else 0.001  # variance of velocity process noise
+        noise_var_z = params.var_cam # variance of measurement noise for z_x and z_y
 
         self.F = np.array([[1,0,0.1,0  ],
                            [0,1,0  ,0.1],
@@ -80,25 +82,27 @@ class KalmanFilter:
         self.ts.append(t + 1)
     
     def update(self, z):
-        self.predict()
-        if not(z is None):
-            mu = self.mu_upds[-1]
-            Sigma = self.Sigma_upds[-1]
-            z = z.reshape(-1,1)
+        # Object has been tracked
+        if self.active:
+            self.predict()
+            if not(z is None):
+                mu = self.mu_upds[-1]
+                Sigma = self.Sigma_upds[-1]
+                z = z.reshape(-1,1)
 
-            S = self.Sigma_z + self.H.dot(Sigma).dot(self.H.T)
-            K = Sigma.dot(self.H.T).dot(np.linalg.inv(S))
-            
-            mu_upd = mu + K.dot(z - self.H.dot(mu))
-            Sigma_upd = (np.eye(4) - K.dot(self.H)).dot(Sigma)
-            self.mu_upds[-1] = mu_upd
-            self.Sigma_upds[-1] = Sigma_upd
+                S = self.Sigma_z + self.H.dot(Sigma).dot(self.H.T)
+                K = Sigma.dot(self.H.T).dot(np.linalg.inv(S))
+                
+                mu_upd = mu + K.dot(z - self.H.dot(mu))
+                Sigma_upd = (np.eye(4) - K.dot(self.H)).dot(Sigma)
+                self.mu_upds[-1] = mu_upd
+                self.Sigma_upds[-1] = Sigma_upd
+        
+        # Object is tracked for the first time
+        elif not (z is None):
+            self.__init__(self.params, mu=np.vstack([z.reshape(-1, 1), np.zeros([2,1])]), Sigma=np.diag([1, 1, 10, 10]))
+            self.active = True
 
-S_init1 = np.diag([1, 1, 10, 10])
-tracker = KalmanFilter(mu=np.array([[0.],
-                                    [0.],
-                                    [0.],
-                                    [0.]]), Sigma=S_init1)
 
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
@@ -458,7 +462,7 @@ class Raycast:
 
         for i, in_view in enumerate(hit_list):
             if in_view:
-                measurements[i] = agents[i].position + self.sigma * np.random.randn()
+                measurements[i] = agents[i].position + self.sigma * np.random.randn(2)
                 if agents[i].seen == False:
                     newly_tracked += 1
                 agents[i].in_view = True
@@ -584,9 +588,9 @@ class Drone2D():
         self.acceleration = np.zeros(2)
         self.dt = dt
         self.rays = {}
-        self.raycast = Raycast(params.map_size, self, params.var_depth)
+        self.raycast = Raycast(params.map_size, self, params.var_cam)
         self.params = params
-        self.trackers = [None for i in range(params.agent_number)]
+        self.trackers = [KalmanFilter(params) for i in range(params.agent_number)]
 
     def step_pos(self, trajectory):
         if trajectory.positions != []:
@@ -603,6 +607,11 @@ class Drone2D():
     def get_measurements(self, gt_map, agents):
         self.rays, newly_tracked, measurements = self.raycast.castRays(self, gt_map, agents)
         return newly_tracked, measurements
+
+    def update_tracker(self, measurements):
+        for i, tracker in enumerate(self.trackers):
+            tracker.update(measurements[i])
+        
 
     def brake(self):
         if norm(self.velocity) <= self.params.drone_max_acceleration * self.dt:

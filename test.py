@@ -1,101 +1,82 @@
+# import pygame
+# import test
+
+# pygame.init()
+# window = pygame.display.set_mode((400, 400))
+# clock = pygame.time.Clock()
+
+# def draw_rect_angle(surface, color, rect, angle, width=0):
+#     target_rect = pygame.Rect(rect)
+#     shape_surf = pygame.Surface(target_rect.size, pygame.SRCALPHA)
+#     pygame.draw.rect(shape_surf, color, (0, 0, *target_rect.size), width)
+#     rotated_surf = pygame.transform.rotate(shape_surf, angle)
+#     surface.blit(rotated_surf, rotated_surf.get_rect(center = target_rect.center))
+
+# def draw_ellipse_angle(surface, color, rect, angle, width=0):
+#     target_rect = pygame.Rect(rect)
+#     shape_surf = pygame.Surface(target_rect.size, pygame.SRCALPHA)
+#     pygame.draw.ellipse(shape_surf, color, (0, 0, *target_rect.size), width)
+#     rotated_surf = pygame.transform.rotate(shape_surf, angle)
+#     surface.blit(rotated_surf, rotated_surf.get_rect(center = target_rect.center))
+
+# angle = 00
+# run = True
+# while run:
+#     clock.tick(60)
+#     for event in pygame.event.get():
+#         if event.type == pygame.QUIT:
+#             run = False
+
+#     window_center = window.get_rect().center
+
+#     window.fill((255, 255, 255))
+#     draw_rect_angle(window, (0, 0, 0), (75, 150, 250, 100), angle, 2)
+#     draw_ellipse_angle(window, (0, 0, 0), (75, 150, 250, 100), angle, 2)
+#     angle += 1
+#     pygame.display.flip()
+
+# pygame.quit()
+# exit()
+
+import pygame
 import numpy as np
-class KalmanFilter:
+from math import degrees
 
-    def __init__(self, mu, Sigma):
-        
-        # check that initial state makes sense
-        Dx = mu.shape[0]
-        assert mu.shape == (Dx, 1)
-        assert Sigma.shape == (Dx, Dx)
+def draw_ellipse_angle(surface, color, rect, angle, width=0):
+    target_rect = pygame.Rect(rect)
+    shape_surf = pygame.Surface(target_rect.size, pygame.SRCALPHA)
+    pygame.draw.ellipse(shape_surf, color, (0, 0, *target_rect.size), width)
+    rotated_surf = pygame.transform.rotate(shape_surf, angle)
+    surface.blit(rotated_surf, rotated_surf.get_rect(center = target_rect.center))
 
-        self.mu_upds = []
-        self.Sigma_upds = []
+pygame.init()
+width, height = 800, 600
+screen = pygame.display.set_mode((width, height))
+pygame.display.set_caption("Ellipse from 2D covariance matrix")
 
-        self.ts = []
+# Set up the ellipse parameters
+mean = np.array([400, 300])  # Center of the ellipse
+cov = np.array([[100, 0], [0, 100]])  # 2D covariance matrix
 
-        self.mu_upds.append(mu)
-        self.Sigma_upds.append(Sigma)
-        self.ts.append(0.) # this is time t = 0
-            
-        # the dimensionality of the state vector
-        self.Dx = Dx
-    
-        noise_var_x_pos = 0.1 # variance of spatial process noise
-        noise_var_x_vel = 0.1 # variance of velocity process noise
-        noise_var_z = 0.1 # variance of measurement noise for z_x and z_y
+# Compute the eigenvalues and eigenvectors of the covariance matrix
+eigenvalues, eigenvectors = np.linalg.eig(cov)
+major_axis = 2 * np.sqrt(5.991 * eigenvalues[0])  # 95% confidence interval for major axis
+minor_axis = 2 * np.sqrt(5.991 * eigenvalues[1])  # 95% confidence interval for minor axis
+angle = degrees(np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0]))  # Angle between major axis and x-axis
 
-        self.F = np.array([[1,0,0.1,0  ],
-                           [0,1,0  ,0.1],
-                           [0,0,1  ,0  ],
-                           [0,0,0  ,1  ]], dtype=np.float64) 
-        self.H = np.array([[1,0,0,0],
-                           [0,1,0,0]], dtype=np.float64) 
-        self.Sigma_x = np.array([[noise_var_x_pos,0,0,0],
-                                 [0,noise_var_x_pos,0,0],
-                                 [0,0,noise_var_x_vel,0],
-                                 [0,0,0,noise_var_x_vel]], dtype=np.float64)  
-        self.Sigma_z = np.array([[noise_var_z,0],
-                                 [0,noise_var_z]], dtype=np.float64)  
-    
-    def predict(self):
-        mu_prev = self.mu_upds[-1]
-        Sigma_prev = self.Sigma_upds[-1]
-        t = self.ts[-1]
-        mu = self.F.dot(mu_prev)
-        Sigma = self.F.dot(Sigma_prev).dot(self.F.T) + self.Sigma_x
+# Draw the ellipse
+draw_ellipse_angle(screen, (255, 0, 0), (int(mean[0]-major_axis/2), int(mean[1]-minor_axis/2), int(major_axis), int(minor_axis)), angle, 1)
+# pygame.draw.ellipse(screen, (255, 0, 0), (int(mean[0]-major_axis/2), int(mean[1]-minor_axis/2), int(major_axis), int(minor_axis)))
 
-        self.mu_upds.append(mu)
-        self.Sigma_upds.append(Sigma)
-        self.ts.append(t + 1)
-    
-    def update(self, z):
-        self.predict()
-        if not(z is None):
-            mu = self.mu_upds[-1]
-            Sigma = self.Sigma_upds[-1]
-            z = z.reshape(-1,1)
+# Display the result
+pygame.display.flip()
 
-            S = self.Sigma_z + self.H.dot(Sigma).dot(self.H.T)
-            K = Sigma.dot(self.H.T).dot(np.linalg.inv(S))
-            
-            mu_upd = mu + K.dot(z - self.H.dot(mu))
-            Sigma_upd = (np.eye(4) - K.dot(self.H)).dot(Sigma)
-            self.mu_upds[-1] = mu_upd
-            self.Sigma_upds[-1] = Sigma_upd
+# Wait for the user to close the window
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
 
-S_init1 = np.diag([1, 1, 10, 10])
-tracker = KalmanFilter(mu=np.array([[0.],
-                                    [0.],
-                                    [0.],
-                                    [0.]]), Sigma=S_init1)
-
-import matplotlib.pyplot as plt
-T = np.arange(0, 10, 0.1)
-dt = 0.1
-v = 1
-x0 = 0
-y0 = 0
-sigma = 0
-x = x0 + v * T + sigma * np.random.randn(len(T))
-y = y0 + v * T + sigma * np.random.randn(len(T))
-measured_x = []
-var_x = []
-var_x.append(S_init1.flatten())
-measured_x.append((tracker.mu_upds[-1]).flatten())
-for i, t in enumerate(T):
-    if t < 5:
-        tracker.update(z=np.array([[x[i]],[y[i]]]))
-    else:
-        tracker.update(z=None)
-    measured_x.append((tracker.mu_upds[-1]).flatten())
-    var_x.append((tracker.Sigma_upds[-1]).flatten())
-
-
-# Visualize measurements
-measured_x = np.array(measured_x)
-var_x = np.array(var_x)
-plt.plot(T, var_x[:-1, 10], label='Filtered result')
-plt.xlabel('T')
-plt.ylabel('x')
-plt.legend()
-plt.show()
+# Clean up
+pygame.quit()

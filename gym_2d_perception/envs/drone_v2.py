@@ -113,15 +113,16 @@ class Drone2DEnv2(gym.Env):
         
         # Update target point
         if self.state_machine == state_machine['WAIT_FOR_GOAL']:
-            self.planner.set_target(self.target_list[-1])
-            self.target_list = np.delete(arr=self.target_list, obj=-1, axis=0)
+            self.planner.set_target(self.target_list[0])
+            self.target_list.pop()
             self.state_machine = state_machine['PLANNING']
             
         # Update gridmap for dynamic obstacles
         self.map_gt.update_dynamic_grid(self.agents)
 
-        # Raycast module
+        # Perception module
         newly_tracked, measurements = self.drone.get_measurements(self.map_gt, self.agents)
+        self.drone.update_tracker(measurements)
         self.tracked_agent += newly_tracked
 
         # Update moving agent position
@@ -156,7 +157,7 @@ class Drone2DEnv2(gym.Env):
         # Check done or not
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
         done = True if (collision_state != 0) or \
-                       (norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 and self.target_list.shape[0] == 0) or \
+                       (norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 and len(self.target_list) == 0) or \
                        (self.steps >= self.max_steps) else done
             
         # wrap up information
@@ -200,6 +201,9 @@ class Drone2DEnv2(gym.Env):
         if len(self.agents) > 0:
             for agent in self.agents:
                 agent.render(self.screen)
+        for tracker in self.drone.trackers:
+            if tracker.active:
+                pygame.draw.circle(self.screen, (100, 20, 20), center=[tracker.mu_upds[-1][0,0], tracker.mu_upds[-1][1,0]], radius=4)
         pygame.draw.circle(self.screen, (0,0,255), self.planner.target[:2], self.drone.radius)
         default_font = pygame.font.SysFont('Arial', 15)
         pygame.Surface.blit(self.screen,
