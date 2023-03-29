@@ -28,6 +28,8 @@ state_machine = {
         'EXECUTING'    :3,
         'STATIC_COLLISION'     :4,
         'DYNAMIC_COLLISION'    :5,
+        'DEAD_LOCK':6,
+        'FREEZING':7
     }
 
 def draw_cov(surface, mean, cov):
@@ -44,6 +46,13 @@ def draw_cov(surface, mean, cov):
     surface.blit(rotated_surf, rotated_surf.get_rect(center = target_rect.center))
 
 class KalmanFilter:
+
+    def copy(self):
+        new_filter = KalmanFilter(params=self.params)
+        new_filter.mu_upds = self.mu_upds
+        new_filter.Sigma_upds = self.Sigma_upds
+        new_filter.ts = self.ts
+        return new_filter
 
     def __init__(self, params, mu=np.zeros([4,1]), Sigma=np.diag([1, 1, 10, 10])):
         self.active = False
@@ -97,13 +106,19 @@ class KalmanFilter:
         self.mu_upds.append(mu)
         self.Sigma_upds.append(Sigma)
         self.ts.append(t + 1)
+        achieved_filter = None
         if Sigma[0,0] >= 150 or (not(0 < mu[0] < self.params.map_size[0])) or (not(0 < mu[1] < self.params.map_size[1])):
+            achieved_filter = self.copy()
             self.__init__(self.params)
+        return achieved_filter
     
     def update(self, z):
+        achieved_list = []
         # Object has been tracked
         if self.active:
-            self.predict()
+            achieved_filter = self.predict()
+            if not(achieved_filter is None):
+                achieved_list.append(achieved_filter)
             if not(z is None):
                 mu = self.mu_upds[-1]
                 Sigma = self.Sigma_upds[-1]
@@ -121,6 +136,9 @@ class KalmanFilter:
         elif not (z is None):
             self.__init__(self.params, mu=np.vstack([z.reshape(-1, 1), np.zeros([2,1])]), Sigma=np.diag([1, 1, 10, 10]))
             self.active = True
+        
+        return achieved_list
+
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
         self.position = pos
@@ -592,9 +610,10 @@ class Drone2D():
         return newly_tracked, measurements
 
     def update_tracker(self, measurements):
+        achieved_list = []
         for i, tracker in enumerate(self.trackers):
-            tracker.update(measurements[i])
-        
+            achieved_list.extend(tracker.update(measurements[i]))
+        return achieved_list
 
     def brake(self):
         if norm(self.velocity) <= self.params.drone_max_acceleration * self.dt:

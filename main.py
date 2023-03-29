@@ -1,6 +1,6 @@
 import easydict
 import time
-from experiment import Experiment
+from experiment1 import Experiment
 from threading import Thread
 import random
 import os
@@ -10,12 +10,11 @@ from datetime import datetime
 result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 img_dir = './experiment/fails/new/'
 
-def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, planner):
+def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, planner, map_id):
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v2',
         'render':True,
         'record': False,
-        'experiment_time':3,#hours
 
         'record_img': False,
         'trained_policy':False,
@@ -30,8 +29,8 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
         'drone_view_depth' : 80,
         'drone_view_range': 90,
         'img_dir':img_dir,
-        'max_steps': 1000,
-        'var_cam': 0,
+        'max_flight_time': 80,
+        'var_cam': 5,
 
 
         'gaze_method':gaze_method,#5
@@ -40,25 +39,28 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
         'agent_number':agent_number,#3
         'drone_max_speed':drone_speed,#3
         'agent_max_speed':agent_speed,#3
-        'map_id':2
+        'map_id':map_id
     })
     runner = Experiment(cfg, result_dir)
     runner.run()
 
 
 if __name__ == '__main__':
-    gaze_methods = ['LookAhead']
+    gaze_methods = ['LookAhead', 'Owl']
     planners = ['Primitive']
     agent_numbers = [5, 15]
-    pillar_numbers = [0, 15]
-    agent_max_speeds = [40, 40]
-    drone_max_speeds = [40, 40]
+    pillar_numbers = [10, 15]
+    agent_max_speeds = [20, 40]
+    drone_max_speeds = [20, 40]
+    map_ids = range(30)
 
+    
     for gaze_method in gaze_methods:
-        for agent_number in agent_numbers:
-            for pillar_number in pillar_numbers:
-                for agent_speed in agent_max_speeds:
-                    for drone_speed in drone_max_speeds:
-                        for planner in planners:
-                            myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, planner)
+        for planner in planners:
+            for agent_number in agent_numbers:
+                for pillar_number in pillar_numbers:
+                    for agent_speed in agent_max_speeds:
+                        for drone_speed in drone_max_speeds:
+                            for map_id in map_ids:
+                                myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, planner, map_id)
                         

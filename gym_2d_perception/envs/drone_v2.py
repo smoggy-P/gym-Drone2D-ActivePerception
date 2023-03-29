@@ -53,6 +53,7 @@ class Drone2DEnv2(gym.Env):
         gym.logger.set_level(40)
         plt.ion()
         random.seed(params.map_id)
+        np.random.seed(params.map_id)
 
         # Setup pygame environment
         if params.render:
@@ -61,11 +62,11 @@ class Drone2DEnv2(gym.Env):
             self.clock = pygame.time.Clock()
 
         self.steps = 0
-        self.max_steps = params.max_steps
+        self.max_steps = params.max_flight_time / params.dt
         self.params = params
         self.dt = params.dt
         self.tracked_agent = 0
-        self.seen_history = []
+        self.tracker_buffer = []
 
         # Set target list to visit
         self.target_list = [array([params.map_size[0]/2, params.map_size[1]-(params.drone_radius+params.map_scale+20)])]
@@ -96,11 +97,12 @@ class Drone2DEnv2(gym.Env):
         self.observation_space = gym.spaces.Dict({})
         self.info = {
             'drone':self.drone,
-            'seen_agents':[agent for i, agent in enumerate(self.agents) if self.drone.trackers[i].active],
             'trajectory':self.planner.trajectory,
             'state_machine':self.state_machine,
             'target':self.planner.target,
-            'collision_flag':0
+            'collision_flag':0,
+            'flight_time':self.steps * self.dt,
+            'tracker_buffer':self.tracker_buffer
         }
         
     
@@ -134,7 +136,7 @@ class Drone2DEnv2(gym.Env):
         newly_tracked, measurements = self.drone.get_measurements(self.map_gt, self.agents)
         # Update gridmap for dynamic obstacles
         self.map_gt.update_dynamic_grid(self.agents)
-        self.drone.update_tracker(measurements)
+        self.tracker_buffer.extend(self.drone.update_tracker(measurements))
         self.tracked_agent += newly_tracked
         
         #######################
@@ -148,8 +150,6 @@ class Drone2DEnv2(gym.Env):
         if not success:
             self.drone.brake()
             self.fail_count += 1
-            if self.fail_count >= 6 and norm(self.drone.velocity)==0:
-                done = True
         else:
             self.state_machine = state_machine['EXECUTING']
             self.fail_count = 0
@@ -166,18 +166,30 @@ class Drone2DEnv2(gym.Env):
 
         # Check done or not
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
+        self.state_machine = state_machine['DEAD_LOCK'] if self.fail_count >= 6 and norm(self.drone.velocity)==0 else self.state_machine
+        self.state_machine = state_machine['GOAL_REACHED'] if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 and len(self.target_list) == 0 else self.state_machine
+        self.state_machine = state_machine['FREEZING'] if (self.steps >= self.max_steps) else self.state_machine
+            
+        
         done = True if (collision_state != 0) or \
-                       (norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 and len(self.target_list) == 0) or \
-                       (self.steps >= self.max_steps) else done
+                       self.state_machine == state_machine['DEAD_LOCK'] or \
+                       self.state_machine == state_machine['GOAL_REACHED'] or \
+                       self.state_machine == state_machine['FREEZING'] else done
+        if done:
+            print(self.state_machine)
+            for tracker in self.drone.trackers:
+                if tracker.active == True:
+                    self.tracker_buffer.append(tracker)
             
         # wrap up information
         self.info = {
             'drone':self.drone,
-            'seen_agents':[agent for i, agent in enumerate(self.agents) if self.drone.trackers[i].active],
             'trajectory':self.planner.trajectory,
             'state_machine':self.state_machine,
             'target':self.planner.target,
-            'collision_flag':0
+            'collision_flag':0,
+            'flight_time':self.steps * self.dt,
+            'tracker_buffer':self.tracker_buffer
         }
         state = {}
 
@@ -208,7 +220,7 @@ class Drone2DEnv2(gym.Env):
 
         if len(self.agents) > 0:
             for i, agent in enumerate(self.agents):
-                color = pygame.Color(0, 0, 150) if self.drone.trackers[i].active else pygame.Color(250, 0, 0)
+                color = pygame.Color(0, 250, 250) if self.drone.trackers[i].active else pygame.Color(250, 0, 0)
                 pygame.draw.circle(self.screen, color, np.rint(agent.position).astype(int), int(round(agent.radius)), 0)
         for tracker in self.drone.trackers:
             if tracker.active:

@@ -192,13 +192,13 @@ class Owl(object):
 
         drone = observation['drone']
         target = observation['target']
-        agents = observation['seen_agents']
+        trackers = drone.trackers
         
         self.update_U(drone, self.dt)
 
         d_g = degrees(atan2(target[1]-drone.y, target[0]-drone.x))
         d_v = degrees(atan2(*((drone.velocity / norm(drone.velocity))[::-1])))
-        d_o = [degrees(atan2(*((agent.estimate_pos - np.array([drone.x, drone.y]))[::-1]))) for agent in agents]
+        d_o = [degrees(atan2(*((tracker.mu_upds[-1][:2,0] - np.array([drone.x, drone.y]))[::-1]))) for tracker in trackers if tracker.active is True]
 
         yaws = -(drone.yaw + self.u_space * self.dt)
         costs = np.ones_like(yaws) 
@@ -206,8 +206,10 @@ class Owl(object):
         for i, yaw in enumerate(yaws):
             f[i, 0] = self.G(yaw - d_g) * (1-self.U(d_g))
             f[i, 1] = norm(drone.velocity/10)**2 * self.G(yaw - d_v)*(1-self.U(d_v))
-            for d_o_i, agent in zip(d_o, agents):
-                f[i, 2] += self.beta * norm(agent.velocity) / norm(agent.position - np.array([drone.x, drone.y])) * self.G(yaw - d_o_i)
+
+            for d_o_i, tracker in zip(d_o, trackers):
+                f[i, 2] += self.beta * norm(tracker.mu_upds[-1][2:,0]) / norm(tracker.mu_upds[-1][:2,0] - np.array([drone.x, drone.y])) * self.G(yaw - d_o_i)
+            
             f[i, 3] = self.U(yaw)
             f[i ,4] = abs(radians(self.u_space[i] * self.dt))
 
