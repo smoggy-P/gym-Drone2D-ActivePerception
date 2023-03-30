@@ -187,7 +187,7 @@ class Drone2DEnv2(gym.Env):
             'trajectory':self.planner.trajectory,
             'state_machine':self.state_machine,
             'target':self.planner.target,
-            'collision_flag':0,
+            'collision_flag':collision_state,
             'flight_time':self.steps * self.dt,
             'tracker_buffer':self.tracker_buffer
         }
