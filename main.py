@@ -13,8 +13,8 @@ img_dir = './experiment/fails/new/'
 def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, planner, map_id):
     cfg = easydict.EasyDict({
         'env':'gym-2d-perception-v2',
-        'render':True,
-        'record': False,
+        'render':False,
+        'record': True,
 
         'record_img': False,
         'trained_policy':False,

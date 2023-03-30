@@ -94,7 +94,7 @@ class Drone2DEnv2(gym.Env):
 
         # Define action and observation space
         self.action_space = gym.spaces.Box(np.array([-1]), np.array([1]), shape=(1,))
-        self.observation_space = gym.spaces.Dict({})
+        
         self.info = {
             'drone':self.drone,
             'trajectory':self.planner.trajectory,
@@ -104,6 +104,23 @@ class Drone2DEnv2(gym.Env):
             'flight_time':self.steps * self.dt,
             'tracker_buffer':self.tracker_buffer
         }
+        local_map_size = 4 * (params.drone_view_depth // params.map_scale) + 1
+        self.observation_space = gym.spaces.Dict(
+            {
+                'yaw_angle' : gym.spaces.Box(low=np.array([0], dtype=np.float32), 
+                                             high=np.array([360], dtype=np.float32), 
+                                             shape=(1,), 
+                                             dtype=np.float32), 
+                'local_map' : gym.spaces.Box(low=np.zeros((1, local_map_size, local_map_size), dtype=np.float32), 
+                                             high=np.float32(4*np.ones((1, local_map_size,local_map_size))), 
+                                             shape=(1, local_map_size, local_map_size),
+                                             dtype=np.float32),
+                'swep_map'  : gym.spaces.Box(low=np.zeros((1, local_map_size, local_map_size), dtype=np.float32), 
+                                             high=np.float32(10*np.ones((1, local_map_size,local_map_size), dtype=np.float32)), 
+                                             shape=(1, local_map_size, local_map_size),
+                                             dtype=np.float32)
+            }
+        )
         
     
     def step(self, a):
@@ -191,7 +208,11 @@ class Drone2DEnv2(gym.Env):
             'flight_time':self.steps * self.dt,
             'tracker_buffer':self.tracker_buffer
         }
-        state = {}
+        state = {
+            'local_map' : self.drone.get_local_map()[None],
+            'swep_map' : self.drone.get_local_map()[None],
+            'yaw_angle' : np.array([self.drone.yaw], dtype=np.float32).flatten()
+        }
 
         return state, 0, done, self.info
     
