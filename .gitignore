@@ -5,3 +5,5 @@ experiment/fails/**
 slurm-*.out
 src/**
 main.py
+FORCES_NLP_solver/**
+*.forces
