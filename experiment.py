@@ -9,7 +9,7 @@ from datetime import datetime
 
 policy_list = {
     'LookAhead': LookAhead,
-    'NoControl': NoControl,
+    'NoControl': NoControl, 
     'Oxford': Oxford,
     'Rotating': Rotating,
     'Owl' : Owl

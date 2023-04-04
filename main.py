@@ -52,7 +52,7 @@ if __name__ == '__main__':
     pillar_numbers = [10]
     agent_max_speeds = [20, 40, 60]
     drone_max_speeds = [20, 40]
-    map_ids = range(30, 90)
+    map_ids = range(90, 150)
 
     
     for gaze_method in gaze_methods:
