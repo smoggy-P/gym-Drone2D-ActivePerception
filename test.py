@@ -10,7 +10,17 @@ import matplotlib.animation as animation
 
 # system
 dt = 0.1
-target = np.array([50, 51, 0, 0])
+target = np.array([50, 50, 0, 0])
+num_agent = 5
+
+agent_list = np.array([[30, 30, 5, -10, -13], #px, py, r, vx, vy
+                       [0, 60, 5, 10, -10],
+                       [30, 30, 0, -10, -13],
+                       [0, 0, 0, 0, 0],
+                       [0, 0, 0, 0, 0]])
+
+
+
 A = np.array([[1, 0, dt, 0],
             [0, 1, 0, dt],
             [0, 0, 1, 0],
@@ -22,12 +32,13 @@ B = np.array([[0.5*dt**2, 0],
 
 nx = 4
 nu = 2
+ns = 1
 
 # MPC setup
 N = 10
 Q = np.eye(nx)
 R = np.eye(nu)
-lam = 1000
+lam = 10000
 
 
 umin = -40 * np.ones([nu])
@@ -40,8 +51,8 @@ xmax = np.array([200, 200, 20, 20])
 model = forcespro.nlp.SymbolicModel(N)
 model.nvar = 7  # number of stage variables
 model.neq = 4   # number of equality constraints
-model.nh = 1    # number of nonlinear inequality constraints
-model.npar = 4
+model.nh = num_agent    # number of nonlinear inequality constraints
+model.npar = 5*num_agent  # number of parameters
 
 
 model.objective = lambda z: casadi.horzcat(z[3]-target[0], z[4]-target[1], z[5]-target[2], z[6]-target[3]) @ Q @ casadi.vertcat(z[3]-target[0], z[4]-target[1], z[5]-target[2], z[6]-target[3]) + lam*z[0]
@@ -54,17 +65,16 @@ model.eq = lambda z: casadi.vertcat(casadi.dot(A[0, :], casadi.vertcat(z[3], z[4
                                     casadi.dot(A[3, :], casadi.vertcat(z[3], z[4], z[5], z[6])) + casadi.dot(B[3, :], casadi.vertcat(z[1], z[2])))
 
 for i in range(N):
-    if i > 0:
-        model.ineq[i] = lambda z, p: casadi.vertcat((z[3] - p[0] - p[2]*i*dt )**2 + (z[4] - p[1]- p[3]*i*dt)**2 + z[0])
-        model.hu[i] = [+float("inf")]                 # upper bound for nonlinear constraints
-        model.hl[i] = [25]  
-    else:
-        model.ineq[i] = lambda z, p: casadi.vertcat((z[3] - p[0] - p[2]*i*dt )**2 + (z[4] - p[1]- p[3]*i*dt)**2)
-        model.hu[i] = [+float("inf")]                 # upper bound for nonlinear constraints
-        model.hl[i] = [-float("inf")]
-# model.ineq = lambda z: casadi.vertcat((z[2] - 20)**2 + (z[3] - 20)**2)
+    def neq(z, p):
+        p_reshaped = (p.reshape((5, -1))).T
+        lis = [(z[ns+nu]-p_reshaped[j,0]-p_reshaped[j,]*i*dt)**2 + (z[ns+nu+1]-p_reshaped[j, 1]-p_reshaped[j, 4]*i*dt)**2+z[0]-p_reshaped[j, 2]**2 for j in range(num_agent)]
+        return casadi.vertcat(lis[0], lis[1], lis[2], lis[3], lis[4])
+        # return casadi.vertcat((z[3] - p[0] - p[2]*i*dt )**2 + (z[4] - p[1]- p[3]*i*dt)**2 + z[0] - agent_radius ** 2)
+    # model.ineq[i] = lambda z, p: casadi.vertcat((z[3] - p[0] - p[2]*i*dt )**2 + (z[4] - p[1]- p[3]*i*dt)**2 + z[0] - agent_radius ** 2)
+    model.ineq[i] = neq
+    model.hu[i] = [+float("inf")]*num_agent                 
+    model.hl[i] = [0]*num_agent
 
-                     # lower bound for nonlinear constraints
 model.E = np.concatenate([np.zeros((4, 3)), np.eye(4)], axis=1) 
   
 
@@ -100,17 +110,29 @@ problem = {}
 solvetime = []
 iters = []
 
+ox = []
+oy = []
+
 for k in range(kmax):
     problem["xinit"] = x[:, k]
-    params = np.array([30-k/2,30-k/2,-5,-5])
-    problem["all_parameters"] = np.tile(params, (model.N,))
+
+    params = []
+    for i, agent in enumerate(agent_list):
+        if i==0:
+            ox.append(agent[0] + k*dt*agent[3])
+            oy.append(agent[1] + k*dt*agent[4])
+        params.extend([agent[0] + k*dt*agent[3], agent[1] + k*dt*agent[4], agent[2], agent[3], agent[4]])
+
+
+    
+
+    problem["all_parameters"] = np.tile(np.array(params), (model.N,))
 
     # call the solver
     solverout, exitflag, info = solver.solve(problem)
     if exitflag < 0:
         break
 
-    # 太他吗傻逼了
     s[0, k] = solverout["x01"][0]
     u[0, k] = solverout["x01"][1]
     u[1, k] = solverout["x01"][2]
@@ -123,11 +145,14 @@ for k in range(kmax):
     x[:, k + 1] = b.reshape(nx,)
 
 
-fig = plt.figure()
+
+
+fig = plt.figure(figsize=(8,8))
 ax = plt.axes()
 px = []
 py = []
 line, = plt.plot(px, py)
+plt.grid()
 
 
 def init():
@@ -141,17 +166,24 @@ def update(step):
     py.append(x[1, step])
     line.set_data(px, py)
 
-
-    circle = plt.Circle((30 - step/2, 30 - step/2), 5, color='lightgrey')
     ax.patches = []
-    ax.add_patch(circle)
+    for agent in agent_list:
+        circle = plt.Circle((agent[0] + step*dt*agent[3], agent[1] + step*dt*agent[4]), agent[2], color='lightgrey')
+        ax.add_patch(circle)
 
     
-    lb = min(min(px),min(py)-10)
-    ub = max(max(px),max(py)+10)
+    lb = min(min(px),min(py)-10,-10)
+    ub = max(max(px),max(py)+10,60)
     ax.set_xlim(lb, ub)
     ax.set_ylim(lb, ub)
     return line, 
+
+print(s)
+print(x[:2,:]) #2*T
+ox = np.array(ox)
+oy = np.array(oy)
+res = np.vstack((ox, oy))
+dis = ((res - (x[:2,1:].reshape(2,-1)))**2).sum(axis=0)
 
 
 ani = animation.FuncAnimation(fig = fig, 
@@ -159,6 +191,6 @@ ani = animation.FuncAnimation(fig = fig,
                               init_func = init,
                               blit = False,
                               frames = x.shape[1], 
-                              interval = 200)
+                              interval = 100)
 plt.show()
 
