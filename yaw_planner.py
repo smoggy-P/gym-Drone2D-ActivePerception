@@ -5,6 +5,7 @@ import random
 from gym_2d_perception.envs.drone_v2 import Drone2D
 from math import cos, sin, radians, atan2, degrees
 from numpy.linalg import norm
+from utils import *
 
 class NoControl(object):
     def __init__(self, params):
@@ -221,5 +222,34 @@ class Owl(object):
         return self.u_space[idx] / self.params.drone_max_yaw_speed
         
 
+class LookGoal(object):
 
+    def __init__(self, params):
+        self.params = params
     
+    def plan(self, observation):
+
+        trajectory = observation['trajectory']
+        drone = observation['drone']
+
+        if len(trajectory) == 0:
+            return 0
+
+        x_look = trajectory.positions[-1][0]
+        y_look = trajectory.positions[-1][1]
+        
+        for position in trajectory.positions:
+            if drone.map.get_grid(position[0], position[1])==grid_type['UNEXPLORED']:
+                x_look = position[0]
+                y_look = position[1]
+                break
+        
+
+        target_yaw = math.degrees(math.atan2(-(y_look-drone.y), x_look-drone.x)) % 360
+
+        if abs(target_yaw - drone.yaw) < 180:
+            yaw_vel = max(min((target_yaw - drone.yaw) / self.params.dt, self.params.drone_max_yaw_speed), -self.params.drone_max_yaw_speed)
+        else:
+            yaw_vel = -max(min((target_yaw - drone.yaw) / self.params.dt, self.params.drone_max_yaw_speed), -self.params.drone_max_yaw_speed)
+
+        return yaw_vel / self.params.drone_max_yaw_speed
