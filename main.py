@@ -27,7 +27,7 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
         'drone_radius':5,
         'drone_max_yaw_speed':80,
         'drone_view_depth' : 80,
-        'drone_view_range': 360,
+        'drone_view_range': 90,
         'img_dir':img_dir,
         'max_flight_time': 80,
         'var_cam': 5,
@@ -46,13 +46,13 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
 
 
 if __name__ == '__main__':
-    gaze_methods = ['NoControl']
-    planners = ['Primitive', 'Jerk_Primitive']
+    gaze_methods = ['LookGoal']
+    planners = ['Primitive']
     agent_numbers = [10, 20, 30]
     pillar_numbers = [10]
     agent_max_speeds = [20, 40, 60]
     drone_max_speeds = [20, 40]
-    map_ids = range(90, 150)
+    map_ids = range(30, 60)
 
     
     for gaze_method in gaze_methods:
