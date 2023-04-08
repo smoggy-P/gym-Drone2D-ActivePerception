@@ -68,7 +68,7 @@ for i in range(N):
     #     lis = [(z[ns+nu]-p_reshaped[j,0])**2 + (z[ns+nu+1]-p_reshaped[j,1])**2-p_reshaped[j,2]**2 for j in range(num_agent)]
     #     return casadi.vertcat(lis[0], lis[1], lis[2], lis[3], lis[4])
     #     # return casadi.vertcat((z[3] - p[0] - p[2]*i*dt )**2 + (z[4] - p[1]- p[3]*i*dt)**2 + z[0] - agent_radius ** 2)
-    model.ineq[i] = lambda z, p: (z[3]-p[0]-(p[3]*(i-10)*dt))**2 + (z[4]-p[1]-(p[4]*(i-10)*dt))**2 -(p[2]**2) + z[0]
+    model.ineq[i] = lambda z, p: (z[3]-p[0]-(p[3]*(i)*dt))**2 + (z[4]-p[1]-(p[4]*(i)*dt))**2 -(p[2]**2) + z[0]
     model.hu[i] = [+float("inf")]*num_agent
     model.hl[i] = [0]*num_agent
 
