@@ -76,7 +76,12 @@ class Primitive(Planner):
     
     def __init__(self, drone, params):
         super(Primitive, self).__init__(drone, params)
-        self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 0.4 * params.drone_max_speed - 5)
+        
+        if params.drone_max_speed <= 40: 
+            self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 0.4 * params.drone_max_speed - 5)
+        else:
+            self.u_space = np.arange(-params.drone_max_acceleration, params.drone_max_acceleration, 4)
+
         self.dt = 2
         self.sample_num = params.drone_max_speed * self.dt // params.map_scale # sampling number for collision check
         self.target = np.array([drone.x, drone.y, 0, 0])
