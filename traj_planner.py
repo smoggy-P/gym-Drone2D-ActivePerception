@@ -10,6 +10,10 @@ from cvxpy.error import SolverError
 from utils import Trajectory2D, Waypoint2D, grid_type
 from matplotlib.patches import Circle, Ellipse
 from utils import *
+import sys
+sys.path.insert(0, '/home/smoggy/Downloads/forces_pro_client/')  # On Windows, note the doubly-escaped backslashes
+import forcespro
+import casadi
 
 class Planner:
     def __init__(self, drone, params):
@@ -218,33 +222,12 @@ class MPC(Planner):
     
     def __init__(self, drone, params):
         self.params = params
-        self.target = np.array([drone.x, drone.y])
-        # Define the prediction horizon and control horizon
-        self.N = 10
-        self.M = 2
+        dt = 0.1
+        self.target = np.array([240, 605, 0, 0])
 
-        # Define the state and control constraints
-        self.v_max = params.drone_max_speed
-        self.x_max = params.map_size[0]
-        self.y_max = params.map_size[1]
-        self.u_max = params.drone_max_acceleration
-        # self.u_max = 80
-        self.dt = 0.2
-
-        # Define the system dynamics
-        self.A = np.array([[1, 0, self.dt, 0],
-                           [0, 1, 0, self.dt],
-                           [0, 0, 1, 0],
-                           [0, 0, 0, 1]])
-        self.B = np.array([[0.5*self.dt**2, 0],
-                           [0, 0.5*self.dt**2],
-                           [self.dt, 0],
-                           [0, self.dt]])
-
-        # Define the cost function matrices
-        self.Q = np.eye(4)
-        self.R = np.eye(2)
-
+        # generate code
+        self.solver = forcespro.nlp.Solver.from_directory("./MPC_SOLVER/")
+        self.N = 15
         self.trajectory = Trajectory2D()
         self.future_trajectory = Trajectory2D()
 
@@ -253,82 +236,32 @@ class MPC(Planner):
         if len(self.trajectory) != 0:
             return True
         
-        start_pos = np.array([drone.x, drone.y])
-        start_vel = drone.velocity
-        occupancy_map = drone.map
-
 
         x = np.arange(int(self.params.map_size[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
         y = np.arange(int(self.params.map_size[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
+        local_obstacle = np.where(np.logical_and((drone.x - x)**2 + (drone.y - y)**2 <= 100 ** 2, drone.map.grid_map == grid_type['OCCUPIED']), 1, 0)
+        positions, rs = self.binary_image_clustering(self, local_obstacle, 1, 1, np.array([drone.x, drone.y]))
+        agent_list = np.array([[positions[i][0], positions[i][1], rs[i], 0, 0] if i < len(positions) else [0, 0, 0, 0, 0] for i in range(5)])
 
-        local_obstacle = np.where(np.logical_and((start_pos[0] - x)**2 + (start_pos[1] - y)**2 <= 100 ** 2, occupancy_map.grid_map == grid_type['OCCUPIED']), 1, 0)
-        positions, rs = self.binary_image_clustering(self, local_obstacle, 1, 1, start_pos)
-        for position, r in zip(positions, rs):
-            if norm(start_pos - position) < r:
-                return False
-        
-        x0 = np.array([start_pos[0], start_pos[1], start_vel[0], start_vel[1]])
-        
-        # Define the optimization variables
-        x = cp.Variable((4, self.N+1))
-        u = cp.Variable((2, self.N))
-        
-    # Define the constraints
-        constraints = []
-        A_static, b_static = [], []
-        for pos, r in zip(positions, rs):
-            A_s, b_s = self.get_coeff(x0[:2], self.params.drone_radius, pos, r)
-            A_static.append(A_s)
-            b_static.append(b_s)
+        problem = {}
+        problem["xinit"] = np.array([drone.x, drone.y, *drone.velocity])
 
-        A_static = np.array(A_static)
-        b_static = np.array(b_static)
-        
-        for i in range(self.N):
-            constraints += [x[:,i+1] == self.A@x[:,i] + self.B@u[:,i]]
-            if A_static.shape[0] > 0:
-                constraints += [A_static@x[:2,i+1] >= b_static.flatten()]
+        all_params = np.array([[[agent_list[j,0], agent_list[j,1], agent_list[j,2]] for j in range(5)] for i in range(self.N)])
 
-            for tracker in drone.trackers:
-                if tracker.active:
-                    p_obs = tracker.estimate_pos(i*self.dt)
-                    A, b = self.get_coeff(x0[:2], self.params.drone_radius, p_obs, self.params.agent_radius + 2)
-                    constraints += [A@x[:2,i+1] <= b.flatten()]
-            constraints += [15*np.ones(2) <= x[:2,i], x[:2,i] <= np.array(self.params.map_size)-15]
-            constraints += [cp.norm(x[2:,i]) <= self.v_max]
-            constraints += [cp.norm(u[:,i]) <= self.u_max]
-        constraints += [x[:,0] == x0]
-
-        # Define the cost function
-        cost = 0
-        for i in range(self.N):
-            cost += cp.quad_form(x[:,i] - self.target, self.Q) + cp.quad_form(u[:,i], self.R)
-
-        # Form the optimization problem
-        prob = cp.Problem(cp.Minimize(cost), constraints)
-
-        # Solve the optimization problem
-        result = prob.solve(solver='ECOS')
-        
-        u_opt = u.value
-        if u_opt is None:
+        problem["all_parameters"] = all_params.flatten()
+        # call the solver
+        solverout, exitflag, info = self.solver.solve(problem)
+        if exitflag < 0:
             return False
+        
         # Simulate the system to get the state trajectory
-        self.trajectory = Trajectory2D()
+        self.trajectory.positions.append(np.array([solverout["x02"][3], solverout["x02"][4]]))
+        self.trajectory.velocities.append(np.array([solverout["x02"][5], solverout["x02"][6]]))
+        self.trajectory.accelerations.append(np.array([0, 0]))
 
-        x = x0
-        for i in range(self.N):
-            for j in np.arange(0, self.dt, self.params.dt): 
-                t = j + self.params.dt
-                if i <= self.M:
-                    self.trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
-                    self.trajectory.velocities.append(x[2:]+t*u_opt[:,i])
-                    self.trajectory.accelerations.append(np.array([0, 0]))
-                self.future_trajectory.positions.append(x[:2]+x[2:]*t+0.5*t**2*u_opt[:,i])
-                self.future_trajectory.velocities.append(x[2:]+t*u_opt[:,i])
-                self.future_trajectory.accelerations.append(np.array([0, 0]))
-            x = self.A@x + self.B@u_opt[:,i]
-
+        self.future_trajectory.positions.append(np.array([solverout["x02"][3], solverout["x02"][4]]))
+        self.future_trajectory.velocities.append(np.array([solverout["x02"][5], solverout["x02"][6]]))
+        self.future_trajectory.accelerations.append(np.array([0, 0]))
 
         return True
     
@@ -351,7 +284,7 @@ class MPC(Planner):
         prob = cp.Problem(cp.Minimize(cost), constraint)
 
         # Solve the optimization problem
-        result = prob.solve()
+        result = prob.solve(solver=cp.CVXOPT)
         x2, y2 = x.value[0], x.value[1]
         x3, y3 = 2*x0 - x2, 2*y0-y2
         k = -(x1-x2)/(y1-y2)
@@ -406,13 +339,11 @@ class MPC(Planner):
             # ell = Circle(position, r)
             # ell = Ellipse(xy.mean(axis=0), r, r, angle, color=col)
         #     plt.gca().add_artist(ell)
-        plt.scatter(start_pos[0], start_pos[1], c='r')
-        
-        # plt.scatter(5+binary_indices[:, 0]*10, 5+binary_indices[:, 1]*10, c='k')
-        plt.axis([0,self.params.map_size[0],self.params.map_size[1],0])
-        plt.show()
-        plt.pause(0.1)
-        plt.clf()
+        # plt.scatter(start_pos[0], start_pos[1], c='r')
+        # plt.axis([0,self.params.map_size[0],self.params.map_size[1],0])
+        # plt.show()
+        # plt.pause(0.1)
+        # plt.clf()
 
         return positions, rs
 
