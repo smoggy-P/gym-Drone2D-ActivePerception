@@ -4,7 +4,7 @@
 %   subject to the parameters supplied in the following struct:
 %       PARAMS.xinit - matrix of size [4x1]
 %       PARAMS.x0 - matrix of size [105x1]
-%       PARAMS.all_parameters - matrix of size [225x1]
+%       PARAMS.all_parameters - matrix of size [390x1]
 %       PARAMS.num_of_threads - scalar
 %
 %   OUTPUT returns the values of the last iteration of the solver where

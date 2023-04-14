@@ -240,60 +240,40 @@ class MPC(Planner):
         x = np.arange(int(self.params.map_size[0]//self.params.map_scale)).reshape(-1, 1) * self.params.map_scale
         y = np.arange(int(self.params.map_size[1]//self.params.map_scale)).reshape(1, -1) * self.params.map_scale
         local_obstacle = np.where(np.logical_and((drone.x - x)**2 + (drone.y - y)**2 <= 100 ** 2, drone.map.grid_map == grid_type['OCCUPIED']), 1, 0)
-        positions, rs = self.binary_image_clustering(self, local_obstacle, 1, 1, np.array([drone.x, drone.y]))
-        agent_list = np.array([[positions[i][0], positions[i][1], rs[i], 0, 0] if i < len(positions) else [0, 0, 0, 0, 0] for i in range(5)])
+        positions, widths, heights, angles = self.binary_image_clustering(self, local_obstacle, 1.5, 1, np.array([drone.x, drone.y]))
+        
+        agent_list = np.array([[*positions[i], widths[i], heights[i], radians(angles[i])] if i < len(positions) else [0]*5 for i in range(5)])
 
         problem = {}
         problem["xinit"] = np.array([drone.x, drone.y, *drone.velocity])
 
-        all_params = np.array([[[agent_list[j,0], agent_list[j,1], agent_list[j,2]] for j in range(5)] for i in range(self.N)])
+        all_params = []
 
-        problem["all_parameters"] = all_params.flatten()
+        for i in range(self.N):
+            for j in range(5):
+                all_params.extend(agent_list[j,:])
+            all_params.append(self.params.drone_max_speed)
+
+
+        problem["all_parameters"] = np.array(all_params)
         # call the solver
         solverout, exitflag, info = self.solver.solve(problem)
         if exitflag < 0:
             return False
         
+        self.future_trajectory = Trajectory2D()
+
         # Simulate the system to get the state trajectory
         self.trajectory.positions.append(np.array([solverout["x02"][3], solverout["x02"][4]]))
         self.trajectory.velocities.append(np.array([solverout["x02"][5], solverout["x02"][6]]))
         self.trajectory.accelerations.append(np.array([0, 0]))
 
-        self.future_trajectory.positions.append(np.array([solverout["x02"][3], solverout["x02"][4]]))
-        self.future_trajectory.velocities.append(np.array([solverout["x02"][5], solverout["x02"][6]]))
-        self.future_trajectory.accelerations.append(np.array([0, 0]))
+        for z in solverout.values():
+            self.future_trajectory.positions.append(np.array([z[3], z[4]]))
+            self.future_trajectory.velocities.append(np.array([z[5], z[6]]))
+            self.future_trajectory.accelerations.append(np.array([0, 0]))
 
         return True
-    
-    @staticmethod
-    def approx_circle_from_ellipse(x0, y0, a, b, theta, x1, y1):
-
-        a = 10 if a <= 0 else a
-        b = 10 if b <= 0 else b
-
-        A = inv(np.array([
-            [cos(theta), -sin(theta)],
-            [sin(theta), cos(theta)]
-        ]))
-
-        x = cp.Variable((2))
-        constraint = [cp.quad_form(A@(x-np.array([x0, y0])), np.array([[1/a**2,0],[0,1/b**2]])) <= 1]
-
-
-        cost = cp.norm(x - np.array([x1, y1]))
-        prob = cp.Problem(cp.Minimize(cost), constraint)
-
-        # Solve the optimization problem
-        result = prob.solve(solver=cp.CVXOPT)
-        x2, y2 = x.value[0], x.value[1]
-        x3, y3 = 2*x0 - x2, 2*y0-y2
-        k = -(x1-x2)/(y1-y2)
-        r = abs(k*(x3-x2)+y2-y3)/sqrt(k**2+1)/2
-        dis = sqrt((x2-x1)**2+(y2-y1)**2)
-
-        x4 = (r/dis)*(x2-x1)+x2
-        y4 = (r/dis)*(y2-y1)+y2
-        return (x4, y4), r, x2, y2
 
     @staticmethod
     def binary_image_clustering(self, image, eps, min_samples, start_pos):
@@ -304,7 +284,7 @@ class MPC(Planner):
         binary_indices = np.array(np.where(image == 1)).T
 
         if binary_indices.shape[0] == 0:
-            return [],[]
+            return [],[],[],[]
 
         dbscan = DBSCAN(eps=eps, min_samples=min_samples).fit(binary_indices)
         labels = dbscan.labels_
@@ -312,40 +292,44 @@ class MPC(Planner):
 
         rs = []
         positions = []
+        widths = []
+        heights = []
+        angles = []
 
         for k in unique_labels:
             class_member_mask = (labels == k)
             xy = binary_indices[class_member_mask]
 
             if xy.shape[0] == 1:
-                r = 1.5
+                width = 7.5
+                height = 7.5
+                angle = 0
                 position = 5 + 10*xy[0]
             else:
                 cov = np.cov(xy, rowvar=False)
                 eig_vals, eig_vecs = np.linalg.eigh(cov)
                 angle = np.degrees(np.arctan2(*eig_vecs[:, 0][::-1]))
-                width, height = 40 * np.sqrt(eig_vals)
-                center = 5+10*xy.mean(axis=0)
-                ell = Ellipse(center, width, height, angle)
-                plt.gca().add_artist(ell)
+                width, height = 20 * np.sqrt(eig_vals)
+                position = 5+10*xy.mean(axis=0)
 
-                position, r, x2, y2 = self.approx_circle_from_ellipse(center[0], center[1], width/2, height/2, math.radians(angle), start_pos[0], start_pos[1])
-                plt.scatter(x2, y2, c='y')
+            ell = Ellipse(position, width, height, angle)
+            plt.gca().add_artist(ell)
 
-                ell = Circle(position, r, color='r', fill=False)
-                plt.gca().add_artist(ell)
-            rs.append(r)
+            widths.append(width)
+            heights.append(height)
             positions.append(position)
+            angles.append(angle)
             # ell = Circle(position, r)
             # ell = Ellipse(xy.mean(axis=0), r, r, angle, color=col)
         #     plt.gca().add_artist(ell)
-        # plt.scatter(start_pos[0], start_pos[1], c='r')
-        # plt.axis([0,self.params.map_size[0],self.params.map_size[1],0])
-        # plt.show()
-        # plt.pause(0.1)
-        # plt.clf()
+        
+        plt.scatter(start_pos[0], start_pos[1], c='r')
+        plt.axis([0,self.params.map_size[0],self.params.map_size[1],0])
+        plt.show()
+        plt.pause(0.1)
+        plt.clf()
 
-        return positions, rs
+        return positions, widths, heights, angles
 
     def get_coeff(self, p,r_drone,p_obs,r_obs):
 

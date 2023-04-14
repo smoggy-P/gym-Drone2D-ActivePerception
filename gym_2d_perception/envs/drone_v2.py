@@ -225,19 +225,21 @@ class Drone2DEnv2(gym.Env):
         # self.map_gt.render(self.screen, color_dict)
         self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
-        for ray in self.drone.rays:
-            pygame.draw.line(
-                self.screen,
-                (100,100,100),
-                (self.drone.x, self.drone.y),
-                ((ray['coords'][0]), (ray['coords'][1]))
-        )
+        # for ray in self.drone.rays:
+        #     pygame.draw.line(
+        #         self.screen,
+        #         (100,100,100),
+        #         (self.drone.x, self.drone.y),
+        #         ((ray['coords'][0]), (ray['coords'][1]))
+        # )
 
         for ob in self.obstacles:
             pygame.draw.circle(self.screen, (200, 200, 200), center=[ob[0], ob[1]], radius=ob[2])
         
         if len(self.planner.trajectory.positions) > 1:
             pygame.draw.lines(self.screen, (100,100,100), False, self.planner.trajectory.positions)
+        if hasattr(self.planner, 'future_trajectory') and len(self.planner.future_trajectory.positions) > 1:
+            pygame.draw.lines(self.screen, (100,100,100), False, self.planner.future_trajectory.positions)
 
         if len(self.agents) > 0:
             for i, agent in enumerate(self.agents):

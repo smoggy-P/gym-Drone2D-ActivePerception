@@ -60,13 +60,13 @@ Model {
       }
     }
   }
-  Created		  "4/13/2023 11:00:51 AM"
+  Created		  "4/14/2023 1:57:34 AM"
   Creator		  "embotech AG"
   UpdateHistory		  "UpdateHistoryNever"
   ModifiedByFormat	  "%<Auto>"
   LastModifiedBy	  "embotech AG"
   ModifiedDateFormat	  "%<Auto>"
-  LastModifiedDate	  "4/13/2023 11:00:51 AM"
+  LastModifiedDate	  "4/14/2023 1:57:34 AM"
   RTWModifiedTimeStamp	  315310195
   ModelVersionFormat	  "1.%<AutoIncrement:2>"
   ConfigurationManager	  "None"
@@ -806,7 +806,7 @@ Model {
 	"INPUTS:\n"
 	" - xinit - matrix of size [4x1]\n  "
 " - x0 - matrix of size [105x1]\n  "
-" - all_parameters - matrix of size [225x1]\n  "
+" - all_parameters - matrix of size [390x1]\n  "
 " - num_of_threads - scalar\n  "
 
 	"\nOUTPUTS:\n"

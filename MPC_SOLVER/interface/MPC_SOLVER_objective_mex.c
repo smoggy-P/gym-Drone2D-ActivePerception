@@ -89,12 +89,12 @@ static void getDims(const solver_int stage, solver_int* nvar, solver_int* neq, s
 {
     const solver_int nvarArr[NSTAGES] = {7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}; 
     const solver_int neqArr[NSTAGES] = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
-    const solver_int dimhArr[NSTAGES] = {5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
-    const solver_int dimpArr[NSTAGES] = {15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15};
-    const solver_int dimlArr[NSTAGES] = {7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7};
-    const solver_int dimuArr[NSTAGES] = {6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6};
+    const solver_int dimhArr[NSTAGES] = {6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6};
+    const solver_int dimpArr[NSTAGES] = {26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26};
+    const solver_int dimlArr[NSTAGES] = {5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
+    const solver_int dimuArr[NSTAGES] = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
     const solver_int dimhlArr[NSTAGES] = {5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
-    const solver_int dimhuArr[NSTAGES] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    const solver_int dimhuArr[NSTAGES] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
     *nvar = nvarArr[stage];
     *neq = neqArr[stage];

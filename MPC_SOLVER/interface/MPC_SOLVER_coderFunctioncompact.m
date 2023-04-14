@@ -23,7 +23,7 @@
 % Inputs:
 % - xinit - matrix of size [4x1]
 % - x0 - matrix of size [105x1]
-% - all_parameters - matrix of size [225x1]
+% - all_parameters - matrix of size [390x1]
 % - num_of_threads - scalar
 % Outputs:
 % - outputs - column vector of length 105

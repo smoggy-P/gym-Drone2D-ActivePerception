@@ -102,128 +102,103 @@ solver = model.generate_solver(options)
 # Run simulation
 # --------------
 
-# x1 = [0, 0, 0, 0]
-# kmax = 50
-# x = np.zeros((nx, kmax + 1))
-# x[:, 0] = x1
-# u = np.zeros((nu, kmax))
-# s = np.zeros((1, kmax))
-# problem = {}
+x1 = [0, 0, 0, 0]
+kmax = 50
+x = np.zeros((nx, kmax + 1))
+x[:, 0] = x1
+u = np.zeros((nu, kmax))
+s = np.zeros((1, kmax))
+problem = {}
 
-# solvetime = []
-# iters = []
+solvetime = []
+iters = []
 
-# fig = plt.figure(figsize=(8,8))
-# ax = plt.axes()
-# ax.set_xlim(-10, 60)
-# ax.set_ylim(-10, 60)
-# plt.grid()
-# plt.ion()
+fig = plt.figure(figsize=(8,8))
+ax = plt.axes()
+ax.set_xlim(-10, 60)
+ax.set_ylim(-10, 60)
+plt.grid()
+plt.ion()
 
-# for k in range(kmax):
+for k in range(kmax):
 
-#     ax.patches = []
-#     circle2 = plt.Circle((x[0,k],x[1,k]), 0.3, color='r')
-#     ax.add_patch(circle2)
+    ax.patches = []
+    circle2 = plt.Circle((x[0,k],x[1,k]), 0.3, color='r')
+    ax.add_patch(circle2)
 
-#     problem["xinit"] = x[:, k]
+    problem["xinit"] = x[:, k]
 
-#     all_params = np.array([[[agent_list[j,0]+(k+i)*dt*agent_list[j,3], agent_list[j,1]+(k+i)*dt*agent_list[j,4], agent_list[j,2]] for j in range(num_agent)] for i in range(N)])
-#     problem["all_parameters"] = all_params.flatten()
-#     # call the solver
-#     solverout, exitflag, info = solver.solve(problem)
-#     if exitflag < 0:
-#         print(exitflag)
-#         break
+    all_params = np.array([[[agent_list[j,0]+(k+i)*dt*agent_list[j,3], agent_list[j,1]+(k+i)*dt*agent_list[j,4], agent_list[j,2]] for j in range(num_agent)] for i in range(N)])
+    problem["all_parameters"] = all_params.flatten()
+    # call the solver
+    solverout, exitflag, info = solver.solve(problem)
+    if exitflag < 0:
+        print(exitflag)
+        break
 
-#     s[0, k] = solverout["x01"][0]
-#     u[0, k] = solverout["x01"][1]
-#     u[1, k] = solverout["x01"][2]
+    s[0, k] = solverout["x01"][0]
+    u[0, k] = solverout["x01"][1]
+    u[1, k] = solverout["x01"][2]
 
 
-#     solvetime.append(info.solvetime)
-#     iters.append(info.it)
-#     c = np.concatenate([s[:, k], u[:, k], x[:, k]])
-#     a = model.eq(c)
-#     b = a.full()
-#     x[:, k + 1] = b.reshape(nx,)
+    solvetime.append(info.solvetime)
+    iters.append(info.it)
+    c = np.concatenate([s[:, k], u[:, k], x[:, k]])
+    a = model.eq(c)
+    b = a.full()
+    x[:, k + 1] = b.reshape(nx,)
 
     
     
-#     params = np.array([[agent_list[i,0]+k*dt*agent_list[i,3], agent_list[i,1]+k*dt*agent_list[i,4], agent_list[i,2], agent_list[i,3], agent_list[i,4]] for i in range(num_agent)])
-#     for param in params:
-#         circle1 = plt.Circle((param[0], param[1]), param[2], color='lightgrey')
-#         ax.add_patch(circle1)
+    params = np.array([[agent_list[i,0]+k*dt*agent_list[i,3], agent_list[i,1]+k*dt*agent_list[i,4], agent_list[i,2], agent_list[i,3], agent_list[i,4]] for i in range(num_agent)])
+    for param in params:
+        circle1 = plt.Circle((param[0], param[1]), param[2], color='lightgrey')
+        ax.add_patch(circle1)
     
-#     ax.scatter([solverout["x01"][3],
-#               solverout["x02"][3],
-#               solverout["x03"][3],
-#               solverout["x04"][3],
-#               solverout["x05"][3],
-#               solverout["x06"][3],
-#               solverout["x07"][3],
-#               solverout["x08"][3],
-#               solverout["x09"][3],
-#               solverout["x10"][3],
-#               solverout["x11"][3],
-#               solverout["x12"][3],
-#               solverout["x13"][3],
-#               solverout["x14"][3]],[solverout["x01"][4],
-#                                  solverout["x02"][4],
-#                                  solverout["x03"][4],
-#                                  solverout["x04"][4],
-#                                  solverout["x05"][4],
-#                                  solverout["x06"][4],
-#                                  solverout["x07"][4],
-#                                  solverout["x08"][4],
-#                                  solverout["x09"][4],
-#                                  solverout["x10"][4],
-#                                  solverout["x11"][4],
-#                                  solverout["x12"][4],
-#                                  solverout["x13"][4],
-#                                  solverout["x14"][4]], s=0.2)
-#     ax.set_xlim(-10, 60)
-#     ax.set_ylim(-10, 60)
-#     plt.pause(0.1)
-#     plt.cla()
+    ax.scatter([i[3] for i in solverout.values()],
+               [i[4] for i in solverout.values()], s=0.2)
+    ax.set_xlim(-10, 60)
+    ax.set_ylim(-10, 60)
+    plt.pause(0.1)
+    plt.cla()
     
 
 
-# fig = plt.figure(figsize=(8,8))
-# ax = plt.axes()
-# px = []
-# py = []
-# line, = plt.plot(px, py)
-# plt.grid()
+fig = plt.figure(figsize=(8,8))
+ax = plt.axes()
+px = []
+py = []
+line, = plt.plot(px, py)
+plt.grid()
 
 
-# def init():
-#     px.clear()
-#     py.clear()
-#     line.set_data(px, py)    
-#     return line,
+def init():
+    px.clear()
+    py.clear()
+    line.set_data(px, py)    
+    return line,
 
-# def update(step):
-#     px.append(x[0, step])
-#     py.append(x[1, step])
-#     line.set_data(px, py)
+def update(step):
+    px.append(x[0, step])
+    py.append(x[1, step])
+    line.set_data(px, py)
 
-#     ax.patches = []
-#     for agent in agent_list:
-#         circle = plt.Circle((agent[0] + step*dt*agent[3], agent[1] + step*dt*agent[4]), agent[2], color='lightgrey')
-#         ax.add_patch(circle)
+    ax.patches = []
+    for agent in agent_list:
+        circle = plt.Circle((agent[0] + step*dt*agent[3], agent[1] + step*dt*agent[4]), agent[2], color='lightgrey')
+        ax.add_patch(circle)
 
     
-#     lb = min(min(px),min(py)-10,-10)
-#     ub = max(max(px),max(py)+10, 60)
-#     ax.set_xlim(lb, ub)
-#     ax.set_ylim(lb, ub)
-#     return line, 
+    lb = min(min(px),min(py)-10,-10)
+    ub = max(max(px),max(py)+10, 60)
+    ax.set_xlim(lb, ub)
+    ax.set_ylim(lb, ub)
+    return line, 
 
-# ani = animation.FuncAnimation(fig = fig, 
-#                               func = update,
-#                               init_func = init,
-#                               blit = False,
-#                               frames = x.shape[1], 
-#                               interval = 100)
-# plt.show()
+ani = animation.FuncAnimation(fig = fig, 
+                              func = update,
+                              init_func = init,
+                              blit = False,
+                              frames = x.shape[1], 
+                              interval = 100)
+plt.show()

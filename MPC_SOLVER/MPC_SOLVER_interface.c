@@ -60,13 +60,13 @@ extern solver_int32_default MPC_SOLVER_adtool2forces(MPC_SOLVER_float *x,       
 
     /* Allocate working arrays for AD tool */
     
-    MPC_SOLVER_callback_float w[13];
+    MPC_SOLVER_callback_float w[46];
 	
     /* temporary storage for AD tool sparse output */
     MPC_SOLVER_callback_float this_f = (MPC_SOLVER_callback_float) 0.0;
     MPC_SOLVER_float nabla_f_sparse[5];
-    MPC_SOLVER_float h_sparse[5];
-    MPC_SOLVER_float nabla_h_sparse[15];
+    MPC_SOLVER_float h_sparse[6];
+    MPC_SOLVER_float nabla_h_sparse[17];
     MPC_SOLVER_float c_sparse[4];
     MPC_SOLVER_float nabla_c_sparse[10];
             
