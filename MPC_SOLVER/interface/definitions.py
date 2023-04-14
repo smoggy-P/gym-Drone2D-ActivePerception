@@ -6,13 +6,13 @@ requires_callback = True
 lib = "lib/libMPC_SOLVER.so"
 lib_static = "lib/libMPC_SOLVER.a"
 c_header = "include/MPC_SOLVER.h"
-nstages = 15
+nstages = 25
 
 # Parameter             | Type    | Scalar type      | Ctypes type    | Numpy type   | Shape     | Len
 params = \
-[("xinit"               , "dense" , ""               , ctypes.c_double, numpy.float64, (  4,   1),    4),
- ("x0"                  , "dense" , ""               , ctypes.c_double, numpy.float64, (105,   1),  105),
- ("all_parameters"      , "dense" , ""               , ctypes.c_double, numpy.float64, (390,   1),  390),
+[("x0"                  , "dense" , ""               , ctypes.c_double, numpy.float64, (175,   1),  175),
+ ("xinit"               , "dense" , ""               , ctypes.c_double, numpy.float64, (  4,   1),    4),
+ ("all_parameters"      , "dense" , ""               , ctypes.c_double, numpy.float64, (650,   1),  650),
  ("num_of_threads"      , "dense" , "solver_int32_unsigned", ctypes.c_uint  , numpy.uint32 , (  1,   1),    1)]
 
 # Output                | Type    | Ctypes type    | Numpy type   | Shape     | Len
@@ -31,7 +31,17 @@ outputs = \
  ("x12"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
  ("x13"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
  ("x14"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
- ("x15"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7)]
+ ("x15"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
+ ("x16"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
+ ("x17"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
+ ("x18"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
+ ("x19"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
+ ("x20"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
+ ("x21"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
+ ("x22"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
+ ("x23"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
+ ("x24"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7),
+ ("x25"                 , ""               , ctypes.c_double, numpy.float64,     (  7,),    7)]
 
 # Info Struct Fields
 info = \
@@ -60,6 +70,7 @@ info = \
 # Dynamics dimensions
 #   nvar    |   neq   |   dimh    |   dimp    |   diml    |   dimu    |   dimhl   |   dimhu    
 dynamics_dims = [
+	(7, 4, 6, 26, 3, 2, 5, 1), 
 	(7, 4, 6, 26, 5, 4, 5, 1), 
 	(7, 4, 6, 26, 5, 4, 5, 1), 
 	(7, 4, 6, 26, 5, 4, 5, 1), 
@@ -74,5 +85,14 @@ dynamics_dims = [
 	(7, 4, 6, 26, 5, 4, 5, 1), 
 	(7, 4, 6, 26, 5, 4, 5, 1), 
 	(7, 4, 6, 26, 5, 4, 5, 1), 
-	(7, 4, 6, 26, 5, 4, 5, 1)
+	(7, 4, 6, 26, 5, 4, 5, 1), 
+	(7, 4, 6, 26, 5, 4, 5, 1), 
+	(7, 4, 6, 26, 5, 4, 5, 1), 
+	(7, 4, 6, 26, 5, 4, 5, 1), 
+	(7, 4, 6, 26, 5, 4, 5, 1), 
+	(7, 4, 6, 26, 5, 4, 5, 1), 
+	(7, 4, 6, 26, 5, 4, 5, 1), 
+	(7, 4, 6, 26, 5, 4, 5, 1), 
+	(7, 4, 6, 26, 5, 4, 5, 1), 
+	(7, 0, 6, 26, 5, 4, 5, 1)
 ]

@@ -71,21 +71,21 @@ static void mdlInitializeSizes(SimStruct *S)
     if (!ssSetNumInputPorts(S, 4)) return;
     	
 	/* Input Port 0 */
-    ssSetInputPortMatrixDimensions(S,  0, 4, 1);
+    ssSetInputPortMatrixDimensions(S,  0, 175, 1);
     ssSetInputPortDataType(S, 0, SS_DOUBLE);
     ssSetInputPortComplexSignal(S, 0, COMPLEX_NO); /* no complex signals suppported */
     ssSetInputPortDirectFeedThrough(S, 0, 1); /* Feedthrough enabled */
     ssSetInputPortRequiredContiguous(S, 0, 1); /*direct input signal access*/
 	
 	/* Input Port 1 */
-    ssSetInputPortMatrixDimensions(S,  1, 105, 1);
+    ssSetInputPortMatrixDimensions(S,  1, 4, 1);
     ssSetInputPortDataType(S, 1, SS_DOUBLE);
     ssSetInputPortComplexSignal(S, 1, COMPLEX_NO); /* no complex signals suppported */
     ssSetInputPortDirectFeedThrough(S, 1, 1); /* Feedthrough enabled */
     ssSetInputPortRequiredContiguous(S, 1, 1); /*direct input signal access*/
 	
 	/* Input Port 2 */
-    ssSetInputPortMatrixDimensions(S,  2, 390, 1);
+    ssSetInputPortMatrixDimensions(S,  2, 650, 1);
     ssSetInputPortDataType(S, 2, SS_DOUBLE);
     ssSetInputPortComplexSignal(S, 2, COMPLEX_NO); /* no complex signals suppported */
     ssSetInputPortDirectFeedThrough(S, 2, 1); /* Feedthrough enabled */
@@ -104,7 +104,7 @@ static void mdlInitializeSizes(SimStruct *S)
     if (!ssSetNumOutputPorts(S, 1)) return;    
 		
 	/* Output Port 0 */
-    ssSetOutputPortMatrixDimensions(S,  0, 105, 1);
+    ssSetOutputPortMatrixDimensions(S,  0, 175, 1);
     ssSetOutputPortDataType(S, 0, SS_DOUBLE);
     ssSetOutputPortComplexSignal(S, 0, COMPLEX_NO); /* no complex signals suppported */
 
@@ -192,8 +192,8 @@ static void mdlOutputs(SimStruct *S, int_T tid)
 	FILE *fp = NULL;
 
 	/* Simulink data */
-	const real_T *xinit = (const real_T*) ssGetInputPortSignal(S,0);
-	const real_T *x0 = (const real_T*) ssGetInputPortSignal(S,1);
+	const real_T *x0 = (const real_T*) ssGetInputPortSignal(S,0);
+	const real_T *xinit = (const real_T*) ssGetInputPortSignal(S,1);
 	const real_T *all_parameters = (const real_T*) ssGetInputPortSignal(S,2);
 	const real_T *num_of_threads = (const real_T*) ssGetInputPortSignal(S,3);
 	
@@ -208,17 +208,17 @@ static void mdlOutputs(SimStruct *S, int_T tid)
 	solver_int32_default solver_exitflag;
 
 	/* Copy inputs */
+	for(i = 0; i < 175; i++)
+	{
+		params.x0[i] = (double) x0[i];
+	}
+
 	for(i = 0; i < 4; i++)
 	{
 		params.xinit[i] = (double) xinit[i];
 	}
 
-	for(i = 0; i < 105; i++)
-	{
-		params.x0[i] = (double) x0[i];
-	}
-
-	for(i = 0; i < 390; i++)
+	for(i = 0; i < 650; i++)
 	{
 		params.all_parameters[i] = (double) all_parameters[i];
 	}
@@ -329,6 +329,56 @@ static void mdlOutputs(SimStruct *S, int_T tid)
 	for(i = 0; i < 7; i++)
 	{
 		outputs[98 + i] = (real_T) output.x15[i];
+	}
+
+	for(i = 0; i < 7; i++)
+	{
+		outputs[105 + i] = (real_T) output.x16[i];
+	}
+
+	for(i = 0; i < 7; i++)
+	{
+		outputs[112 + i] = (real_T) output.x17[i];
+	}
+
+	for(i = 0; i < 7; i++)
+	{
+		outputs[119 + i] = (real_T) output.x18[i];
+	}
+
+	for(i = 0; i < 7; i++)
+	{
+		outputs[126 + i] = (real_T) output.x19[i];
+	}
+
+	for(i = 0; i < 7; i++)
+	{
+		outputs[133 + i] = (real_T) output.x20[i];
+	}
+
+	for(i = 0; i < 7; i++)
+	{
+		outputs[140 + i] = (real_T) output.x21[i];
+	}
+
+	for(i = 0; i < 7; i++)
+	{
+		outputs[147 + i] = (real_T) output.x22[i];
+	}
+
+	for(i = 0; i < 7; i++)
+	{
+		outputs[154 + i] = (real_T) output.x23[i];
+	}
+
+	for(i = 0; i < 7; i++)
+	{
+		outputs[161 + i] = (real_T) output.x24[i];
+	}
+
+	for(i = 0; i < 7; i++)
+	{
+		outputs[168 + i] = (real_T) output.x25[i];
 	}
 
 	

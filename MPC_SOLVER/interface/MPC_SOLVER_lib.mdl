@@ -60,13 +60,13 @@ Model {
       }
     }
   }
-  Created		  "4/14/2023 1:57:34 AM"
+  Created		  "4/14/2023 10:21:52 PM"
   Creator		  "embotech AG"
   UpdateHistory		  "UpdateHistoryNever"
   ModifiedByFormat	  "%<Auto>"
   LastModifiedBy	  "embotech AG"
   ModifiedDateFormat	  "%<Auto>"
-  LastModifiedDate	  "4/14/2023 1:57:34 AM"
+  LastModifiedDate	  "4/14/2023 10:21:52 PM"
   RTWModifiedTimeStamp	  315310195
   ModelVersionFormat	  "1.%<AutoIncrement:2>"
   ConfigurationManager	  "None"
@@ -767,8 +767,8 @@ Model {
       BlockType		      S-Function
       Name		      "MPC_SOLVER"
       SID		      "1"
-      Ports		      [4, 15]
-      Position		      [170, 99, 650, 255]
+      Ports		      [4, 25]
+      Position		      [170, 99, 650, 425]
       ZOrder		      1
       FunctionName	      "MPC_SOLVER_simulinkBlock"
 	  SFunctionModules	      "MPC_SOLVER MPC_SOLVER_simulinkBlock"
@@ -804,9 +804,9 @@ Model {
 	Help			"MPC_SOLVER_simulinkBlock provides an easy Simulink interface for simulating your customized solver.  \n"
 	"\nOUTPUTS = MPC_SOLVER(INPUTS) solves an optimization problem where:\n\n"
 	"INPUTS:\n"
-	" - xinit - matrix of size [4x1]\n  "
-" - x0 - matrix of size [105x1]\n  "
-" - all_parameters - matrix of size [390x1]\n  "
+	" - x0 - matrix of size [175x1]\n  "
+" - xinit - matrix of size [4x1]\n  "
+" - all_parameters - matrix of size [650x1]\n  "
 " - num_of_threads - scalar\n  "
 
 	"\nOUTPUTS:\n"
@@ -825,11 +825,21 @@ Model {
 " - x13 - column vector of length 7\n  "
 " - x14 - column vector of length 7\n  "
 " - x15 - column vector of length 7\n  "
+" - x16 - column vector of length 7\n  "
+" - x17 - column vector of length 7\n  "
+" - x18 - column vector of length 7\n  "
+" - x19 - column vector of length 7\n  "
+" - x20 - column vector of length 7\n  "
+" - x21 - column vector of length 7\n  "
+" - x22 - column vector of length 7\n  "
+" - x23 - column vector of length 7\n  "
+" - x24 - column vector of length 7\n  "
+" - x25 - column vector of length 7\n  "
 
 	"\n For more information, see https://forces.embotech.com/Documentation/simulink_interface/index.html \n "
 
-	Display			"port_label('input', 1, 'xinit') \n  "
-"port_label('input', 2, 'x0') \n  "
+	Display			"port_label('input', 1, 'x0') \n  "
+"port_label('input', 2, 'xinit') \n  "
 "port_label('input', 3, 'all_parameters') \n  "
 "port_label('input', 4, 'num_of_threads') \n  "
 "port_label('output', 1, 'x01') \n  "
@@ -847,6 +857,16 @@ Model {
 "port_label('output', 13, 'x13') \n  "
 "port_label('output', 14, 'x14') \n  "
 "port_label('output', 15, 'x15') \n  "
+"port_label('output', 16, 'x16') \n  "
+"port_label('output', 17, 'x17') \n  "
+"port_label('output', 18, 'x18') \n  "
+"port_label('output', 19, 'x19') \n  "
+"port_label('output', 20, 'x20') \n  "
+"port_label('output', 21, 'x21') \n  "
+"port_label('output', 22, 'x22') \n  "
+"port_label('output', 23, 'x23') \n  "
+"port_label('output', 24, 'x24') \n  "
+"port_label('output', 25, 'x25') \n  "
 "if( exist('FORCES_PRO_Logo.jpg','file') ), image(imread('FORCES_PRO_Logo.jpg'),'center','on'); elseif( exist(['interface',filesep,'FORCES_PRO_Logo.jpg'],'file') ), image(imread(['interface',filesep,'FORCES_PRO_Logo.jpg']),'center','on'); elseif( exist(['MPC_SOLVER',filesep,'interface',filesep,'FORCES_PRO_Logo.jpg'],'file') ), image(imread(['MPC_SOLVER',filesep,'interface',filesep,'FORCES_PRO_Logo.jpg']),'center','on'); end \n "
 
       }

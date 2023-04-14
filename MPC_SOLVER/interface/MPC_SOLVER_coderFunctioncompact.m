@@ -21,16 +21,16 @@
 % 
 % [OUTPUTS] = MPC_SOLVER(INPUTS) solves an optimization problem where:
 % Inputs:
+% - x0 - matrix of size [175x1]
 % - xinit - matrix of size [4x1]
-% - x0 - matrix of size [105x1]
-% - all_parameters - matrix of size [390x1]
+% - all_parameters - matrix of size [650x1]
 % - num_of_threads - scalar
 % Outputs:
-% - outputs - column vector of length 105
-function [outputs] = MPC_SOLVER(xinit, x0, all_parameters, num_of_threads)
+% - outputs - column vector of length 175
+function [outputs] = MPC_SOLVER(x0, xinit, all_parameters, num_of_threads)
     
-    [output, ~, ~] = MPC_SOLVERBuildable.forcesCall(xinit, x0, all_parameters, num_of_threads);
-    outputs = coder.nullcopy(zeros(105,1));
+    [output, ~, ~] = MPC_SOLVERBuildable.forcesCall(x0, xinit, all_parameters, num_of_threads);
+    outputs = coder.nullcopy(zeros(175,1));
     outputs(1:7) = output.x01;
     outputs(8:14) = output.x02;
     outputs(15:21) = output.x03;
@@ -46,4 +46,14 @@ function [outputs] = MPC_SOLVER(xinit, x0, all_parameters, num_of_threads)
     outputs(85:91) = output.x13;
     outputs(92:98) = output.x14;
     outputs(99:105) = output.x15;
+    outputs(106:112) = output.x16;
+    outputs(113:119) = output.x17;
+    outputs(120:126) = output.x18;
+    outputs(127:133) = output.x19;
+    outputs(134:140) = output.x20;
+    outputs(141:147) = output.x21;
+    outputs(148:154) = output.x22;
+    outputs(155:161) = output.x23;
+    outputs(162:168) = output.x24;
+    outputs(169:175) = output.x25;
 end

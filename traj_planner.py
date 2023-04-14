@@ -13,7 +13,6 @@ from utils import *
 import sys
 sys.path.insert(0, '/home/smoggy/Downloads/forces_pro_client/')  # On Windows, note the doubly-escaped backslashes
 import forcespro
-import casadi
 
 class Planner:
     def __init__(self, drone, params):
@@ -227,7 +226,7 @@ class MPC(Planner):
 
         # generate code
         self.solver = forcespro.nlp.Solver.from_directory("./MPC_SOLVER/")
-        self.N = 15
+        self.N = 25
         self.trajectory = Trajectory2D()
         self.future_trajectory = Trajectory2D()
 
@@ -242,7 +241,19 @@ class MPC(Planner):
         local_obstacle = np.where(np.logical_and((drone.x - x)**2 + (drone.y - y)**2 <= 100 ** 2, drone.map.grid_map == grid_type['OCCUPIED']), 1, 0)
         positions, widths, heights, angles = self.binary_image_clustering(self, local_obstacle, 1.5, 1, np.array([drone.x, drone.y]))
         
-        agent_list = np.array([[*positions[i], widths[i], heights[i], radians(angles[i])] if i < len(positions) else [0]*5 for i in range(5)])
+
+        obs_list = []
+
+        for tracker in drone.trackers:
+            if tracker.active:
+                obs_list.append([*(tracker.mu_upds[-1][:2,0]), self.params.agent_radius+10, self.params.agent_radius+10, 0, *(tracker.mu_upds[-1][2:,0])])
+        
+        for i in range(len(positions)):
+            obs_list.append([*positions[i], widths[i], heights[i], radians(angles[i]), 0, 0])
+
+
+        
+
 
         problem = {}
         problem["xinit"] = np.array([drone.x, drone.y, *drone.velocity])
@@ -250,17 +261,33 @@ class MPC(Planner):
         all_params = []
 
         for i in range(self.N):
+            obs_list_i = []
+            for obs in obs_list:
+                obs_i = obs
+                obs_i[0] = obs_i[0] + obs_i[5] * dt * i
+                obs_i[1] = obs_i[1] + obs_i[6] * dt * i
+                obs_list_i.append(obs_i)
+
+            obs_list_i.sort(key=lambda x: (x[0] - drone.x)**2 + (x[1] - drone.y)**2)
+
             for j in range(5):
-                all_params.extend(agent_list[j,:])
+                if j < len(obs_list_i):
+                    all_params.extend(obs_list_i[j][:5])
+                else:
+                    all_params.extend([0]*5)
             all_params.append(self.params.drone_max_speed)
 
 
         problem["all_parameters"] = np.array(all_params)
         # call the solver
         solverout, exitflag, info = self.solver.solve(problem)
-        if exitflag < 0:
+
+        if exitflag != 1:
+            self.trajectory = Trajectory2D()
+            self.future_trajectory = Trajectory2D()
             return False
         
+        self.trajectory = Trajectory2D()
         self.future_trajectory = Trajectory2D()
 
         # Simulate the system to get the state trajectory
@@ -301,15 +328,15 @@ class MPC(Planner):
             xy = binary_indices[class_member_mask]
 
             if xy.shape[0] == 1:
-                width = 7.5
-                height = 7.5
+                width = 10
+                height = 10
                 angle = 0
                 position = 5 + 10*xy[0]
             else:
                 cov = np.cov(xy, rowvar=False)
                 eig_vals, eig_vecs = np.linalg.eigh(cov)
                 angle = np.degrees(np.arctan2(*eig_vecs[:, 0][::-1]))
-                width, height = 20 * np.sqrt(eig_vals)
+                width, height = 25 * np.sqrt(eig_vals)
                 position = 5+10*xy.mean(axis=0)
 
             ell = Ellipse(position, width, height, angle)
@@ -323,11 +350,11 @@ class MPC(Planner):
             # ell = Ellipse(xy.mean(axis=0), r, r, angle, color=col)
         #     plt.gca().add_artist(ell)
         
-        plt.scatter(start_pos[0], start_pos[1], c='r')
-        plt.axis([0,self.params.map_size[0],self.params.map_size[1],0])
-        plt.show()
-        plt.pause(0.1)
-        plt.clf()
+        # plt.scatter(start_pos[0], start_pos[1], c='r')
+        # plt.axis([0,self.params.map_size[0],self.params.map_size[1],0])
+        # plt.show()
+        # plt.pause(0.1)
+        # plt.clf()
 
         return positions, widths, heights, angles
 

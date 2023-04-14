@@ -60,13 +60,13 @@ Model {
       }
     }
   }
-  Created		  "4/14/2023 1:57:34 AM"
+  Created		  "4/14/2023 10:21:52 PM"
   Creator		  "embotech AG"
   UpdateHistory		  "UpdateHistoryNever"
   ModifiedByFormat	  "%<Auto>"
   LastModifiedBy	  "embotech AG"
   ModifiedDateFormat	  "%<Auto>"
-  LastModifiedDate	  "4/14/2023 1:57:34 AM"
+  LastModifiedDate	  "4/14/2023 10:21:52 PM"
   RTWModifiedTimeStamp	  315310195
   ModelVersionFormat	  "1.%<AutoIncrement:2>"
   ConfigurationManager	  "None"
@@ -804,18 +804,18 @@ Model {
 	Help			"MPC_SOLVER_simulinkBlockcompact provides an easy Simulink interface for simulating your customized solver.  \n"
 	"\nOUTPUTS = MPC_SOLVER(INPUTS) solves an optimization problem where:\n\n"
 	"INPUTS:\n"
-	" - xinit - matrix of size [4x1]\n  "
-" - x0 - matrix of size [105x1]\n  "
-" - all_parameters - matrix of size [390x1]\n  "
+	" - x0 - matrix of size [175x1]\n  "
+" - xinit - matrix of size [4x1]\n  "
+" - all_parameters - matrix of size [650x1]\n  "
 " - num_of_threads - scalar\n  "
 
 	"\nOUTPUTS:\n"
-	" - outputs - column vector of length 105\n  "
+	" - outputs - column vector of length 175\n  "
 
 	"\n For more information, see https://forces.embotech.com/Documentation/simulink_interface/index.html \n "
 
-	Display			"port_label('input', 1, 'xinit') \n  "
-"port_label('input', 2, 'x0') \n  "
+	Display			"port_label('input', 1, 'x0') \n  "
+"port_label('input', 2, 'xinit') \n  "
 "port_label('input', 3, 'all_parameters') \n  "
 "port_label('input', 4, 'num_of_threads') \n  "
 "port_label('output', 1, 'outputs') \n  "

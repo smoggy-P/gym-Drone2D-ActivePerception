@@ -6,7 +6,6 @@ import casadi
 import matplotlib.pyplot as plt
 from math import sqrt, radians
 import matplotlib.animation as animation
-
 # system
 dt = 0.1
 target = np.array([240, 605, 0, 0])
@@ -26,15 +25,15 @@ nu = 2
 ns = 1
 
 # MPC setup
-N = 15
-Q = np.eye(nx)
-lam = 1000
+N = 25
+Q = 0.1 * np.eye(nx)
+lam = 1
 
 
 umin = -40 * np.ones([nu])
 umax = 40 * np.ones([nu])
-xmin = np.array([0, 0, -float("inf"), -float("inf")])
-xmax = np.array([480, 640, float("inf"), float("inf")])
+xmin = np.array([6, 6, -float("inf"), -float("inf")])
+xmax = np.array([480-6, 640-6, float("inf"), float("inf")])
 
 # FORCESPRO multistage form
 # assume variable ordering z[i] = [si, ui, x_i+1] for i=0...N-1
@@ -87,8 +86,7 @@ options = forcespro.CodeOptions('MPC_SOLVER')
 options.printlevel = 0
 options.overwrite = 1
 options.nlp.bfgs_init = None
-options.maxit = 2000
-options.printlevel  = 1
+options.maxit = 5000
                             
 options.optlevel    = 3
 options.overwrite   = 1
@@ -96,7 +94,7 @@ options.cleanup     = 1
 options.timing      = 1
 options.parallel    = 1
 options.threadSafeStorage = True
-options.noVariableElimination = 1
+options.noVariableElimination = 0
 
 
 # generate code
