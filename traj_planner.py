@@ -49,7 +49,7 @@ class Planner:
         for tracker in trackers:
             if tracker.active:
                 new_position = tracker.estimate_pos(t)
-                if norm(position - new_position) <= self.params.drone_radius + self.params.agent_radius + 5:
+                if norm(position - new_position) <= self.params.drone_radius + self.params.agent_radius + 5 + self.params.var_cam:
                     return False
         return True
 
