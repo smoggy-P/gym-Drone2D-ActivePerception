@@ -140,12 +140,17 @@ class Drone2DEnv2(gym.Env):
         ### Environment module ###
         ##########################
         # Update moving agent position
-        if len(self.agents) > 0:
-            if RVO.RVO_update(self.agents, self.obstacles):
-                for agent in self.agents:
-                    agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.params.map_size[0], self.params.map_size[1],  self.dt)
-            else:
-                done = True
+        if self.params.motion_profile == "RVO":
+            if len(self.agents) > 0:
+                if RVO.RVO_update(self.agents, self.obstacles):
+                    for agent in self.agents:
+                        agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.params.map_size[0], self.params.map_size[1],  self.dt)
+                else:
+                    done = True
+        elif self.params.motion_profile == "CVM":
+            for agent in self.agents:
+                agent.velocity = agent.pref_velocity
+                agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.params.map_size[0], self.params.map_size[1],  self.dt)
 
         #########################
         ### Perception module ###
