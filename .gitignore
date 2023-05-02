@@ -7,3 +7,10 @@ src/**
 main.py
 FORCES_NLP_solver/**
 *.forces
+.ipynb_checkpoints/**
+MPC_SOLVER/**
+trained_policy/**
+script/**
+FORCES_*
+run*
+test.*
