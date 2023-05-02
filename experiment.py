@@ -3,34 +3,24 @@ import numpy as np
 import pandas as pd
 import os
 # from tqdm import tqdm
-from yaw_planner import Oxford, LookAhead, NoControl, Rotating, Owl
+from yaw_planner import Oxford, LookAhead, NoControl, Rotating, Owl, LookGoal
 from datetime import datetime
+from utils import *
 # import matplotlib.pyplot as plt
 
 policy_list = {
     'LookAhead': LookAhead,
-    'NoControl': NoControl, 
+    'NoControl': NoControl,
     'Oxford': Oxford,
     'Rotating': Rotating,
-    'Owl' : Owl
+    'Owl' : Owl,
+    'LookGoal' : LookGoal
 }
 
 def add_to_csv(dir, value):
     df = pd.read_csv(dir, index_col=False)
     df.loc[len(df)] = value
     df.to_csv(dir, index=False)
-
-def average_in_view(arr):
-    ranges = []
-    arr -= 1
-    for a in arr:
-        # Create an array that is 1 where a is 0, and pad each end with an extra 0.
-        iszero = np.concatenate(([0], np.equal(a, 0).view(np.int8), [0]))
-        absdiff = np.abs(np.diff(iszero))
-        # Runs start and end where absdiff is 1.
-        ranges.extend(np.where(absdiff == 1)[0].tolist())
-    ranges = np.asarray(ranges).reshape(-1, 2)
-    return np.sum(np.diff(ranges, axis=-1)) / ranges.shape[0] if ranges.shape[0] >0 else 0 
 
 class Experiment:
     def __init__(self, params, dir):
@@ -39,65 +29,64 @@ class Experiment:
         self.dt = params.dt
         self.policy = policy_list[params.gaze_method]
         self.policy.__init__(self.policy, params)
-        self.max_step = int(params.experiment_time / 12 * 10000)
         self.result_dir = dir
-        
-        self.last_step = 0
-        self.last_undiscovered_grid = np.sum(np.where(self.env.drone.map.grid_map == 0, 1, 0))
-        self.last_agent_tracked = 0
 
         if (not os.path.isfile(dir)) and (params.record):
             d = {'Method':[],
                  'Planner':[],
+                 'Map ID':[],
                  'Number of agents':[],
                  'Number of pillars':[], 
                  'Agent speed':[], 
                  'Drone speed':[], 
-                 'Steps':[],
+                 'Depth variance':[],
+
+                 'Flight time':[],
                  'Grid discovered':[],
                  'Agent tracked':[],
                  'Agent tracked time':[],
                  'Success':[],
                  'Static Collision':[],
-                 'Dynamic Collision':[]}
+                 'Dynamic Collision':[],
+                 'Freezing':[],
+                 'Dead Lock':[]}
             df = pd.DataFrame(d)
             df.to_csv(dir, index=False)
 
 
     def run(self):
-        success = 0
-        fail = 0
         self.env.reset()
-        for i in range(self.max_step):
+        done = False
+        while not done:
             a = self.policy.plan(self.policy, self.env.info)
             _, _, done, info = self.env.step(a)
 
-            if self.params.record:
-                if info['state_machine'] == 1 or info['collision_flag'] == 1 or info['collision_flag'] == 2:
-                    value = (self.params.gaze_method,
-                             self.params.planner,
-                             self.params.agent_number,
-                             self.params.pillar_number,
-                             self.params.agent_max_speed,
-                             self.params.drone_max_speed,
-                             i - self.last_step + 1, # steps during this process
-                             self.last_undiscovered_grid - np.sum(np.where(info['drone'].map.grid_map == 0, 1, 0)),# grid discovered
-                             self.env.tracked_agent - self.last_agent_tracked,
-                             average_in_view(np.array(self.env.seen_history).T),
-                             1 if info['state_machine'] == 1 else 0,
-                             1 if info['collision_flag'] == 1 else 0,
-                             1 if info['collision_flag'] == 2 else 0)
-                    self.last_step = i
-                    self.last_undiscovered_grid = np.sum(np.where(info['drone'].map.grid_map == 0, 1, 0))
-                    self.last_agent_tracked = self.env.tracked_agent
-                    add_to_csv(self.result_dir, value)
-
             if done:
-                self.env.reset()
-                self.last_undiscovered_grid = np.sum(np.where(self.env.drone.map.grid_map == 0, 1, 0))
-                self.last_agent_tracked = 0
-                self.policy.__init__(self.policy, self.params)
-                
+                if self.params.record:
+                    tracking_time = np.array([len(tracker.ts)*0.1 for tracker in info['tracker_buffer']]).sum()
+
+                    value = (self.params.gaze_method,
+                            self.params.planner,
+                            self.params.map_id,
+                            self.params.agent_number,
+                            self.params.pillar_number,
+                            self.params.agent_max_speed,
+                            self.params.drone_max_speed,
+                            self.params.var_cam,
+
+
+                            info['flight_time'],
+                            info['drone'].map.grid_map.shape[0] * info['drone'].map.grid_map.shape[1] - np.sum(np.where(info['drone'].map.grid_map == 0, 1, 0)),# grid discovered
+                            len(info['tracker_buffer']),
+                            tracking_time / len(info['tracker_buffer']),
+
+                            1 if info['state_machine'] == state_machine['GOAL_REACHED'] else 0,
+                            1 if info['collision_flag'] == 1 else 0,
+                            1 if info['collision_flag'] == 2 else 0,
+                            1 if info['state_machine'] == state_machine['FREEZING'] else 0,
+                            1 if info['state_machine'] == state_machine['DEAD_LOCK'] else 0)
+
+                    add_to_csv(self.result_dir, value)
+                    
             if self.params.render:
                 self.env.render()
-        return success, fail

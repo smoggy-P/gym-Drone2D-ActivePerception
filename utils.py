@@ -644,7 +644,7 @@ class Drone2D():
 
     def render(self, surface):
         pygame.draw.arc(surface, 
-                        (255,255,255), 
+                        (100,100,100), 
                         [self.x - self.yaw_depth,
                             self.y - self.yaw_depth,
                             2 * self.yaw_depth,
@@ -654,6 +654,6 @@ class Drone2D():
                         2)
         angle1 = math.radians(self.yaw + self.yaw_range/2)
         angle2 = math.radians(self.yaw - self.yaw_range/2)
-        pygame.draw.line(surface, (255,255,255), (self.x, self.y), (self.x + self.yaw_depth * cos(angle1), self.y - self.yaw_depth * sin(angle1)), 2)
-        pygame.draw.line(surface, (255,255,255), (self.x, self.y), (self.x + self.yaw_depth * cos(angle2), self.y - self.yaw_depth * sin(angle2)), 2)
-        pygame.draw.circle(surface, (255,255,255), (self.x, self.y), self.radius)
+        pygame.draw.line(surface, (100,100,100), (self.x, self.y), (self.x + self.yaw_depth * cos(angle1), self.y - self.yaw_depth * sin(angle1)), 2)
+        pygame.draw.line(surface, (100,100,100), (self.x, self.y), (self.x + self.yaw_depth * cos(angle2), self.y - self.yaw_depth * sin(angle2)), 2)
+        pygame.draw.circle(surface, (100,100,100), (self.x, self.y), self.radius)

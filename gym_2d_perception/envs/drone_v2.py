@@ -242,7 +242,7 @@ class Drone2DEnv2(gym.Env):
             pygame.draw.circle(self.screen, (200, 200, 200), center=[ob[0], ob[1]], radius=ob[2])
         
         if len(self.planner.trajectory.positions) > 1:
-            pygame.draw.lines(self.screen, (100,100,100), False, self.planner.trajectory.positions)
+            pygame.draw.lines(self.screen, (255,255,255), False, self.planner.trajectory.positions)
         if hasattr(self.planner, 'future_trajectory') and len(self.planner.future_trajectory.positions) > 1:
             pygame.draw.lines(self.screen, (100,100,100), False, self.planner.future_trajectory.positions)
 
