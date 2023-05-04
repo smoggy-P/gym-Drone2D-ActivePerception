@@ -68,7 +68,9 @@ for agent_num in [10, 20, 30]:
                 'agent_number':agent_num,
                 'agent_speed':agent_vel,
                 'map_id':0}
-        env_metric.append(env_metrics(index))
+        survive_time = env_metrics(index)
+        print("average suvival time for agent number ", agent_num, " and agent speed ", agent_vel, "is:", survive_time)
+        env_metric.append(survive_time)
 
 metric_dict = {"metric":env_metric}
 df = pd.DataFrame(metric_dict)
