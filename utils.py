@@ -25,11 +25,7 @@ state_machine = {
         'WAIT_FOR_GOAL':0,
         'GOAL_REACHED' :1,
         'PLANNING'     :2,
-        'EXECUTING'    :3,
-        'STATIC_COLLISION'     :4,
-        'DYNAMIC_COLLISION'    :5,
-        'DEAD_LOCK':6,
-        'FREEZING':7
+        'EXECUTING'    :3
     }
 
 def draw_cov(surface, mean, cov):

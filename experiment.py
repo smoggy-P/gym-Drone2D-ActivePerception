@@ -50,7 +50,8 @@ class Experiment:
                  'Static Collision':[],
                  'Dynamic Collision':[],
                  'Freezing':[],
-                 'Dead Lock':[]}
+                 'Dead Lock':[],
+                 'state machine':[]}
             df = pd.DataFrame(d)
             df.to_csv(dir, index=False)
 
@@ -82,11 +83,13 @@ class Experiment:
                              info['drone'].map.grid_map.shape[0] * info['drone'].map.grid_map.shape[1] - np.sum(np.where(info['drone'].map.grid_map == 0, 1, 0)),# grid discovered
                              len(info['tracker_buffer']),
                              tracking_time / len(info['tracker_buffer']),
+
                              1 if info['state_machine'] == state_machine['GOAL_REACHED'] else 0,
                              1 if info['collision_flag'] == 1 else 0,
                              1 if info['collision_flag'] == 2 else 0,
-                             1 if (info['state_machine'] == state_machine['FREEZING']) and (info['collision_flag'] == 0) else 0,
-                             1 if (info['state_machine'] == state_machine['DEAD_LOCK']) and (info['collision_flag'] == 0) else 0)
+                             info['freezing_flag'],
+                             info['dead_lock_flag'],
+                             info['state_machine'])
 
                     add_to_csv(self.result_dir, value)
                     

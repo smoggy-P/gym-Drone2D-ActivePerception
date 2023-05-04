@@ -104,6 +104,8 @@ class Drone2DEnv2(gym.Env):
             'state_machine':self.state_machine,
             'target':self.planner.target,
             'collision_flag':0,
+            'dead_lock_flag':0,
+            'freezing_flag':0,
             'flight_time':self.steps * self.dt,
             'tracker_buffer':self.tracker_buffer
         }
@@ -191,15 +193,20 @@ class Drone2DEnv2(gym.Env):
 
         # Check done or not
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
-        self.state_machine = state_machine['DEAD_LOCK'] if self.fail_count >= 10 and norm(self.drone.velocity)==0 else self.state_machine
-        self.state_machine = state_machine['GOAL_REACHED'] if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 and len(self.target_list) == 0 else self.state_machine
-        self.state_machine = state_machine['FREEZING'] if (self.steps >= self.max_steps) else self.state_machine
+
+        dead_lock_flag = 0
+        freezing_flag = 0
+
+        if collision_state == 0:
+            self.state_machine = state_machine['GOAL_REACHED'] if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 and len(self.target_list) == 0 else self.state_machine
+            dead_lock_flag = 1 if (self.fail_count >= 10) and (norm(self.drone.velocity)==0) else 0 
+            freezing_flag = 1 if (self.steps >= self.max_steps) and (not dead_lock_flag) else 0
             
         
         done = True if (collision_state != 0) or \
-                       self.state_machine == state_machine['DEAD_LOCK'] or \
-                       self.state_machine == state_machine['GOAL_REACHED'] or \
-                       self.state_machine == state_machine['FREEZING'] else done
+                        dead_lock_flag or \
+                        freezing_flag or \
+                        self.state_machine == state_machine['GOAL_REACHED'] else done
         if done:
             for tracker in self.drone.trackers:
                 if tracker.active == True:
@@ -211,7 +218,11 @@ class Drone2DEnv2(gym.Env):
             'trajectory':self.planner.trajectory,
             'state_machine':self.state_machine,
             'target':self.planner.target,
+
             'collision_flag':collision_state,
+            'dead_lock_flag':dead_lock_flag,
+            'freezing_flag':freezing_flag,
+            
             'flight_time':self.steps * self.dt,
             'tracker_buffer':self.tracker_buffer
         }
