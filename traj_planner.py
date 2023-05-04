@@ -18,6 +18,7 @@ class Planner:
     def __init__(self, drone, params):
         self.trajectory = Trajectory2D()
         self.params = params
+        self.target = np.array([drone.x, drone.y, 0, 0])
 
     def set_target(self, target):
         self.target = np.zeros(4)
@@ -59,6 +60,16 @@ class Planner:
 
     def replan_check(self, drone):
         raise NotImplementedError("No replan checker implemented!")
+
+class NoMove(Planner):
+
+    def plan(self, drone: Drone2D,
+                   dt   : float):
+        self.target = np.array([-1, -1, 0, 0])
+        return True
+    
+    def replan_check(self, drone):
+        return False, drone.map.grid_map
 
 class Primitive(Planner):
 
