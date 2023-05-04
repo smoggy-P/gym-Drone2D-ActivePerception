@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy import array, pi, cos, sin
 from numpy.linalg import norm
-from traj_planner import MPC, Primitive, Jerk_Primitive
+from traj_planner import MPC, Primitive, Jerk_Primitive, NoMove
 from utils import *
 class Drone2DEnv2(gym.Env):
     
@@ -50,7 +50,8 @@ class Drone2DEnv2(gym.Env):
         planner_list = {
             'Primitive': Primitive,
             'MPC': MPC,
-            'Jerk_Primitive':Jerk_Primitive
+            'Jerk_Primitive':Jerk_Primitive,
+            'NoMove':NoMove
         }
         np.seterr(divide='ignore', invalid='ignore')
         gym.logger.set_level(40)
