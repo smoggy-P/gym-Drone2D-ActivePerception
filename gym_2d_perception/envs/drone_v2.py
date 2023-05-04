@@ -3,7 +3,6 @@ import pygame
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-from datetime import datetime
 from numpy import array, pi, cos, sin
 from numpy.linalg import norm
 from traj_planner import MPC, Primitive, Jerk_Primitive
@@ -40,6 +39,10 @@ class Drone2DEnv2(gym.Env):
             for obs in self.obstacles:
                 if norm(np.array([obs[0], obs[1]]) - new_agent.position) <= obs[2] + new_agent.radius + 10:
                     collision_free = False
+            
+            if norm(new_agent.position - np.array([self.drone.x, self.drone.y]) <= self.params.drone_radius + 70):
+                collision_free = False
+
             if collision_free:
                 self.agents.append(new_agent)
      
@@ -188,7 +191,7 @@ class Drone2DEnv2(gym.Env):
 
         # Check done or not
         collision_state = self.drone.is_collide(self.map_gt, self.agents)
-        self.state_machine = state_machine['DEAD_LOCK'] if self.fail_count >= 6 and norm(self.drone.velocity)==0 else self.state_machine
+        self.state_machine = state_machine['DEAD_LOCK'] if self.fail_count >= 10 and norm(self.drone.velocity)==0 else self.state_machine
         self.state_machine = state_machine['GOAL_REACHED'] if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 and len(self.target_list) == 0 else self.state_machine
         self.state_machine = state_machine['FREEZING'] if (self.steps >= self.max_steps) else self.state_machine
             
@@ -198,7 +201,6 @@ class Drone2DEnv2(gym.Env):
                        self.state_machine == state_machine['GOAL_REACHED'] or \
                        self.state_machine == state_machine['FREEZING'] else done
         if done:
-            print(self.state_machine)
             for tracker in self.drone.trackers:
                 if tracker.active == True:
                     self.tracker_buffer.append(tracker)
@@ -230,13 +232,6 @@ class Drone2DEnv2(gym.Env):
         # self.map_gt.render(self.screen, color_dict)
         self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
-        # for ray in self.drone.rays:
-        #     pygame.draw.line(
-        #         self.screen,
-        #         (100,100,100),
-        #         (self.drone.x, self.drone.y),
-        #         ((ray['coords'][0]), (ray['coords'][1]))
-        # )
 
         for ob in self.obstacles:
             pygame.draw.circle(self.screen, (200, 200, 200), center=[ob[0], ob[1]], radius=ob[2])

@@ -34,6 +34,7 @@ class Experiment:
         if (not os.path.isfile(dir)) and (params.record):
             d = {'Method':[],
                  'Planner':[],
+                 'Motion Profile':[],
                  'Map ID':[],
                  'Number of agents':[],
                  'Number of pillars':[], 
@@ -66,25 +67,26 @@ class Experiment:
                     tracking_time = np.array([len(tracker.ts)*0.1 for tracker in info['tracker_buffer']]).sum()
 
                     value = (self.params.gaze_method,
-                            self.params.planner,
-                            self.params.map_id,
-                            self.params.agent_number,
-                            self.params.pillar_number,
-                            self.params.agent_max_speed,
-                            self.params.drone_max_speed,
-                            self.params.var_cam,
+                             self.params.planner,
+                             
+                             self.params.motion_profile,
+                             self.params.map_id,
+                             self.params.agent_number,
+                             self.params.pillar_number,
+                             self.params.agent_max_speed,
+                             self.params.drone_max_speed,
+                             self.params.var_cam,
 
 
-                            info['flight_time'],
-                            info['drone'].map.grid_map.shape[0] * info['drone'].map.grid_map.shape[1] - np.sum(np.where(info['drone'].map.grid_map == 0, 1, 0)),# grid discovered
-                            len(info['tracker_buffer']),
-                            tracking_time / len(info['tracker_buffer']),
-
-                            1 if info['state_machine'] == state_machine['GOAL_REACHED'] else 0,
-                            1 if info['collision_flag'] == 1 else 0,
-                            1 if info['collision_flag'] == 2 else 0,
-                            1 if info['state_machine'] == state_machine['FREEZING'] else 0,
-                            1 if info['state_machine'] == state_machine['DEAD_LOCK'] else 0)
+                             info['flight_time'],
+                             info['drone'].map.grid_map.shape[0] * info['drone'].map.grid_map.shape[1] - np.sum(np.where(info['drone'].map.grid_map == 0, 1, 0)),# grid discovered
+                             len(info['tracker_buffer']),
+                             tracking_time / len(info['tracker_buffer']),
+                             1 if info['state_machine'] == state_machine['GOAL_REACHED'] else 0,
+                             1 if info['collision_flag'] == 1 else 0,
+                             1 if info['collision_flag'] == 2 else 0,
+                             1 if (info['state_machine'] == state_machine['FREEZING']) and (info['collision_flag'] == 0) else 0,
+                             1 if (info['state_machine'] == state_machine['DEAD_LOCK']) and (info['collision_flag'] == 0) else 0)
 
                     add_to_csv(self.result_dir, value)
                     
