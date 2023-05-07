@@ -78,4 +78,4 @@ for map_id in range(5):
 
 metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
-df.to_csv("metrics.csv")
+df.to_csv("./experiment/metrics/metrics.csv")
