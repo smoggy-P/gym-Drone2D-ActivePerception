@@ -177,6 +177,7 @@ class Drone2DEnv2(gym.Env):
         success = self.planner.plan(self.drone, self.dt)
         if not success:
             self.drone.brake()
+            self.state_machine = state_machine['PLANNING']
             self.fail_count += 1
         else:
             self.state_machine = state_machine['EXECUTING']
