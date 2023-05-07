@@ -50,18 +50,19 @@ def myfun(gaze_method, agent_number, pillar_number, agent_speed, drone_speed, pl
 if __name__ == '__main__':
 
     gaze_methods = ['LookAhead', 'Owl', 'Rotating']
-    planners = ['Primitive']
+    planners = ['Primitive', 'Jerk_Primitive']
 
     # Environment difficulty
     motion_profiles = ['CVM']
     agent_numbers = [10, 20, 30]
     pillar_numbers = [10]
     agent_max_speeds = [20, 40, 60]
+    map_ids = range(5)
 
     # Problem difficulty
-    drone_max_speeds = [40]
-    var_depths = [0]
-    map_ids = range(5)
+    drone_max_speeds = [20, 40, 60]
+    var_depths = [0, 2]
+    
 
     params = product(gaze_methods, planners, motion_profiles, var_depths,
                     agent_numbers, pillar_numbers, agent_max_speeds,
