@@ -5,12 +5,13 @@ import numpy as np
 import pandas as pd
 
 from math import sin, cos, radians
+from tqdm.contrib.itertools import product
 
 def prob_metrics(index):
 
     params = easydict.EasyDict({
             'env':'gym-2d-perception-v2',
-            'render':True,
+            'render':False,
             'record': False,
 
             'record_img': False,
@@ -127,20 +128,17 @@ all_metrics = []
 for map_id in range(5):
 
     env_metric = []
-    for agent_num in [10, 20, 30]:
-        for agent_vel in [20, 40, 60]:
-            for drone_vel in [20, 40, 60]:
-                index = {'motion_profile':'CVM',
-                        'pillar_number':10,
-                        'agent_number':agent_num,
-                        'agent_speed':agent_vel,
-                        'drone_speed':drone_vel,
-                        'map_id':map_id}
-                survive_time = prob_metrics(index)
-                print("average suvival time for agent number ", agent_num, " and agent speed ", agent_vel, "is:", survive_time)
-                env_metric.append(survive_time)
+    for (agent_num, agent_vel, drone_vel) in product([10, 20, 30], [20, 40, 60], [20, 40, 60]):
+        index = {'motion_profile':'CVM',
+                'pillar_number':0,
+                'agent_number':agent_num,
+                'agent_speed':agent_vel,
+                'drone_speed':drone_vel,
+                'map_id':map_id}
+        survive_time = prob_metrics(index)
+        env_metric.append(survive_time)
     all_metrics.append(env_metric)
 
 metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
-df.to_csv("./experiment/metrics/metrics.csv")
+df.to_csv("./experiment/metrics/prob_metrics.csv")
