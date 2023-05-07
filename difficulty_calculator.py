@@ -67,7 +67,7 @@ for map_id in range(5):
     for agent_num in [10, 20, 30]:
         for agent_vel in [20, 40, 60]:
             index = {'motion_profile':'CVM',
-                    'pillar_number':10,
+                    'pillar_number':0,
                     'agent_number':agent_num,
                     'agent_speed':agent_vel,
                     'map_id':map_id}
