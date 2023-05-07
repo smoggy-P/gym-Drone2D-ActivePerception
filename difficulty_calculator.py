@@ -40,7 +40,7 @@ def env_metrics(index):
             'map_id':index['map_id']
         })
 
-    position_step = 60
+    position_step = 20
     T = 4
     x_range = range(params.map_scale, params.map_size[0] - params.map_scale, position_step)
     y_range = range(params.map_scale, params.map_size[0] - params.map_scale, position_step)
@@ -59,19 +59,23 @@ def env_metrics(index):
 
     return total_survive / (len(x_range) * len(y_range))
 
-env_metric = []
+all_metrics = []
 
-for agent_num in [10, 20, 30]:
-    for agent_vel in [20, 40, 60]:
-        index = {'motion_profile':'CVM',
-                'pillar_number':10,
-                'agent_number':agent_num,
-                'agent_speed':agent_vel,
-                'map_id':0}
-        survive_time = env_metrics(index)
-        print("average suvival time for agent number ", agent_num, " and agent speed ", agent_vel, "is:", survive_time)
-        env_metric.append(survive_time)
+for map_id in range(5):
 
-metric_dict = {"metric":env_metric}
+    env_metric = []
+    for agent_num in [10, 20, 30]:
+        for agent_vel in [20, 40, 60]:
+            index = {'motion_profile':'CVM',
+                    'pillar_number':10,
+                    'agent_number':agent_num,
+                    'agent_speed':agent_vel,
+                    'map_id':map_id}
+            survive_time = env_metrics(index)
+            print("average suvival time for agent number ", agent_num, " and agent speed ", agent_vel, "is:", survive_time)
+            env_metric.append(survive_time)
+    all_metrics.append(env_metric)
+
+metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
 df.to_csv("metrics.csv")
