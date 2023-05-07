@@ -622,9 +622,26 @@ class Drone2D():
 
     def is_collide(self, gt_map, agents):
         position = np.array([self.x, self.y])
+        grid = gt_map.get_grid(position[0] - self.params.drone_radius, position[1])
+        if grid == 1:
+            return 1
+
         grid = gt_map.get_grid(position[0], position[1])
         if grid == 1:
             return 1
+
+        grid = gt_map.get_grid(position[0] + self.params.drone_radius, position[1])
+        if grid == 1:
+            return 1
+
+        grid = gt_map.get_grid(position[0], position[1] - self.params.drone_radius)
+        if grid == 1:
+            return 1
+
+        grid = gt_map.get_grid(position[0], position[1] + self.params.drone_radius)
+        if grid == 1:
+            return 1
+        
         for agent in agents:
             if norm(agent.position - np.array([self.x, self.y])) < agent.radius + self.radius:
                 # print("collision with dynamic obstacles")
