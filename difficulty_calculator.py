@@ -62,7 +62,6 @@ def prob_metrics(index):
                     env.drone.x = x + cos(radians(angle)) * drone_speed * t
                     env.drone.y = y + sin(radians(angle)) * drone_speed * t
                     _, _, done, info = env.step(0)
-                    env.render()
                     if done:
                         break
             total_survive += t
