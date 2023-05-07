@@ -27,7 +27,10 @@ class Planner:
     def is_free(self, position, t, occupancy_map, trackers):
         if np.isnan(position).any():
             return False
-        grid = occupancy_map.get_grid(position[0] - self.params.drone_radius, position[1])
+        
+        safe_distance = self.params.drone_radius + 10
+
+        grid = occupancy_map.get_grid(position[0] - safe_distance, position[1])
         if grid == 1:
             return False
 
@@ -35,15 +38,15 @@ class Planner:
         if grid == 1:
             return False
 
-        grid = occupancy_map.get_grid(position[0] + self.params.drone_radius, position[1])
+        grid = occupancy_map.get_grid(position[0] + safe_distance, position[1])
         if grid == 1:
             return False
 
-        grid = occupancy_map.get_grid(position[0], position[1] - self.params.drone_radius)
+        grid = occupancy_map.get_grid(position[0], position[1] - safe_distance)
         if grid == 1:
             return False
 
-        grid = occupancy_map.get_grid(position[0], position[1] + self.params.drone_radius)
+        grid = occupancy_map.get_grid(position[0], position[1] + safe_distance)
         if grid == 1:
             return False
 
