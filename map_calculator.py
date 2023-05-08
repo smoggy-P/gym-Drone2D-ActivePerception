@@ -11,7 +11,7 @@ def env_metrics(index):
 
     params = easydict.EasyDict({
             'env':'gym-2d-perception-v2',
-            'render':True,
+            'render':False,
             'record': False,
 
             'record_img': False,
@@ -44,7 +44,7 @@ def env_metrics(index):
         })
 
     position_step = 60
-    T = 12    
+    T = 4
     x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
     y_range = range(params.map_scale + params.drone_radius, params.map_size[1] - params.map_scale - params.drone_radius, position_step)
     total_survive = 0
@@ -56,7 +56,6 @@ def env_metrics(index):
                 env.drone.x = x
                 env.drone.y = y
                 _, _, done, info = env.step(0)
-                env.render()
                 if done:
                     break
             total_survive += t
@@ -80,4 +79,4 @@ for map_id in range(5):
 
 metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
-df.to_csv("./experiment/metrics/metrics_6m_12s.csv")
+df.to_csv("./experiment/metrics/metrics_6m_4s.csv")
