@@ -47,8 +47,8 @@ def prob_metrics(index):
     angle_step = 60
     drone_speed = index['drone_speed']
     T = 4
-    x_range = range(params.map_scale+50, params.map_size[0] - params.map_scale, position_step)
-    y_range = range(params.map_scale+50, params.map_size[0] - params.map_scale, position_step)
+    x_range = range(params.map_scale, params.map_size[0] - params.map_scale, position_step)
+    y_range = range(params.map_scale, params.map_size[0] - params.map_scale, position_step)
     angle_range = np.arange(0, 360, angle_step)
 
 
