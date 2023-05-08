@@ -11,7 +11,7 @@ def env_metrics(index):
 
     params = easydict.EasyDict({
             'env':'gym-2d-perception-v2',
-            'render':False,
+            'render':True,
             'record': False,
 
             'record_img': False,
@@ -44,18 +44,19 @@ def env_metrics(index):
         })
 
     position_step = 60
-    T = 8
+    T = 12
     x_range = range(params.map_scale, params.map_size[0] - params.map_scale, position_step)
     y_range = range(params.map_scale, params.map_size[0] - params.map_scale, position_step)
     total_survive = 0
+    env = gym.make(params.env, params=params)
     for x in x_range:
         for y in y_range:
-            env = gym.make(params.env, params=params)
             env.reset()
             for t in np.arange(0, T, 0.1):
                 env.drone.x = x
                 env.drone.y = y
                 _, _, done, info = env.step(0)
+                env.render()
                 if done:
                     break
             total_survive += t
@@ -73,10 +74,10 @@ for map_id in range(5):
                 'agent_number':agent_num,
                 'agent_speed':agent_vel,
                 'map_id':map_id}
-        survive_time = prob_metrics(index)
+        survive_time = env_metrics(index)
         env_metric.append(survive_time)
     all_metrics.append(env_metric)
 
 metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
-df.to_csv("./experiment/metrics/metrics_6m_8s.csv")
+df.to_csv("./experiment/metrics/metrics_6m_12s.csv")
