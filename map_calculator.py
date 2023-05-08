@@ -44,9 +44,9 @@ def env_metrics(index):
         })
 
     position_step = 60
-    T = 12
-    x_range = range(params.map_scale, params.map_size[0] - params.map_scale, position_step)
-    y_range = range(params.map_scale, params.map_size[0] - params.map_scale, position_step)
+    T = 12    
+    x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
+    y_range = range(params.map_scale + params.drone_radius, params.map_size[1] - params.map_scale - params.drone_radius, position_step)
     total_survive = 0
     env = gym.make(params.env, params=params)
     for x in x_range:
