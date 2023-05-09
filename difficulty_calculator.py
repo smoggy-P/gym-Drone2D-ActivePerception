@@ -11,7 +11,7 @@ def prob_metrics(index):
 
     params = easydict.EasyDict({
             'env':'gym-2d-perception-v2',
-            'render':True,
+            'render':False,
             'record': False,
 
             'record_img': False,
@@ -45,10 +45,9 @@ def prob_metrics(index):
 
     position_step = 60
     angle_step = 60
-    drone_speed = index['drone_speed']
     T = 4
-    x_range = range(params.map_scale, params.map_size[0] - params.map_scale, position_step)
-    y_range = range(params.map_scale, params.map_size[0] - params.map_scale, position_step)
+    x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
+    y_range = range(params.map_scale + params.drone_radius, params.map_size[1] - params.map_scale - params.drone_radius, position_step)
     angle_range = np.arange(0, 360, angle_step)
 
     env = gym.make(params.env, params=params)
@@ -57,15 +56,21 @@ def prob_metrics(index):
         for y in y_range:
             for angle in angle_range:
                 env.reset()
+                drone_speed = index['drone_speed']
+                env.drone.x = x
+                env.drone.y = y
                 for t in np.arange(0, T, 0.1):
-                    env.drone.x = x + cos(radians(angle)) * drone_speed * t
-                    env.drone.y = y + sin(radians(angle)) * drone_speed * t
+                    env.drone.x = env.drone.x + cos(radians(angle)) * drone_speed * 0.1
+                    env.drone.y = env.drone.y + sin(radians(angle)) * drone_speed * 0.1
                     _, _, done, info = env.step(0)
-                    env.render()
-                    if done:
+                    # env.render()
+
+                    if info['collision_flag'] == 1:
+                        drone_speed = 0-drone_speed
+
+                    if info['collision_flag'] == 2:
                         break
                 total_survive += t
-                print(t)
     return total_survive / (len(x_range) * len(y_range) * len(angle_range))
 
 all_metrics = []
