@@ -45,7 +45,7 @@ def prob_metrics(index):
 
     position_step = 60
     angle_step = 60
-    T = 4
+    T = 12
     x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
     y_range = range(params.map_scale + params.drone_radius, params.map_size[1] - params.map_scale - params.drone_radius, position_step)
     angle_range = np.arange(0, 360, angle_step)
@@ -91,4 +91,4 @@ for map_id in range(5):
 
 metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
-df.to_csv("./experiment/metrics/prob_metrics.csv")
+df.to_csv("./experiment/metrics/prob_metrics_6m_12s.csv")
