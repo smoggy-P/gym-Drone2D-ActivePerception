@@ -109,11 +109,11 @@ class Drone2DEnv2(gym.Env):
         self.tracker_buffer = []
 
         # Set target list to visit
-        self.target_list = [array([params.map_size[0]/2, params.map_size[1]-(params.drone_radius+params.map_scale+20)])]
+        self.target_list = params.target_list
 
         # Generate drone
-        self.drone = Drone2D(init_x=params.map_size[0]/2, 
-                             init_y=params.drone_radius+params.map_scale, 
+        self.drone = Drone2D(init_x=params.init_position[0], 
+                             init_y=params.init_position[1], 
                              init_yaw=-90, 
                              dt=self.dt, 
                              params=params)
@@ -175,7 +175,7 @@ class Drone2DEnv2(gym.Env):
         # Update target point
         if self.state_machine == state_machine['WAIT_FOR_GOAL']:
             self.planner.set_target(self.target_list[0])
-            self.target_list.pop()
+            self.target_list.pop(0)
             self.state_machine = state_machine['PLANNING']
 
         ##########################
@@ -236,15 +236,15 @@ class Drone2DEnv2(gym.Env):
         freezing_flag = 0
 
         if collision_state == 0:
-            self.state_machine = state_machine['GOAL_REACHED'] if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 and len(self.target_list) == 0 else self.state_machine
+            self.state_machine = state_machine['GOAL_REACHED'] if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 else self.state_machine
             dead_lock_flag = 1 if (self.fail_count >= 10) and (norm(self.drone.velocity)==0) else 0 
             freezing_flag = 1 if (self.steps >= self.max_steps) and (not dead_lock_flag) else 0
-            
-        
+
+
         done = True if (collision_state != 0) or \
                         dead_lock_flag or \
                         freezing_flag or \
-                        self.state_machine == state_machine['GOAL_REACHED'] else done
+                        ((self.state_machine == state_machine['GOAL_REACHED']) and len(self.target_list) == 0) else done
         if done:
             for tracker in self.drone.trackers:
                 if tracker.active == True:
