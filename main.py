@@ -14,8 +14,8 @@ if __name__ == '__main__':
 
     # Environment difficulty
     motion_profiles = ['CVM']
-    agent_numbers = [30, 20, 30]
-    agent_sizes = [15, 10, 15]
+    agent_numbers = [10, 20, 30]
+    agent_sizes = [5, 10, 15]
     agent_max_speeds = [20, 40, 60]
     map_ids = range(30)
     pillar_numbers = [0]
