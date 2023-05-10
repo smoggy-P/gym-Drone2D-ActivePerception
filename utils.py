@@ -44,7 +44,7 @@ def draw_cov(surface, mean, cov):
 class Params:
     def __init__(self, env='gym-2d-perception-v2', debug=True, record_img=False, 
                  trained_policy=False, policy_dir='./trained_policy/lookahead.zip', dt=0.1, 
-                 map_scale=10, map_size=[480,640], agent_radius=10, drone_max_acceleration=40, 
+                 map_scale=10, map_size=[500,500], agent_radius=10, drone_max_acceleration=40, 
                  drone_radius=10, drone_max_yaw_speed=80, drone_view_depth=80, drone_view_range=90, 
                  img_dir='./', max_flight_time=80, gaze_method='LookAhead', planner='Primitive', var_cam=0, 
                  drone_max_speed=40, motion_profile='CVM', pillar_number=0, agent_number=10, 
@@ -144,7 +144,9 @@ class KalmanFilter:
         self.Sigma_upds.append(Sigma)
         self.ts.append(t + 1)
         achieved_filter = None
-        if Sigma[0,0] >= 150 or (not(0 < mu[0] < self.params.map_size[0])) or (not(0 < mu[1] < self.params.map_size[1])):
+        if Sigma[0,0] >= 150 or \
+           (not(10 + self.params.agent_radius < mu[0] < self.params.map_size[0] - 10 - self.params.agent_radius)) or \
+           (not(10 + self.params.agent_radius < mu[1] < self.params.map_size[1] - 10 - self.params.agent_radius)):
             achieved_filter = self.copy()
             self.__init__(self.params)
         return achieved_filter

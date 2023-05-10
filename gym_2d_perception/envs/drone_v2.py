@@ -109,7 +109,7 @@ class Drone2DEnv2(gym.Env):
         self.tracker_buffer = []
 
         # Set target list to visit
-        self.target_list = params.target_list
+        self.target_list = params.target_list.copy()
 
         # Generate drone
         self.drone = Drone2D(init_x=params.init_position[0], 
