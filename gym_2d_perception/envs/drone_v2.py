@@ -10,6 +10,43 @@ from utils import *
 class Drone2DEnv2(gym.Env):
     
     @staticmethod
+    def init_obstacles_random_size(self):
+        while len(self.obstacles) < self.params.pillar_number:
+            obs = np.array([random.randint(50,self.params.map_size[0]-50), 
+                            random.randint(50,self.params.map_size[1]-50), 
+                            random.randint(15,20)])
+            collision_free = True
+            for target in self.target_list:
+                if norm(target - obs[:-1]) <= self.params.drone_radius + 20 + obs[-1]:
+                    collision_free = False
+                    break
+            if norm(np.array([self.drone.x, self.drone.y]) - obs[:-1]) <= self.params.drone_radius + 70:
+                collision_free = False
+            if collision_free:
+                self.obstacles.append(obs)
+        
+        while(len(self.agents) < self.params.agent_number):
+            new_agent = Agent(position=(random.uniform(20, self.params.map_size[0]-20), random.uniform(20, self.params.map_size[1]-20)), 
+                              velocity=(0., 0.), 
+                              radius=random.uniform(self.params.agent_radius-2, self.params.agent_radius+2), 
+                              max_speed=self.params.agent_max_speed, 
+                              pref_velocity=-self.params.agent_max_speed * array([cos(2*pi*len(self.agents) / self.params.agent_number), 
+                                                                             sin(2*pi*len(self.agents) / self.params.agent_number)]))
+            collision_free = True
+            for agent_ in self.agents:
+                if norm(agent_.position - new_agent.position) <= agent_.radius + new_agent.radius:
+                    collision_free = False
+            for obs in self.obstacles:
+                if norm(np.array([obs[0], obs[1]]) - new_agent.position) <= obs[2] + new_agent.radius + 10:
+                    collision_free = False
+            if norm(new_agent.position - np.array([self.drone.x, self.drone.y])) <= self.params.drone_radius + 70:
+                collision_free = False
+
+            if collision_free:
+                self.agents.append(new_agent)
+    
+
+    @staticmethod
     def init_obstacles(self):
         while len(self.obstacles) < self.params.pillar_number:
             obs = np.array([random.randint(50,self.params.map_size[0]-50), 
@@ -84,7 +121,7 @@ class Drone2DEnv2(gym.Env):
         # Generate obstacles
         self.obstacles = []
         self.agents = []
-        self.init_obstacles(self)
+        self.init_obstacles_random_size(self)
 
         # Generate ground truth grid map
         self.map_gt = OccupancyGridMap(params.map_scale, params.map_size, 2)

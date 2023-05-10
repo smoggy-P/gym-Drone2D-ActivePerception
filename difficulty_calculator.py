@@ -11,7 +11,7 @@ def prob_metrics(index):
 
     params = easydict.EasyDict({
             'env':'gym-2d-perception-v2',
-            'render':False,
+            'render':True,
             'record': False,
 
             'record_img': False,
@@ -25,7 +25,7 @@ def prob_metrics(index):
             'drone_radius':10,
             'drone_max_yaw_speed':80,
             'drone_view_depth' : 80,
-            'drone_view_range': 90,
+            'drone_view_range': 360,
             'img_dir':'./',
             'max_flight_time': 80,
             
@@ -63,7 +63,7 @@ def prob_metrics(index):
                     env.drone.x = env.drone.x + cos(radians(angle)) * drone_speed * 0.1
                     env.drone.y = env.drone.y + sin(radians(angle)) * drone_speed * 0.1
                     _, _, done, info = env.step(0)
-                    # env.render()
+                    env.render()
 
                     if info['collision_flag'] == 1:
                         drone_speed = 0-drone_speed
