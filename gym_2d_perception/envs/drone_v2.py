@@ -39,8 +39,7 @@ class Drone2DEnv2(gym.Env):
             for obs in self.obstacles:
                 if norm(np.array([obs[0], obs[1]]) - new_agent.position) <= obs[2] + new_agent.radius + 10:
                     collision_free = False
-            
-            if norm(new_agent.position - np.array([self.drone.x, self.drone.y]) <= self.params.drone_radius + 70):
+            if norm(new_agent.position - np.array([self.drone.x, self.drone.y])) <= self.params.drone_radius + 70:
                 collision_free = False
 
             if collision_free:
