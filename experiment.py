@@ -41,6 +41,8 @@ class Experiment:
                  'Agent speed':[], 
                  'Drone speed':[], 
                  'Depth variance':[],
+                 'Initial position':[],
+                 'Target position':[],
 
                  'Flight time':[],
                  'Grid discovered':[],
@@ -77,6 +79,8 @@ class Experiment:
                              self.params.agent_max_speed,
                              self.params.drone_max_speed,
                              self.params.var_cam,
+                             self.params.init_position,
+                             self.params.target_list[0],
 
 
                              info['flight_time'],

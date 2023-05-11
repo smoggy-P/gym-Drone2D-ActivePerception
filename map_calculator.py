@@ -11,7 +11,7 @@ def env_metrics(index):
 
     params = easydict.EasyDict({
             'env':'gym-2d-perception-v2',
-            'render':False,
+            'render':True,
             'record': False,
 
             'record_img': False,
@@ -56,6 +56,7 @@ def env_metrics(index):
                 env.drone.x = x
                 env.drone.y = y
                 _, _, done, info = env.step(0)
+                env.render()
                 if done:
                     break
             total_survive += t

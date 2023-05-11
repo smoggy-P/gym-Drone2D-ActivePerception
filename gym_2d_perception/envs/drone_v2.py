@@ -10,6 +10,43 @@ from utils import *
 class Drone2DEnv2(gym.Env):
     
     @staticmethod
+    def init_obstacles_random_size(self):
+        while len(self.obstacles) < self.params.pillar_number:
+            obs = np.array([random.randint(50,self.params.map_size[0]-50), 
+                            random.randint(50,self.params.map_size[1]-50), 
+                            random.randint(15,20)])
+            collision_free = True
+            for target in self.target_list:
+                if norm(target - obs[:-1]) <= self.params.drone_radius + 20 + obs[-1]:
+                    collision_free = False
+                    break
+            if norm(np.array([self.drone.x, self.drone.y]) - obs[:-1]) <= self.params.drone_radius + 70:
+                collision_free = False
+            if collision_free:
+                self.obstacles.append(obs)
+        
+        while(len(self.agents) < self.params.agent_number):
+            new_agent = Agent(position=(random.uniform(20, self.params.map_size[0]-20), random.uniform(20, self.params.map_size[1]-20)), 
+                              velocity=(0., 0.), 
+                              radius=random.uniform(self.params.agent_radius-2, self.params.agent_radius+2), 
+                              max_speed=self.params.agent_max_speed, 
+                              pref_velocity=-self.params.agent_max_speed * array([cos(2*pi*len(self.agents) / self.params.agent_number), 
+                                                                             sin(2*pi*len(self.agents) / self.params.agent_number)]))
+            collision_free = True
+            for agent_ in self.agents:
+                if norm(agent_.position - new_agent.position) <= agent_.radius + new_agent.radius:
+                    collision_free = False
+            for obs in self.obstacles:
+                if norm(np.array([obs[0], obs[1]]) - new_agent.position) <= obs[2] + new_agent.radius + 10:
+                    collision_free = False
+            if norm(new_agent.position - np.array([self.drone.x, self.drone.y])) <= self.params.drone_radius + 70:
+                collision_free = False
+
+            if collision_free:
+                self.agents.append(new_agent)
+    
+
+    @staticmethod
     def init_obstacles(self):
         while len(self.obstacles) < self.params.pillar_number:
             obs = np.array([random.randint(50,self.params.map_size[0]-50), 
@@ -72,11 +109,11 @@ class Drone2DEnv2(gym.Env):
         self.tracker_buffer = []
 
         # Set target list to visit
-        self.target_list = [array([params.map_size[0]/2, params.map_size[1]-(params.drone_radius+params.map_scale+20)])]
+        self.target_list = params.target_list.copy()
 
         # Generate drone
-        self.drone = Drone2D(init_x=params.map_size[0]/2, 
-                             init_y=params.drone_radius+params.map_scale, 
+        self.drone = Drone2D(init_x=params.init_position[0], 
+                             init_y=params.init_position[1], 
                              init_yaw=-90, 
                              dt=self.dt, 
                              params=params)
@@ -84,7 +121,7 @@ class Drone2DEnv2(gym.Env):
         # Generate obstacles
         self.obstacles = []
         self.agents = []
-        self.init_obstacles(self)
+        self.init_obstacles_random_size(self)
 
         # Generate ground truth grid map
         self.map_gt = OccupancyGridMap(params.map_scale, params.map_size, 2)
@@ -138,7 +175,7 @@ class Drone2DEnv2(gym.Env):
         # Update target point
         if self.state_machine == state_machine['WAIT_FOR_GOAL']:
             self.planner.set_target(self.target_list[0])
-            self.target_list.pop()
+            self.target_list.pop(0)
             self.state_machine = state_machine['PLANNING']
 
         ##########################
@@ -199,15 +236,15 @@ class Drone2DEnv2(gym.Env):
         freezing_flag = 0
 
         if collision_state == 0:
-            self.state_machine = state_machine['GOAL_REACHED'] if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 and len(self.target_list) == 0 else self.state_machine
+            self.state_machine = state_machine['GOAL_REACHED'] if norm(np.array([self.drone.x, self.drone.y]) - self.planner.target[:2]) <= 10 else self.state_machine
             dead_lock_flag = 1 if (self.fail_count >= 10) and (norm(self.drone.velocity)==0) else 0 
             freezing_flag = 1 if (self.steps >= self.max_steps) and (not dead_lock_flag) else 0
-            
-        
+
+
         done = True if (collision_state != 0) or \
                         dead_lock_flag or \
                         freezing_flag or \
-                        self.state_machine == state_machine['GOAL_REACHED'] else done
+                        ((self.state_machine == state_machine['GOAL_REACHED']) and len(self.target_list) == 0) else done
         if done:
             for tracker in self.drone.trackers:
                 if tracker.active == True:
