@@ -3,6 +3,7 @@ import easydict
 import main
 import numpy as np
 import pandas as pd
+import time
 
 from math import sin, cos, radians
 from tqdm.contrib.itertools import product
@@ -11,7 +12,9 @@ from utils import *
 def env_metrics(index):
     params = Params(agent_number=index['agent_number'],
                     agent_radius=index['agent_size'],
-                    agent_max_speed=index['agent_speed'])
+                    agent_max_speed=index['agent_speed'],
+                    gaze_method='NoControl',
+                    planner='NoMove')
 
     position_step = 60
     T = 12
