@@ -6,45 +6,15 @@ import pandas as pd
 
 from math import sin, cos, radians
 from tqdm.contrib.itertools import product
+from utils import *
 
 def env_metrics(index):
-
-    params = easydict.EasyDict({
-            'env':'gym-2d-perception-v2',
-            'render':True,
-            'record': False,
-
-            'record_img': False,
-            'trained_policy':False,
-            'policy_dir':'./trained_policy/lookahead.zip',
-            'dt':0.1,
-            'map_scale':10,
-            'map_size':[480,640],
-            'agent_radius':10,
-            'drone_max_acceleration':40,
-            'drone_radius':10,
-            'drone_max_yaw_speed':80,
-            'drone_view_depth' : 80,
-            'drone_view_range': 90,
-            'img_dir':'./',
-            'max_flight_time': 80,
-            
-
-            'gaze_method':'NoControl',#5
-            'planner':'NoMove',#3
-
-            'var_cam': 0,
-            'drone_max_speed':40,#3
-
-            'motion_profile':index['motion_profile'],
-            'pillar_number':index['pillar_number'],
-            'agent_number':index['agent_number'],
-            'agent_max_speed':index['agent_speed'],
-            'map_id':index['map_id']
-        })
+    params = Params(agent_number=index['agent_number'],
+                    agent_radius=index['agent_size'],
+                    agent_max_speed=index['agent_speed'])
 
     position_step = 60
-    T = 4
+    T = 12
     x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
     y_range = range(params.map_scale + params.drone_radius, params.map_size[1] - params.map_scale - params.drone_radius, position_step)
     total_survive = 0
@@ -57,7 +27,7 @@ def env_metrics(index):
                 env.drone.y = y
                 _, _, done, info = env.step(0)
                 env.render()
-                if done:
+                if info['collision_flag'] == 2:
                     break
             total_survive += t
 
@@ -68,11 +38,12 @@ all_metrics = []
 for map_id in range(5):
 
     env_metric = []
-    for (agent_num, agent_vel) in product([10, 20, 30], [20, 40, 60]):
+    for (agent_num, agent_size, agent_vel) in product([10, 20, 30], [5, 10, 15], [20, 40, 60]):
         index = {'motion_profile':'CVM',
                 'pillar_number':0,
                 'agent_number':agent_num,
                 'agent_speed':agent_vel,
+                'agent_size':agent_size,
                 'map_id':map_id}
         survive_time = env_metrics(index)
         env_metric.append(survive_time)
@@ -80,4 +51,4 @@ for map_id in range(5):
 
 metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
-df.to_csv("./experiment/metrics/metrics_6m_4s.csv")
+df.to_csv("./experiment/metrics/metrics_6m_12s.csv")
