@@ -41,6 +41,47 @@ def draw_cov(surface, mean, cov):
     rotated_surf = pygame.transform.rotate(shape_surf, angle)
     surface.blit(rotated_surf, rotated_surf.get_rect(center = target_rect.center))
 
+class Params:
+    def __init__(self, env='gym-2d-perception-v2', debug=True, record_img=False, 
+                 trained_policy=False, policy_dir='./trained_policy/lookahead.zip', dt=0.1, 
+                 map_scale=10, map_size=[500,500], agent_radius=10, drone_max_acceleration=40, 
+                 drone_radius=10, drone_max_yaw_speed=80, drone_view_depth=80, drone_view_range=90, 
+                 img_dir='./', max_flight_time=80, gaze_method='LookAhead', planner='Primitive', var_cam=0, 
+                 drone_max_speed=40, motion_profile='CVM', pillar_number=0, agent_number=10, 
+                 agent_max_speed=40, map_id=0, init_pos=[50, 50], target_list=[[50, 600]]):
+        
+        self.env = env
+        if debug:
+            self.render = True
+            self.record = False
+        else:
+            self.render = False
+            self.record = True
+        self.record_img = record_img
+        self.trained_policy = trained_policy
+        self.policy_dir = policy_dir
+        self.dt = dt
+        self.map_scale = map_scale
+        self.map_size = map_size
+        self.agent_radius = agent_radius
+        self.drone_max_acceleration = drone_max_acceleration
+        self.drone_radius = drone_radius
+        self.drone_max_yaw_speed = drone_max_yaw_speed
+        self.drone_view_depth = drone_view_depth
+        self.drone_view_range = drone_view_range
+        self.img_dir = img_dir
+        self.max_flight_time = max_flight_time
+        self.gaze_method = gaze_method
+        self.planner = planner
+        self.var_cam = var_cam
+        self.drone_max_speed = drone_max_speed
+        self.motion_profile = motion_profile
+        self.pillar_number = pillar_number
+        self.agent_number = agent_number
+        self.agent_max_speed = agent_max_speed
+        self.map_id = map_id
+        self.init_position = init_pos
+        self.target_list = target_list
 class KalmanFilter:
 
     def copy(self):
@@ -103,7 +144,9 @@ class KalmanFilter:
         self.Sigma_upds.append(Sigma)
         self.ts.append(t + 1)
         achieved_filter = None
-        if Sigma[0,0] >= 150 or (not(0 < mu[0] < self.params.map_size[0])) or (not(0 < mu[1] < self.params.map_size[1])):
+        if Sigma[0,0] >= 150 or \
+           (not(10 + self.params.agent_radius < mu[0] < self.params.map_size[0] - 10 - self.params.agent_radius)) or \
+           (not(10 + self.params.agent_radius < mu[1] < self.params.map_size[1] - 10 - self.params.agent_radius)):
             achieved_filter = self.copy()
             self.__init__(self.params)
         return achieved_filter
@@ -134,7 +177,6 @@ class KalmanFilter:
             self.active = True
         
         return achieved_list
-
 class Waypoint2D(object):
     def __init__(self, pos=np.array([0,0]), vel=np.array([0,0])):
         self.position = pos
