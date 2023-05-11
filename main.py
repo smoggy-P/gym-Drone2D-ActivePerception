@@ -10,8 +10,8 @@ result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 
 if __name__ == '__main__':
 
-    gaze_methods = ['Owl', 'LookAhead']
-    planners = ['Primitive', 'Jerk_Primitive']
+    gaze_methods = ['Owl']
+    planners = ['Primitive']
 
     # Environment difficulty
     motion_profiles = ['CVM']
@@ -34,8 +34,8 @@ if __name__ == '__main__':
     for (gaze_method, planner, motion_profile, var_depth,
         agent_number, pillar_number, agent_speed,
         drone_speed, agent_size, map_id) in params:
-
-        for start_pos, target_pos in vis.product(product(range(20, 480, 230), range(20, 480, 230)), product(range(20, 480, 230), range(20, 480, 230))):
+        axis_range = [25, 250, 475]
+        for start_pos, target_pos in vis.product(product(axis_range, axis_range), product(axis_range, axis_range)):
             if start_pos != target_pos:
                 cfg = Params(debug=False,
                             gaze_method=gaze_method, 
