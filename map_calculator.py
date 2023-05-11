@@ -13,9 +13,10 @@ def env_metrics(index):
     params = Params(agent_number=index['agent_number'],
                     agent_radius=index['agent_size'],
                     agent_max_speed=index['agent_speed'],
+                    map_id=index['map_id'],
                     gaze_method='NoControl',
                     planner='NoMove')
-
+    params.render = False
     position_step = 60
     T = 12
     x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
@@ -29,7 +30,6 @@ def env_metrics(index):
                 env.drone.x = x
                 env.drone.y = y
                 _, _, done, info = env.step(0)
-                env.render()
                 if info['collision_flag'] == 2:
                     break
             total_survive += t
@@ -38,7 +38,7 @@ def env_metrics(index):
 
 all_metrics = []
 
-for map_id in range(5):
+for map_id in [1,2,3,4]:
 
     env_metric = []
     for (agent_num, agent_size, agent_vel) in product([10, 20, 30], [5, 10, 15], [20, 40, 60]):
@@ -54,4 +54,4 @@ for map_id in range(5):
 
 metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
-df.to_csv("./experiment/metrics/metrics_6m_12s.csv")
+df.to_csv("./experiment/metrics/metrics_6m_12s_add.csv")
