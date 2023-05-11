@@ -366,8 +366,8 @@ class Agent(object):
     """A disk-shaped agent."""
     def __init__(self, position, velocity, radius, max_speed, pref_velocity):
         super(Agent, self).__init__()
-        self.position = np.array(position, dtype=np.float)
-        self.velocity = np.array(velocity, dtype=np.float)
+        self.position = np.array(position)
+        self.velocity = np.array(velocity)
         self.radius = radius
         self.max_speed = max_speed
         self.pref_velocity = np.array(pref_velocity)
