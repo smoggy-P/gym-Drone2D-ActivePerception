@@ -36,6 +36,7 @@ class Experiment:
                  'Planner':[],
                  'Motion Profile':[],
                  'Map ID':[],
+                 'Agent size':[],
                  'Number of agents':[],
                  'Number of pillars':[], 
                  'Agent speed':[], 
@@ -74,6 +75,7 @@ class Experiment:
                              
                              self.params.motion_profile,
                              self.params.map_id,
+                             self.params.agent_radius,
                              self.params.agent_number,
                              self.params.pillar_number,
                              self.params.agent_max_speed,
