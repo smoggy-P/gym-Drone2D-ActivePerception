@@ -290,6 +290,8 @@ class MPC(Planner):
                 else:
                     all_params.extend([0]*5)
             all_params.append(self.params.drone_max_speed)
+            all_params.append(self.target[0])
+            all_params.append(self.target[1])
 
 
         problem["all_parameters"] = np.array(all_params)
