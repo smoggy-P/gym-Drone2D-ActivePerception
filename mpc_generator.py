@@ -41,17 +41,17 @@ model = forcespro.nlp.SymbolicModel(N)
 model.nvar = ns+nu+nx  # number of stage variables
 model.neq = nx   # number of equality constraints
 model.nh = num_agent + 1    # number of nonlinear inequality constraints
-model.npar = 5*num_agent + 1  # number of parameters
+model.npar = 5*num_agent + 3  # number of parameters
 
 model.lb = np.concatenate(([0]*ns, umin, xmin), 0)
 model.ub = np.concatenate(([+float("inf")]*ns, umax, xmax), 0)
 
 model.eq = lambda z: A @ casadi.reshape(z[ns+nu:],-1,1) + B @ casadi.reshape(z[ns:ns+nu],-1,1)
 
-model.objective = lambda z: casadi.reshape(z[ns+nu:]-target,1,-1) @ Q @ casadi.reshape(z[ns+nu:]-target,-1,1) + lam*z[0]
+model.objective = lambda z, p: casadi.reshape(z[ns+nu:]-casadi.vertcat(p[-2:], casadi.SX.zeros(2)),1,-1) @ Q @ casadi.reshape(z[ns+nu:]-casadi.vertcat(p[-2:], casadi.SX.zeros(2)),-1,1) + lam*z[0]
 
 def ineq_constraint(z, p):
-    p_reshaped = (p[:-1].reshape((-1, num_agent))).T
+    p_reshaped = (p[:-3].reshape((-1, num_agent))).T
 
     # Collision constraints
     constraints = []
@@ -64,7 +64,7 @@ def ineq_constraint(z, p):
         constraints.append(con)
 
     # Velocity Constraints
-    constraints.append(z[ns+nu+2]**2 + z[ns+nu+3]**2 - p[-1]**2)
+    constraints.append(z[ns+nu+2]**2 + z[ns+nu+3]**2 - p[-3]**2)
 
     return casadi.vertcat(*constraints)
 
