@@ -44,43 +44,22 @@ class Drone2DEnv2(gym.Env):
 
             if collision_free:
                 self.agents.append(new_agent)
-    
-
-    @staticmethod
-    def init_obstacles(self):
-        while len(self.obstacles) < self.params.pillar_number:
-            obs = np.array([random.randint(50,self.params.map_size[0]-50), 
-                            random.randint(50,self.params.map_size[1]-50), 
-                            random.randint(15,20)])
-            collision_free = True
-            for target in self.target_list:
-                if norm(target - obs[:-1]) <= self.params.drone_radius + 20 + obs[-1]:
-                    collision_free = False
-                    break
-            if norm(np.array([self.drone.x, self.drone.y]) - obs[:-1]) <= self.params.drone_radius + 70:
-                collision_free = False
-            if collision_free:
-                self.obstacles.append(obs)
         
-        while(len(self.agents) < self.params.agent_number):
-            new_agent = Agent(position=(random.uniform(20, self.params.map_size[0]-20), random.uniform(20, self.params.map_size[1]-20)), 
-                              velocity=(0., 0.), 
-                              radius=self.params.agent_radius, 
-                              max_speed=self.params.agent_max_speed, 
-                              pref_velocity=-self.params.agent_max_speed * array([cos(2*pi*len(self.agents) / self.params.agent_number), 
-                                                                             sin(2*pi*len(self.agents) / self.params.agent_number)]))
-            collision_free = True
-            for agent_ in self.agents:
-                if norm(agent_.position - new_agent.position) <= agent_.radius + new_agent.radius:
-                    collision_free = False
-            for obs in self.obstacles:
-                if norm(np.array([obs[0], obs[1]]) - new_agent.position) <= obs[2] + new_agent.radius + 10:
-                    collision_free = False
-            if norm(new_agent.position - np.array([self.drone.x, self.drone.y])) <= self.params.drone_radius + 70:
-                collision_free = False
+        shaped_obs_map = np.load('shaped_obstacle_map.npy')
+        vels = [20 * (np.random.rand(2) - 0.5) for i in range(10)]
 
-            if collision_free:
-                self.agents.append(new_agent)
+
+        for x in range(shaped_obs_map.shape[0]):
+            for y in range(shaped_obs_map.shape[1]):
+                if shaped_obs_map[x][y] != 0:
+                    vel = vels[shaped_obs_map[x][y]]
+                    self.agents.append(Agent(position=np.array([5 + x * 10,5 + y * 10]), 
+                                            velocity=vel, 
+                                            radius=1.414*5, 
+                                            max_speed=40, 
+                                            pref_velocity=vel,
+                                            group_id=shaped_obs_map[x][y]))
+
      
     def __init__(self, params):
         planner_list = {
@@ -293,7 +272,11 @@ class Drone2DEnv2(gym.Env):
         if len(self.agents) > 0:
             for i, agent in enumerate(self.agents):
                 color = pygame.Color(0, 250, 250) if self.drone.trackers[i].active else pygame.Color(250, 0, 0)
-                pygame.draw.circle(self.screen, color, np.rint(agent.position).astype(int), int(round(agent.radius)), 0)
+                if agent.group_id == 0:
+                    pygame.draw.circle(self.screen, color, np.rint(agent.position).astype(int), int(round(agent.radius)), 0)
+                else:
+                    pygame.draw.rect(self.screen, color, pygame.Rect(agent.position[0]-agent.radius, agent.position[1]-agent.radius, 2*agent.radius, 2*agent.radius))
+        
         for tracker in self.drone.trackers:
             if tracker.active:
                 # pygame.draw.circle(self.screen, (100, 20, 20), center=[tracker.mu_upds[-1][0,0], tracker.mu_upds[-1][1,0]], radius=4)
