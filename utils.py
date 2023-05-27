@@ -48,7 +48,7 @@ class Params:
                  drone_radius=10, drone_max_yaw_speed=80, drone_view_depth=80, drone_view_range=90, 
                  img_dir='./', max_flight_time=80, gaze_method='LookAhead', planner='Primitive', var_cam=0, 
                  drone_max_speed=40, motion_profile='CVM', pillar_number=0, agent_number=10, 
-                 agent_max_speed=40, map_id=0, init_pos=[50, 50], target_list=[[50, 600]]):
+                 agent_max_speed=40, map_id=0, init_pos=[50, 50], target_list=[[50, 600]], static_map='empty_map.npy'):
         
         self.env = env
         if debug:
@@ -82,6 +82,7 @@ class Params:
         self.map_id = map_id
         self.init_position = init_pos
         self.target_list = target_list
+        self.static_map = static_map
 class KalmanFilter:
 
     def copy(self):

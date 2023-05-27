@@ -22,7 +22,7 @@ if __name__ == '__main__':
     pillar_numbers = [0]
 
     # Problem difficulty
-    drone_max_speeds = [60]
+    drone_max_speeds = [20]
     var_depths = [0]
     
 
@@ -50,7 +50,8 @@ if __name__ == '__main__':
                             map_id=map_id,
                             init_pos=start_pos,
                             target_list=[target_pos],
-                            drone_view_range=360)
+                            drone_view_range=360,
+                            static_map='empty_map.npy')
                 experiment = Experiment(cfg, result_dir)
                 experiment.run()
         
