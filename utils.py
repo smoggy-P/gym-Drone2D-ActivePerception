@@ -48,7 +48,7 @@ class Params:
                  drone_radius=10, drone_max_yaw_speed=80, drone_view_depth=80, drone_view_range=90, 
                  img_dir='./', max_flight_time=80, gaze_method='LookAhead', planner='Primitive', var_cam=0, 
                  drone_max_speed=40, motion_profile='CVM', pillar_number=0, agent_number=10, 
-                 agent_max_speed=40, map_id=0, init_pos=[50, 50], target_list=[[50, 600]]):
+                 agent_max_speed=40, map_id=0, init_pos=[50, 50], target_list=[[50, 600]], static_map='empty_map.npy'):
         
         self.env = env
         if debug:
@@ -82,6 +82,7 @@ class Params:
         self.map_id = map_id
         self.init_position = init_pos
         self.target_list = target_list
+        self.static_map = static_map
 class KalmanFilter:
 
     def copy(self):
@@ -364,13 +365,14 @@ class RVO():
             return False
 class Agent(object):
     """A disk-shaped agent."""
-    def __init__(self, position, velocity, radius, max_speed, pref_velocity):
+    def __init__(self, position, velocity, radius, max_speed, pref_velocity, group_id=0):
         super(Agent, self).__init__()
         self.position = np.array(position)
         self.velocity = np.array(velocity)
         self.radius = radius
         self.max_speed = max_speed
         self.pref_velocity = np.array(pref_velocity)
+        self.group_id = group_id
         
     def step(self, edge_size_x, edge_size_y, map_width, map_height, dt):
         new_position = self.position + self.velocity * dt
@@ -393,7 +395,7 @@ class Agent(object):
             self.pref_velocity[1] = -abs(self.pref_velocity[1])
             
             
-        self.position += np.array(self.velocity) * dt
+        self.position = self.position + np.array(self.velocity) * dt
 class OccupancyGridMap:
     def __init__(self, grid_scale, dim, init_num):
         self.dim = dim
@@ -629,7 +631,9 @@ class Drone2D():
         self.rays = {}
         self.raycast = Raycast(params.map_size, self, params.var_cam)
         self.params = params
-        self.trackers = [KalmanFilter(params) for i in range(params.agent_number)]
+
+        # Max tracking number is 100
+        self.trackers = [KalmanFilter(params) for i in range(100)]
 
     def step_pos(self, trajectory):
         if trajectory.positions != []:
@@ -649,8 +653,8 @@ class Drone2D():
 
     def update_tracker(self, measurements):
         achieved_list = []
-        for i, tracker in enumerate(self.trackers):
-            achieved_list.extend(tracker.update(measurements[i]))
+        for i, measurement in enumerate(measurements):
+            achieved_list.extend(self.trackers[i].update(measurement))
         return achieved_list
 
     def brake(self):
