@@ -11,7 +11,7 @@ result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 if __name__ == '__main__':
 
     gaze_methods = ['NoControl']
-    planners = ['Primitive']
+    planners = ['MPC']
 
     # Environment difficulty
     motion_profiles = ['CVM']
@@ -37,7 +37,7 @@ if __name__ == '__main__':
         axis_range = [40, 250, 460]
         for start_pos, target_pos in vis.product(product(axis_range, axis_range), product(axis_range, axis_range)):
             if start_pos != target_pos:
-                cfg = Params(debug=False,
+                cfg = Params(debug=True,
                             gaze_method=gaze_method, 
                             planner=planner, 
                             motion_profile=motion_profile,
@@ -51,7 +51,7 @@ if __name__ == '__main__':
                             init_pos=start_pos,
                             target_list=[target_pos],
                             drone_view_range=360,
-                            static_map='empty_map.npy')
+                            static_map='maps/empty_map.npy')
                 experiment = Experiment(cfg, result_dir)
                 experiment.run()
         
