@@ -239,7 +239,7 @@ class MPC(Planner):
         self.target = np.array([240, 605, 0, 0])
 
         # generate code
-        # self.solver = forcespro.nlp.Solver.from_directory("./MPC_SOLVER/")
+        # self.solver = forcespro.nlp.Solver.from_directory("./mpc/MPC_SOLVER/")
         self.N = 25
         self.trajectory = Trajectory2D()
         self.future_trajectory = Trajectory2D()
