@@ -11,7 +11,7 @@ result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 if __name__ == '__main__':
 
     gaze_methods = ['NoControl']
-    planners = ['MPC']
+    planners = ['Primitive']
 
     # Environment difficulty
     motion_profiles = ['CVM']
