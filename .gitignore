@@ -9,7 +9,6 @@ FORCES_NLP_solver/**
 .ipynb_checkpoints/**
 MPC_SOLVER/**
 trained_policy/**
-script/**
 FORCES_*
 run*
 test.*
