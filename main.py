@@ -10,11 +10,11 @@ result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 
 if __name__ == '__main__':
 
-    gaze_methods = ['Oxford']
+    gaze_methods = ['LookAhead']
     planners = ['Primitive']
 
     # Environment difficulty
-    motion_profiles = ['CVM']
+    motion_profiles = ['RVO']
     agent_numbers = [10, 20, 30]
     agent_sizes = [5, 10, 15]
     agent_max_speeds = [20, 40, 60]
