@@ -1,9 +1,10 @@
 import gym
-import easydict
-import main
 import numpy as np
 import pandas as pd
 import time
+import sys
+sys.path.insert(0, '/home/smoggy/thesis/gym-Drone2D-ActivePerception')
+import main
 
 from math import sin, cos, radians
 from tqdm.contrib.itertools import product
@@ -15,8 +16,10 @@ def env_metrics(index):
                     agent_max_speed=index['agent_speed'],
                     map_id=index['map_id'],
                     gaze_method='NoControl',
-                    planner='NoMove')
-    params.render = False
+                    planner='NoMove',
+                    debug=True,
+                    static_map='maps/empty_map.npy')
+    params.render = True
     position_step = 60
     T = 12
     x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
@@ -30,6 +33,7 @@ def env_metrics(index):
                 env.drone.x = x
                 env.drone.y = y
                 _, _, done, info = env.step(0)
+                env.render()
                 if info['collision_flag'] == 2:
                     break
             total_survive += t
@@ -42,7 +46,7 @@ for map_id in [1,2,3,4]:
 
     env_metric = []
     for (agent_num, agent_size, agent_vel) in product([10, 20, 30], [5, 10, 15], [20, 40, 60]):
-        index = {'motion_profile':'CVM',
+        index = {'motion_profile':'RVO',
                 'pillar_number':0,
                 'agent_number':agent_num,
                 'agent_speed':agent_vel,
