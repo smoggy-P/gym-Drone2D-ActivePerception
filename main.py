@@ -11,7 +11,7 @@ result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 if __name__ == '__main__':
 
     gaze_methods = ['LookAhead']
-    planners = ['Primitive']
+    planners = ['Jerk_Primitive']
 
     # Environment difficulty
     motion_profiles = ['RVO']
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     pillar_numbers = [0]
 
     # Problem difficulty
-    drone_max_speeds = [60]
+    drone_max_speeds = [20]
     var_depths = [0]
     
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
                             static_map='maps/empty_map.npy')
                 
                 i += 1
-                if i >= 7212:
+                if i >= 0:
                     experiment = Experiment(cfg, result_dir)
                     experiment.run()
         
