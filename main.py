@@ -11,7 +11,7 @@ result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 if __name__ == '__main__':
 
     gaze_methods = ['LookAhead']
-    planners = ['Primitive']
+    planners = ['Jerk_Primitive']
 
     # Environment difficulty
     motion_profiles = ['RVO']
@@ -29,6 +29,8 @@ if __name__ == '__main__':
     params = product(gaze_methods, planners, motion_profiles, var_depths,
                     agent_numbers, pillar_numbers, agent_max_speeds,
                     drone_max_speeds, agent_sizes, map_ids)
+
+    i = 1
 
 
     for (gaze_method, planner, motion_profile, var_depth,
@@ -52,7 +54,10 @@ if __name__ == '__main__':
                             target_list=[target_pos],
                             drone_view_range=90,
                             static_map='maps/empty_map.npy')
-                experiment = Experiment(cfg, result_dir)
-                experiment.run()
+                
+                i += 1
+                if i >= 0:
+                    experiment = Experiment(cfg, result_dir)
+                    experiment.run()
         
                         
