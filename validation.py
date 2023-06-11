@@ -7,10 +7,12 @@ from yaw_planner import Oxford, LookAhead, NoControl, Rotating, Owl, LookGoal
 from datetime import datetime
 from utils import *
 from itertools import product
-
+from tqdm.contrib.itertools import product as tqdm_product
 
 result_dir = './experiment/validation/results_'+str(datetime.now())+'.csv'
-
+metric_dir = './experiment/metrics/'
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
 def add_to_csv(dir, value):
     df = pd.read_csv(dir, index_col=False)
     df.loc[len(df)] = value
@@ -26,18 +28,20 @@ policy_list = {
 }
 
 gaze_methods = ['LookAhead', 'Owl']
-planners = ['Jerk_Primitive']
-
+planners = ['Jerk_Primitive', 'Primitive']
+params = product(gaze_methods, planners)
 
 # Environment difficulty
-agent_numbers = [30]
-agent_sizes = [15]
-map_ids = range(1)
-env_params = product(agent_numbers, agent_sizes, map_ids)
+agent_numbers = [10, 20, 30]
+agent_sizes = [5, 10, 15]
+map_ids = range(5)
+env_params = tqdm_product(agent_numbers, agent_sizes, map_ids)
 
 # Problem difficulty
 drone_max_speeds = [20, 40, 60]
 test_params = product(drone_max_speeds, planners, gaze_methods)
+
+all_metrics = []
 
 for (agent_number, agent_size, map_id) in env_params:
 
@@ -47,6 +51,7 @@ for (agent_number, agent_size, map_id) in env_params:
                  planner='NoMove',
                  agent_number=agent_number,
                  agent_radius=agent_size)
+    params.render = False
     env = gym.make('gym-2d-perception-v2', params=params)
     
     # Calculate difficulty
@@ -69,14 +74,42 @@ for (agent_number, agent_size, map_id) in env_params:
                 env.drone.x = x
                 env.drone.y = y
                 _, _, done, info = env.step(0)
-                env.render()
+                # env.render()
                 if info['collision_flag'] == 2:
                     break
             total_survive += t
 
     print(total_survive / (len(x_range) * len(y_range)))
+    all_metrics.append(total_survive / (len(x_range) * len(y_range)))
     
+    import os
+    if (not os.path.isfile(result_dir)):
+                d = {'Method':[],
+                    'Planner':[],
+                    'Motion Profile':[],
+                    'Map ID':[],
+                    'Agent size':[],
+                    'Number of agents':[],
+                    'Number of pillars':[], 
+                    'Agent speed':[], 
+                    'Drone speed':[], 
+                    'Depth variance':[],
+                    'Initial position':[],
+                    'Target position':[],
 
+                    'Flight time':[],
+                    'Grid discovered':[],
+                    'Agent tracked':[],
+                    'Agent tracked time':[],
+                    'Success':[],
+                    'Static Collision':[],
+                    'Dynamic Collision':[],
+                    'Freezing':[],
+                    'Dead Lock':[],
+                    'state machine':[]}
+                df = pd.DataFrame(d)
+                df.to_csv(result_dir, index=False)
+        
     # Calculate success rate
 
     for (drone_max_speed, planner, gaze_method) in test_params:
@@ -90,7 +123,9 @@ for (agent_number, agent_size, map_id) in env_params:
                 params.drone_max_speed = drone_max_speed
                 params.init_position = start_pos
                 params.target_list = [target_pos]
+                params.record = True
                 policy = policy_list[params.gaze_method]
+                policy.__init__(policy, params)
                 env = gym.make('gym-2d-perception-v2', params=params)
 
                 env.reset()
@@ -104,7 +139,7 @@ for (agent_number, agent_size, map_id) in env_params:
                 while not done:
                     a = policy.plan(policy, env.info)
                     _, _, done, info = env.step(a)
-                    env.render()
+                    # env.render()
 
                     if done:
                         if params.record:
@@ -138,3 +173,8 @@ for (agent_number, agent_size, map_id) in env_params:
                                     info['state_machine'])
 
                             add_to_csv(result_dir, value)
+
+print(all_metrics)
+metric_dict = {"metric":all_metrics}
+df = pd.DataFrame(metric_dict)
+df.to_csv("metrics_validation.csv")
