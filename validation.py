@@ -2,6 +2,7 @@ import gym
 import numpy as np
 import pandas as pd
 import random
+import os
 
 from yaw_planner import Oxford, LookAhead, NoControl, Rotating, Owl, LookGoal
 from datetime import datetime
@@ -82,36 +83,36 @@ for (agent_number, agent_size, map_id) in env_params:
     print(total_survive / (len(x_range) * len(y_range)))
     all_metrics.append(total_survive / (len(x_range) * len(y_range)))
     
-    import os
-    if (not os.path.isfile(result_dir)):
-                d = {'Method':[],
-                    'Planner':[],
-                    'Motion Profile':[],
-                    'Map ID':[],
-                    'Agent size':[],
-                    'Number of agents':[],
-                    'Number of pillars':[], 
-                    'Agent speed':[], 
-                    'Drone speed':[], 
-                    'Depth variance':[],
-                    'Initial position':[],
-                    'Target position':[],
 
-                    'Flight time':[],
-                    'Grid discovered':[],
-                    'Agent tracked':[],
-                    'Agent tracked time':[],
-                    'Success':[],
-                    'Static Collision':[],
-                    'Dynamic Collision':[],
-                    'Freezing':[],
-                    'Dead Lock':[],
-                    'state machine':[]}
-                df = pd.DataFrame(d)
-                df.to_csv(result_dir, index=False)
+    if (not os.path.isfile(result_dir)):
+                    d = {'Method':[],
+                        'Planner':[],
+                        'Motion Profile':[],
+                        'Map ID':[],
+                        'Agent size':[],
+                        'Number of agents':[],
+                        'Number of pillars':[], 
+                        'Agent speed':[], 
+                        'Drone speed':[], 
+                        'Depth variance':[],
+                        'Initial position':[],
+                        'Target position':[],
+
+                        'Flight time':[],
+                        'Grid discovered':[],
+                        'Agent tracked':[],
+                        'Agent tracked time':[],
+                        'Success':[],
+                        'Static Collision':[],
+                        'Dynamic Collision':[],
+                        'Freezing':[],
+                        'Dead Lock':[],
+                        'state machine':[]}
+                    df = pd.DataFrame(d)
+                    df.to_csv(result_dir, index=False)
         
     # Calculate success rate
-
+    test_params = product(drone_max_speeds, planners, gaze_methods)
     for (drone_max_speed, planner, gaze_method) in test_params:
 
         axis_range = [40, 250, 460]
@@ -124,6 +125,7 @@ for (agent_number, agent_size, map_id) in env_params:
                 params.init_position = start_pos
                 params.target_list = [target_pos]
                 params.record = True
+                params.debug = False
                 policy = policy_list[params.gaze_method]
                 policy.__init__(policy, params)
                 env = gym.make('gym-2d-perception-v2', params=params)
