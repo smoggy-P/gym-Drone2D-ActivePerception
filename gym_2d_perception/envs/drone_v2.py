@@ -46,7 +46,7 @@ class Drone2DEnv2(gym.Env):
                 self.agents.append(new_agent)
         
         shaped_obs_map = np.load(self.params.static_map)
-        vels = [20 * (np.random.rand(2) - 0.5) for i in range(10)]
+        vels = [30 + 20 * (np.random.rand(2) - 0.5) for i in range(100)]
 
 
         for x in range(shaped_obs_map.shape[0]):

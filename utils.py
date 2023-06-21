@@ -41,14 +41,14 @@ def draw_cov(surface, mean, cov):
     rotated_surf = pygame.transform.rotate(shape_surf, angle)
     surface.blit(rotated_surf, rotated_surf.get_rect(center = target_rect.center))
 
-class Params:
+class Params: 
     def __init__(self, env='gym-2d-perception-v2', debug=True, record_img=False, 
                  trained_policy=False, policy_dir='./trained_policy/lookahead.zip', dt=0.1, 
                  map_scale=10, map_size=[500,500], agent_radius=10, drone_max_acceleration=40, 
                  drone_radius=10, drone_max_yaw_speed=80, drone_view_depth=80, drone_view_range=90, 
                  img_dir='./', max_flight_time=80, gaze_method='LookAhead', planner='Primitive', var_cam=0, 
                  drone_max_speed=40, motion_profile='CVM', pillar_number=0, agent_number=10, 
-                 agent_max_speed=40, map_id=0, init_pos=[50, 50], target_list=[[50, 600]], static_map='empty_map.npy'):
+                 agent_max_speed=40, map_id=0, init_pos=[50, 50], target_list=[[50, 460]], static_map='maps/empty_map.npy'):
         
         self.env = env
         if debug:
@@ -633,7 +633,7 @@ class Drone2D():
         self.params = params
 
         # Max tracking number is 100
-        self.trackers = [KalmanFilter(params) for i in range(200)]
+        self.trackers = [KalmanFilter(params) for i in range(500)]
 
     def step_pos(self, trajectory):
         if trajectory.positions != []:
