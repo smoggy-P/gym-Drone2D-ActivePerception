@@ -34,7 +34,7 @@ planners = ['Jerk_Primitive', 'Primitive']
 params = product(gaze_methods, planners)
 
 # Environment difficulty
-agent_numbers = [10, 20, 30]
+agent_numbers = [5, 10, 15]
 agent_sizes = [5, 10, 15]
 map_ids = range(5)
 env_params = tqdm_product(agent_numbers, agent_sizes, map_ids)
@@ -59,7 +59,7 @@ for (agent_number, agent_size, map_id) in env_params:
                  agent_number=0,
                  agent_radius=agent_size,
                  static_map=map_dir)
-    params.render = True
+    params.render = False
     env = gym.make('gym-2d-perception-v2', params=params)
     
     # Calculate difficulty
@@ -78,7 +78,7 @@ for (agent_number, agent_size, map_id) in env_params:
                 env.drone.x = x
                 env.drone.y = y
                 _, _, done, info = env.step(0)
-                env.render()
+                # env.render()
                 if info['collision_flag'] == 2:
                     break
             total_survive += t
@@ -178,4 +178,4 @@ for (agent_number, agent_size, map_id) in env_params:
 print(all_metrics)
 metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
-df.to_csv("metrics_validation.csv")
+df.to_csv("metrics_validation_shape.csv")

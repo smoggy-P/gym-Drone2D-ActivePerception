@@ -11,5 +11,4 @@ MPC_SOLVER/**
 trained_policy/**
 FORCES_*
 run*
-test.*
 mpc/**
