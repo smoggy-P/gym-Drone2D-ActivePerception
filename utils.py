@@ -633,7 +633,7 @@ class Drone2D():
         self.params = params
 
         # Max tracking number is 100
-        self.trackers = [KalmanFilter(params) for i in range(200)]
+        self.trackers = [KalmanFilter(params) for i in range(500)]
 
     def step_pos(self, trajectory):
         if trajectory.positions != []:
