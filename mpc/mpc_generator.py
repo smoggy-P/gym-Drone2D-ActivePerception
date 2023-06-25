@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, '/home/smoggy/Downloads/forces_pro_client/')  # On Windows, note the doubly-escaped backslashes
+sys.path.insert(0, '/home/cc/moji_ws/forces_pro_client/')  # On Windows, note the doubly-escaped backslashes
 import forcespro
 import numpy as np
 import casadi

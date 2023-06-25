@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import time
 import sys
-sys.path.insert(0, '/home/smoggy/thesis/gym-Drone2D-ActivePerception')
+sys.path.insert(0, '/home/cc/moji_ws/gym-Drone2D-ActivePerception')
 import main
 
 from math import sin, cos, radians
@@ -14,6 +14,7 @@ def env_metrics(index):
     params = Params(agent_number=index['agent_number'],
                     agent_radius=index['agent_size'],
                     agent_max_speed=index['agent_speed'],
+                    motion_profile=index['motion_profile'],
                     map_id=index['map_id'],
                     gaze_method='NoControl',
                     planner='NoMove',
@@ -58,4 +59,4 @@ for map_id in range(20):
 
 metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
-df.to_csv("../experiment/metrics/metrics_6m_12s_add.csv")
+df.to_csv("metrics_6m_12s_RVO.csv")

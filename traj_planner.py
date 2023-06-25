@@ -11,8 +11,8 @@ from utils import Trajectory2D, Waypoint2D, grid_type
 from matplotlib.patches import Circle, Ellipse
 from utils import *
 import sys
-# sys.path.insert(0, '/home/smoggy/Downloads/forces_pro_client/')  # On Windows, note the doubly-escaped backslashes
-# import forcespro
+sys.path.insert(0, '/home/cc/moji_ws/forces_pro_client/')  # On Windows, note the doubly-escaped backslashes
+import forcespro
 
 class Planner:
     def __init__(self, drone, params):
@@ -239,7 +239,7 @@ class MPC(Planner):
         self.target = np.array([240, 605, 0, 0])
 
         # generate code
-        # self.solver = forcespro.nlp.Solver.from_directory("./mpc/MPC_SOLVER/")
+        self.solver = forcespro.nlp.Solver.from_directory("./mpc/MPC_SOLVER/")
         self.N = 25
         self.trajectory = Trajectory2D()
         self.future_trajectory = Trajectory2D()
