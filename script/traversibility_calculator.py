@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import time
 import sys
-sys.path.insert(0, '/home/smoggy/thesis/gym-Drone2D-ActivePerception')
+sys.path.insert(0, '/home/cc/moji_ws/gym-Drone2D-ActivePerception')
 import main
 
 from math import sin, cos, radians
@@ -26,8 +26,15 @@ def env_metrics(index):
     
     env = gym.make(params.env, params=params)
     env.reset()
+    traverse = 0
+    i = 0
+    for t in np.arange(0, T, 0.1):
+        env.step(0)
+        if t % 2 == 0:
+            i += 1
+            traverse += env.get_traversibility([4, 25, 46])
 
-    return env.get_traversibility([4, 25, 46])
+    return traverse / i
 
 all_metrics = []
 
