@@ -2,7 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import random
-from gym_2d_perception.envs.drone_v2 import Drone2D
+from utils import Drone2D
 from math import cos, sin, radians, atan2, degrees
 from numpy.linalg import norm
 from utils import *

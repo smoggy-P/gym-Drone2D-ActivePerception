@@ -7,6 +7,7 @@ from yaw_planner import Oxford, LookAhead, NoControl, Rotating, Owl, LookGoal
 from datetime import datetime
 from utils import *
 # import matplotlib.pyplot as plt
+from envs.drone_v2 import Drone2DEnv2
 
 policy_list = {
     'LookAhead': LookAhead,
