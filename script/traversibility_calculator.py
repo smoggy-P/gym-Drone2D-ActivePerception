@@ -30,9 +30,11 @@ def env_metrics(index):
     i = 0
     for t in np.arange(0, T, 0.1):
         env.step(0)
+        # env.render()
         if t % 2 == 0:
             i += 1
-            traverse += env.get_traversibility([4, 25, 46])
+            tra = env.get_traversibility([4, 25, 46])
+            traverse += tra
 
     return traverse / i
 

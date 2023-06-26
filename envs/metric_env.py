@@ -174,7 +174,7 @@ class MetricEnv(gym.Env):
             for agent in self.agents:
                 agent.velocity = agent.pref_velocity
                 agent.step(self.map_gt.x_scale, self.map_gt.y_scale, self.params.map_size[0], self.params.map_size[1],  self.dt)
-        
+        self.map_gt.update_dynamic_grid(self.agents)
         #######################
         ### Planning module ###
         #######################

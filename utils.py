@@ -431,7 +431,7 @@ class OccupancyGridMap:
     
     def update_dynamic_grid(self, agents):
         for dynamic_idx in self.dynamic_idx:
-            self.grid_map[dynamic_idx[0], dynamic_idx[1]] = grid_type['UNEXPLORED']
+            self.grid_map[dynamic_idx[0], dynamic_idx[1]] = grid_type['UNOCCUPIED']
         self.dynamic_idx = []
         
         for agent in agents:
