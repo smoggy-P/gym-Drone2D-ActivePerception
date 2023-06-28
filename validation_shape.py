@@ -152,7 +152,7 @@ for (agent_number, agent_size, map_id) in env_params:
                                     params.motion_profile,
                                     params.map_id,
                                     params.agent_radius,
-                                    params.agent_number,
+                                    agent_number,
                                     params.pillar_number,
                                     -1, # -1 for random agent velocity
                                     params.drone_max_speed,
