@@ -22,10 +22,12 @@ def env_metrics(index):
                     static_map='maps/empty_map.npy')
     params.render = False
     position_step = 60
-    T = 12
+    T = 24
     x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
     y_range = range(params.map_scale + params.drone_radius, params.map_size[1] - params.map_scale - params.drone_radius, position_step)
-    total_survive = 0
+    
+    collision_state = np.zeros((len(x_range), len(y_range), int(T/0.1)))
+    
     env = gym.make(params.env, params=params)
     for x in x_range:
         for y in y_range:
@@ -36,27 +38,25 @@ def env_metrics(index):
                 _, _, done, info = env.step(0)
                 # env.render()
                 if info['collision_flag'] == 2:
-                    break
-            total_survive += t
+                    collision_state[int((x - params.map_scale - params.drone_radius)/position_step), int((y - params.map_scale - params.drone_radius)/position_step), int(t/0.1)] = 1
 
-    return total_survive / (len(x_range) * len(y_range))
+    return collision_state
 
 all_metrics = []
-
+collision_states = []
 for map_id in range(20):
-
-    env_metric = []
     for (agent_num, agent_size, agent_vel) in product([10, 20, 30], [5, 10, 15], [20, 40, 60]):
-        index = {'motion_profile':'RVO',
+        index = {'motion_profile':'CVM',
                 'pillar_number':0,
                 'agent_number':agent_num,
                 'agent_speed':agent_vel,
                 'agent_size':agent_size,
                 'map_id':map_id}
-        survive_time = env_metrics(index)
-        env_metric.append(survive_time)
-    all_metrics.append(env_metric)
+        collision_state = env_metrics(index)
+        collision_states.append(collision_state)
+    
+np.save("collision_states_6m_12s_RVO.npy", np.array(collision_states))
 
-metric_dict = {"metric":all_metrics}
-df = pd.DataFrame(metric_dict)
-df.to_csv("metrics_6m_12s_RVO.csv")
+# metric_dict = {"metric":all_metrics}
+# df = pd.DataFrame(metric_dict)
+# df.to_csv("metrics_6m_12s_RVO.csv")
