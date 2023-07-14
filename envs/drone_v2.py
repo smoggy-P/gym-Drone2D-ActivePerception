@@ -274,6 +274,7 @@ class Drone2DEnv2(gym.Env):
                 color = pygame.Color(0, 250, 250) if self.drone.trackers[i].active else pygame.Color(250, 0, 0)
                 if agent.group_id == 0:
                     pygame.draw.circle(self.screen, color, np.rint(agent.position).astype(int), int(round(agent.radius)), 0)
+                    pygame.draw.lines(self.screen, (0, 255, 0), False, [np.rint(agent.position).astype(int), np.rint(agent.position + agent.velocity).astype(int)], 2)
                 else:
                     pygame.draw.rect(self.screen, color, pygame.Rect(agent.position[0]-agent.radius, agent.position[1]-agent.radius, 2*agent.radius, 2*agent.radius))
         
