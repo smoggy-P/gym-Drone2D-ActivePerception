@@ -1,99 +1,66 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
-import matplotlib.animation as animation
+from PIL import Image
+from scipy import stats
 
-# Define the Agent and VelocityObstacle classes as before
+def remove_background(image):
+    """Convert the background of the image to transparency."""
+    # Convert image to numpy array
+    data = np.array(image)
+    
+    # Find the most frequent color in the image, which is assumed to be the background
+    bg_color = stats.mode(data.reshape(-1, 4), axis=0)[0][0]
 
-class Agent:
-    def __init__(self, position, velocity, radius):
-        self.position = np.array(position, dtype=float)
-        self.velocity = np.array(velocity, dtype=float)
-        self.radius = radius
+    # Create a mask where the background color is present
+    mask = np.all(data == bg_color, axis=-1)
 
-class VelocityObstacle:
-    def __init__(self, primary, secondary, tau=5.0, eps=0.01):
-        self.primary = primary
-        self.secondary = secondary
-        self.tau = tau
-        self.eps = eps
+    # Change all pixels in the mask to transparent
+    data[mask] = [0, 0, 0, 0]
 
-    def compute_new_velocity(self):
-        rel_position = self.secondary.position - self.primary.position
-        rel_velocity = self.primary.velocity - self.secondary.velocity
+    return Image.fromarray(data)
 
-        dist = np.linalg.norm(rel_position)
-        u_rel_position = rel_position / dist
+def stack_images(image_files, output_file):
+    # Open images and convert them to RGBA (to support transparency)
+    images = [Image.open(img).convert("RGBA") for img in image_files]
 
-        cos_theta = np.dot(rel_velocity, u_rel_position) / np.linalg.norm(rel_velocity)
+    # Remove the background from all but the first image
+    images = [images[0]] + [remove_background(img) for img in images[1:]]
 
-        if dist < self.primary.radius + self.secondary.radius:  # already colliding
-            return -self.primary.velocity
+    # Result image
+    result = images[0]
 
-        # check if relative velocity is outside VO
-        if cos_theta < 0 and dist / np.linalg.norm(rel_velocity) > self.tau:
-            return self.primary.velocity
+    # Number of images
+    n_images = len(images)
 
-        else:
-            leg_dist = self.secondary.radius + self.eps + self.primary.radius * self.tau / dist
-            left_leg_direction = rel_position - np.sqrt(leg_dist**2 - self.secondary.radius**2) * np.array([-u_rel_position[1], u_rel_position[0]])
-            right_leg_direction = rel_position + np.sqrt(leg_dist**2 - self.secondary.radius**2) * np.array([-u_rel_position[1], u_rel_position[0]])
-            if np.linalg.norm(right_leg_direction - rel_velocity) < np.linalg.norm(left_leg_direction - rel_velocity):
-                new_velocity = self.primary.velocity + right_leg_direction - rel_velocity
-            else:
-                new_velocity = self.primary.velocity + left_leg_direction - rel_velocity
-            return new_velocity
+    # Process each image
+    for i in range(1, n_images):
+        # Calculate alpha based on order
+        # Alpha decreases as the image order increases
+        alpha = 1 - (i / (n_images - 1))
 
-# Create a simulation with two agents moving towards each other
-primary = Agent([0, 0], [1, 0], 1)
-secondary = Agent([10, 0], [-1, 0], 1)
+        # Adjust the alpha channel of the image
+        data = np.array(images[i])
+        data[:,:,3] = (data[:,:,3] * alpha).astype(np.uint8)
 
-# Initialize plot
-fig, ax = plt.subplots()
-ax.set_xlim(-5, 15)
-ax.set_ylim(-10, 10)
+        # Layer the adjusted image onto the result
+        result = Image.alpha_composite(result, Image.fromarray(data))
 
-# Plot agents
-circle1 = Circle(primary.position, primary.radius, fill=False)
-circle2 = Circle(secondary.position, secondary.radius, fill=False)
-ax.add_patch(circle1)
-ax.add_patch(circle2)
+    # Mirror the image (flip horizontally)
+    img_mirror = result.transpose(Image.FLIP_LEFT_RIGHT)
 
-# Plot trajectories
-trajectory1, = ax.plot([], [], 'r-')
-trajectory2, = ax.plot([], [], 'b-')
+    # Rotate the image
+    # The argument to rotate is the rotation angle in degrees
+    img_rotated = img_mirror.rotate(90)  # replace 90 with your desired angle
 
-# Function to initialize the animation
-def init():
-    trajectory1.set_data([], [])
-    trajectory2.set_data([], [])
-    return trajectory1, trajectory2,
+    # Save the new image
+    img_rotated.save('new_image.png')  # replace 'new_image.png' with your desired output file
+    # # Save the result
+    # result.save(output_file)
 
-# Function to update the animation each frame
-def update(frame):
-    # Calculate the new velocities using the VO
-    vo = VelocityObstacle(primary, secondary)
-    primary.velocity = vo.compute_new_velocity()
+# List of image files
+image_files = [str(i)+'.png' for i in range(1, 5)]
 
-    vo = VelocityObstacle(secondary, primary)
-    secondary.velocity = vo.compute_new_velocity()
+# Output file
+output_file = 'stacked_shape.png'
 
-    # Update the positions of the agents
-    primary.position += primary.velocity * 0.1
-    secondary.position += secondary.velocity * 0.1
-
-    # Update the agent circles and trajectories
-    circle1.center = primary.position
-    circle2.center = secondary.position
-    trajectory1.set_xdata(np.append(trajectory1.get_xdata(), primary.position[0]))
-    trajectory1.set_ydata(np.append(trajectory1.get_ydata(), primary.position[1]))
-    trajectory2.set_xdata(np.append(trajectory2.get_xdata(), secondary.position[0]))
-    trajectory2.set_ydata(np.append(trajectory2.get_ydata(), secondary.position[1]))
-
-    return trajectory1, trajectory2,
-
-# Run the animation
-ani = animation.FuncAnimation(fig, update, frames=np.arange(0, 200), init_func=init, blit=True)
-
-# Display the animation
-plt.show()
+# Stack images
+stack_images(image_files[::-1], output_file)

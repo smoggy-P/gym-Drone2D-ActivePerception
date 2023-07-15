@@ -14,11 +14,11 @@ if __name__ == '__main__':
     planners = ['Jerk_Primitive']
 
     # Environment difficulty
-    motion_profiles = ['RVO']
-    agent_numbers = [10, 20, 30]
+    motion_profiles = ['CVM']
+    agent_numbers = [0, 20, 30]
     agent_sizes = [10, 10, 15]
-    agent_max_speeds = [20, 40, 60]
-    map_ids = range(5)
+    agent_max_speeds = [40, 40, 60]
+    map_ids = [3]
     pillar_numbers = [0]
 
     # Problem difficulty
@@ -53,7 +53,7 @@ if __name__ == '__main__':
                             init_pos=start_pos,
                             target_list=[target_pos],
                             drone_view_range=90,
-                            static_map='maps/empty_map.npy')
+                            static_map='shaped_obstacle_map.npy')
                 
                 i += 1
                 if i >= 0:

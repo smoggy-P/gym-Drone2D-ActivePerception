@@ -63,8 +63,12 @@ class Experiment:
     def run(self):
         self.env.reset()
         done = False
+        i = 0
         while not done:
+            i += 1
             a = self.policy.plan(self.policy, self.env.info)
+            if i % 5 == 0:
+                pygame.image.save(self.env.screen, str(i // 5)+'.png')
             _, _, done, info = self.env.step(a)
 
             if done:
