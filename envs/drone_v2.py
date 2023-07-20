@@ -267,7 +267,7 @@ class Drone2DEnv2(gym.Env):
         if len(self.planner.trajectory.positions) > 1:
             pygame.draw.lines(self.screen, (255,255,255), False, self.planner.trajectory.positions)
         if hasattr(self.planner, 'future_trajectory') and len(self.planner.future_trajectory.positions) > 1:
-            pygame.draw.lines(self.screen, (100,100,100), False, self.planner.future_trajectory.positions)
+            pygame.draw.lines(self.screen, (255,255,255), False, self.planner.future_trajectory.positions)
 
         if len(self.agents) > 0:
             for i, agent in enumerate(self.agents):
