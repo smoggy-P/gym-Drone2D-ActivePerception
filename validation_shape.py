@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import random
 import os
+import main
 
 from yaw_planner import Oxford, LookAhead, NoControl, Rotating, Owl, LookGoal
 from datetime import datetime
@@ -34,10 +35,11 @@ planners = ['Jerk_Primitive', 'Primitive']
 params = product(gaze_methods, planners)
 
 # Environment difficulty
+agent_velocities = [20, 40, 60]
 agent_numbers = [5, 10, 15]
-agent_sizes = [5, 10, 15]
+# agent_sizes = [5, 10, 15]
 map_ids = range(5)
-env_params = tqdm_product(agent_numbers, agent_sizes, map_ids)
+env_params = tqdm_product(agent_numbers, agent_velocities, map_ids)
 
 # Problem difficulty
 drone_max_speeds = [20, 40, 60]
@@ -45,11 +47,11 @@ test_params = product(drone_max_speeds, planners, gaze_methods)
 
 all_metrics = []
 
-for (agent_number, agent_size, map_id) in env_params:
+for (agent_number, agent_vel, map_id) in env_params:
 
     # Generate map
-    grid = generate_random_map(map_id, agent_number, agent_size)
-    map_dir = 'maps/validation_maps/random_map_'+str(map_id)+'_num_'+str(agent_number)+'_size_'+str(agent_size) +'.npy'
+    grid = generate_random_map(map_id, agent_number)
+    map_dir = 'maps/validation_maps/random_map_'+str(map_id)+'_num_'+str(agent_number) +'.npy'
     np.save(map_dir, grid)
 
     params = Params(debug=True, 
@@ -57,9 +59,10 @@ for (agent_number, agent_size, map_id) in env_params:
                  gaze_method='NoControl',
                  planner='NoMove',
                  agent_number=0,
-                 agent_radius=agent_size,
+                 agent_radius=0,
+                 agent_max_speed=agent_vel,
                  static_map=map_dir)
-    params.render = False
+    # params.render = False
     env = gym.make('gym-2d-perception-v2', params=params)
     
     # Calculate difficulty
@@ -71,9 +74,7 @@ for (agent_number, agent_size, map_id) in env_params:
     env = gym.make(params.env, params=params)
     for x in x_range:
         for y in y_range:
-            # Give random velocity to agents
             env.reset()
-            
             for t in np.arange(0, T, 0.1):
                 env.drone.x = x
                 env.drone.y = y
@@ -151,10 +152,10 @@ for (agent_number, agent_size, map_id) in env_params:
                                     
                                     params.motion_profile,
                                     params.map_id,
-                                    params.agent_radius,
+                                    0,
                                     agent_number,
                                     params.pillar_number,
-                                    -1, # -1 for random agent velocity
+                                    agent_vel, 
                                     params.drone_max_speed,
                                     params.var_cam,
                                     params.init_position,

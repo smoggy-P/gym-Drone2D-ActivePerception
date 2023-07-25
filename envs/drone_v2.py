@@ -46,17 +46,21 @@ class Drone2DEnv2(gym.Env):
                 self.agents.append(new_agent)
         
         shaped_obs_map = np.load(self.params.static_map)
-        vels = [40 + 40 * (np.random.rand(2) - 0.5) for i in range(100)]
 
-
+        vels = []
+        for i in range(100):
+            vel = self.params.agent_max_speed
+            direction = np.random.rand() * 2 * np.pi
+            vels.append([vel * np.cos(direction), vel * np.sin(direction)])
+        
         for x in range(shaped_obs_map.shape[0]):
             for y in range(shaped_obs_map.shape[1]):
                 if shaped_obs_map[x][y] != 0:
                     vel = vels[shaped_obs_map[x][y]]
                     self.agents.append(Agent(position=np.array([5 + x * 10,5 + y * 10]), 
                                             velocity=vel, 
-                                            radius=1.414*5, 
-                                            max_speed=40, 
+                                            radius=5, 
+                                            max_speed=vel, 
                                             pref_velocity=vel,
                                             group_id=shaped_obs_map[x][y]))
 
@@ -272,7 +276,7 @@ class Drone2DEnv2(gym.Env):
         if len(self.agents) > 0:
             for i, agent in enumerate(self.agents):
                 color = pygame.Color(0, 250, 250) if self.drone.trackers[i].active else pygame.Color(250, 0, 0)
-                if agent.group_id == 0:
+                if agent.group_id >= 0:
                     pygame.draw.circle(self.screen, color, np.rint(agent.position).astype(int), int(round(agent.radius)), 0)
                     pygame.draw.lines(self.screen, (0, 255, 0), False, [np.rint(agent.position).astype(int), np.rint(agent.position + agent.velocity).astype(int)], 2)
                 else:
