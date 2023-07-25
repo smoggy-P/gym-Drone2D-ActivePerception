@@ -3,7 +3,7 @@ import random
 import matplotlib.pyplot as plt
 
 
-def generate_random_map(map_id, num_clusters, cluster_size):
+def generate_random_map(map_id, num_clusters):
 
     np.random.seed(map_id)
     random.seed(map_id)
@@ -46,7 +46,7 @@ def generate_random_map(map_id, num_clusters, cluster_size):
             
             # If the chosen cell is not yet visited, start a random walk from there
             if grid[x][y] == 0:
-                random_walk(grid, x, y, cluster_index, cluster_size)
+                random_walk(grid, x, y, cluster_index, np.random.randint(5, 10))
                 break
     
     return grid
