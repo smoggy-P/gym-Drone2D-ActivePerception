@@ -25,6 +25,8 @@ def add_to_csv(dir, value):
 
 class Experiment:
     def __init__(self, params, dir):
+        if params.gaze_method == 'NoControl':
+            params.drone_view_range = 360
         self.params = params
         self.env = gym.make(params.env, params=params)
         self.dt = params.dt
