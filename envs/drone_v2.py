@@ -28,7 +28,7 @@ class Drone2DEnv2(gym.Env):
         while(len(self.agents) < self.params.agent_number):
             new_agent = Agent(position=(random.uniform(20, self.params.map_size[0]-20), random.uniform(20, self.params.map_size[1]-20)), 
                               velocity=(0., 0.), 
-                              radius=random.uniform(self.params.agent_radius-2, self.params.agent_radius+2), 
+                              radius=random.uniform(5, 15) if self.params.agent_radius == -1 else random.uniform(self.params.agent_radius-2, self.params.agent_radius+2), 
                               max_speed=self.params.agent_max_speed, 
                               pref_velocity=-self.params.agent_max_speed * array([cos(2*pi*len(self.agents) / self.params.agent_number), 
                                                                              sin(2*pi*len(self.agents) / self.params.agent_number)]))

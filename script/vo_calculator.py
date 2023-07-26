@@ -1,5 +1,5 @@
 import numpy as np
-import main
+# import main
 import gym
 import pandas as pd
 from numpy.linalg import norm
@@ -55,7 +55,7 @@ def env_metrics(index):
     v_max = 60
     v_min = 20
     rA = 5
-    position_step = 60
+    position_step = 30
 
     x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
     y_range = range(params.map_scale + params.drone_radius, params.map_size[1] - params.map_scale - params.drone_radius, position_step)
@@ -98,8 +98,8 @@ def env_metrics(index):
 
             suitable_V = []
             unsuitable_V = []
-            for theta in np.arange(0, 2*3.14, 0.2):
-                for rad in np.arange(v_min, v_max, (v_max-v_min)/5.0):
+            for theta in np.arange(0, 2*3.14, 0.1):
+                for rad in np.arange(v_min, v_max, (v_max-v_min)/10.0):
                     new_v = [rad*cos(theta), rad*sin(theta)]
                     suit = True
                     for RVO_BA in RVO_BA_all:
@@ -112,7 +112,7 @@ def env_metrics(index):
                     if suit:
                         suitable_V.append(new_v)
                     else:
-                        unsuitable_V.append(new_v)                
+                        unsuitable_V.append(new_v)              
             rates.append(len(suitable_V)/(len(suitable_V)+len(unsuitable_V)))
     # print(V_current)
     # print("rates:", rates)
