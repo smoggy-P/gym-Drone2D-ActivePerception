@@ -53,7 +53,7 @@ class Planner:
         for tracker in trackers:
             if tracker.active:
                 new_position = tracker.estimate_pos(t)
-                if norm(position - new_position) <= self.params.drone_radius + self.params.agent_radius + 5 + self.params.var_cam:
+                if norm(position - new_position) <= self.params.drone_radius + tracker.radius + 5 + self.params.var_cam:
                     return False
         return True
 
@@ -223,7 +223,7 @@ class Primitive(Planner):
             swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.params.dt
             for tracker in drone.trackers:
                 if tracker.active:
-                    if norm(tracker.estimate_pos(i * self.params.dt) - pos) <= self.params.drone_radius + self.params.agent_radius:
+                    if norm(tracker.estimate_pos(i * self.params.dt) - pos) <= self.params.drone_radius + tracker.radius:
                         self.trajectory.clear()
                         return True, swep_map
         if np.sum(np.where((occupancy_map==1),1, 0) * swep_map) > 0:
@@ -260,7 +260,7 @@ class MPC(Planner):
 
         for tracker in drone.trackers:
             if tracker.active:
-                obs_list.append([*(tracker.mu_upds[-1][:2,0]), self.params.agent_radius+10, self.params.agent_radius+10, 0, *(tracker.mu_upds[-1][2:,0])])
+                obs_list.append([*(tracker.mu_upds[-1][:2,0]), tracker.radius+10, tracker.radius+10, 0, *(tracker.mu_upds[-1][2:,0])])
         
         for i in range(len(positions)):
             obs_list.append([*positions[i], widths[i], heights[i], radians(angles[i]), 0, 0])
@@ -391,7 +391,7 @@ class MPC(Planner):
             swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.params.dt
             for tracker in drone.trackers:
                 if tracker.active:
-                    if norm(tracker.estimate_pos(i * self.params.dt) - pos) <= self.params.drone_radius + self.params.agent_radius:
+                    if norm(tracker.estimate_pos(i * self.params.dt) - pos) <= self.params.drone_radius + tracker.radius:
                         self.trajectory.clear()
                         return True, swep_map
         if np.sum(np.where((occupancy_map==1),1, 0) * swep_map) > 0:
@@ -506,7 +506,7 @@ class Jerk_Primitive(Planner):
             swep_map[int(pos[0]//self.params.map_scale), int(pos[1]//self.params.map_scale)] = i * self.params.dt
             for tracker in drone.trackers:
                 if tracker.active:
-                    if norm(tracker.estimate_pos(i * self.params.dt) - pos) <= self.params.drone_radius + self.params.agent_radius:
+                    if norm(tracker.estimate_pos(i * self.params.dt) - pos) <= self.params.drone_radius + tracker.radius:
                         self.trajectory.clear()
                         return True, swep_map
         if np.sum(np.where((occupancy_map==1),1, 0) * swep_map) > 0:

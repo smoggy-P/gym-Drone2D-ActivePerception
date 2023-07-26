@@ -43,6 +43,7 @@ class Drone2DEnv2(gym.Env):
                 collision_free = False
 
             if collision_free:
+                self.drone.trackers[len(self.agents)].radius = new_agent.radius
                 self.agents.append(new_agent)
         
         shaped_obs_map = np.load(self.params.static_map)

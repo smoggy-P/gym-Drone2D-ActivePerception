@@ -95,6 +95,7 @@ class KalmanFilter:
     def __init__(self, params, mu=np.zeros([4,1]), Sigma=np.diag([1, 1, 10, 10])):
         self.active = False
         self.params = params
+        self.radius = params.agent_radius
         
         # check that initial state makes sense
         Dx = mu.shape[0]
@@ -174,7 +175,15 @@ class KalmanFilter:
         
         # Object is tracked for the first time
         elif not (z is None):
-            self.__init__(self.params, mu=np.vstack([z.reshape(-1, 1), np.zeros([2,1])]), Sigma=np.diag([1, 1, 10, 10]))
+            mu=np.vstack([z.reshape(-1, 1), np.zeros([2,1])])
+            Sigma=np.diag([1, 1, 10, 10])
+            Dx = mu.shape[0]
+            self.mu_upds = []
+            self.Sigma_upds = []
+            self.ts = []
+            self.mu_upds.append(mu)
+            self.Sigma_upds.append(Sigma)
+            self.ts.append(0.) # this is time t = 0
             self.active = True
         
         return achieved_list

@@ -37,7 +37,8 @@ for (agent_number, agent_vel, map_id) in env_params:
                     planner='NoMove',
                     agent_number=agent_number,
                     agent_max_speed=agent_vel,
-                    agent_radius=-1)
+                    agent_radius=-1,
+                    drone_view_range=360)
     # params.render = False
     env = gym.make('gym-2d-perception-v2', params=params)
     
