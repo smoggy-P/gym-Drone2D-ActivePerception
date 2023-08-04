@@ -3,14 +3,14 @@ import numpy as np
 import pandas as pd
 import random
 import os
-
+import main
 from yaw_planner import Oxford, LookAhead, NoControl, Rotating, Owl, LookGoal
 from datetime import datetime
 from utils import *
 from itertools import product
 from tqdm.contrib.itertools import product as tqdm_product
 
-result_dir = './experiment/validation/results_'+str(datetime.now())+'.csv'
+result_dir = './experiment/results_'+str(datetime.now())+'.csv'
 metric_dir = './experiment/metrics/'
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
@@ -56,32 +56,32 @@ for (agent_number, agent_size, map_id) in env_params:
     env = gym.make('gym-2d-perception-v2', params=params)
     
     # Calculate difficulty
-    position_step = 60
-    T = 12
-    x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
-    y_range = range(params.map_scale + params.drone_radius, params.map_size[1] - params.map_scale - params.drone_radius, position_step)
-    total_survive = 0
-    env = gym.make(params.env, params=params)
-    for x in x_range:
-        for y in y_range:
-            # Give random velocity to agents
-            env.reset()
-            for agent in env.agents:
-                vel = random.random() * 40 + 20
-                angle = random.random() * 2 * np.pi
-                agent.pref_velocity = np.array([vel * np.cos(angle), vel * np.sin(angle)])
+    # position_step = 60
+    # T = 12
+    # x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
+    # y_range = range(params.map_scale + params.drone_radius, params.map_size[1] - params.map_scale - params.drone_radius, position_step)
+    # total_survive = 0
+    # env = gym.make(params.env, params=params)
+    # for x in x_range:
+    #     for y in y_range:
+    #         # Give random velocity to agents
+    #         env.reset()
+    #         for agent in env.agents:
+    #             vel = random.random() * 40 + 20
+    #             angle = random.random() * 2 * np.pi
+    #             agent.pref_velocity = np.array([vel * np.cos(angle), vel * np.sin(angle)])
             
-            for t in np.arange(0, T, 0.1):
-                env.drone.x = x
-                env.drone.y = y
-                _, _, done, info = env.step(0)
-                # env.render()
-                if info['collision_flag'] == 2:
-                    break
-            total_survive += t
+    #         for t in np.arange(0, T, 0.1):
+    #             env.drone.x = x
+    #             env.drone.y = y
+    #             _, _, done, info = env.step(0)
+    #             # env.render()
+    #             if info['collision_flag'] == 2:
+    #                 break
+    #         total_survive += t
 
-    print(total_survive / (len(x_range) * len(y_range)))
-    all_metrics.append(total_survive / (len(x_range) * len(y_range)))
+    # print(total_survive / (len(x_range) * len(y_range)))
+    # all_metrics.append(total_survive / (len(x_range) * len(y_range)))
     
 
     if (not os.path.isfile(result_dir)):
@@ -112,8 +112,8 @@ for (agent_number, agent_size, map_id) in env_params:
                     df.to_csv(result_dir, index=False)
         
     # Calculate success rate
-    test_params = product(drone_max_speeds, planners, gaze_methods)
-    for (drone_max_speed, planner, gaze_method) in test_params:
+    test_params = product(drone_max_speeds, [('MPC', 'LookAhead'), ('Primitive', 'Oxford')])
+    for (drone_max_speed, (planner, gaze_method)) in test_params:
 
         axis_range = [40, 250, 460]
         
@@ -126,6 +126,7 @@ for (agent_number, agent_size, map_id) in env_params:
                 params.target_list = [target_pos]
                 params.record = True
                 params.debug = False
+                # params.render = True
                 policy = policy_list[params.gaze_method]
                 policy.__init__(policy, params)
                 env = gym.make('gym-2d-perception-v2', params=params)

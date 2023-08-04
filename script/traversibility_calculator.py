@@ -26,7 +26,7 @@ def env_metrics(index):
     
     env = gym.make(params.env, params=params)
     env.reset()
-    a = env.get_traversibility([5, 15, 25, 35, 45])
+    a = env.get_traversibility([5, 10, 15, 20, 25, 30, 35, 40, 45])
     print(a)
 
     return a
