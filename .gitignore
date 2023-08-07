@@ -12,4 +12,5 @@ trained_policy/**
 FORCES_*
 run*
 mpc/**
+mpc/!mpc_generator.py
 research/**
