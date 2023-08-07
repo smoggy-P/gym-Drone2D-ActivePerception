@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import time
 import sys
-sys.path.insert(0, '/home/cc/moji_ws/gym-Drone2D-ActivePerception')
+sys.path.insert(0, '/home/smoggy/thesis/gym-Drone2D-ActivePerception')
 import main
 
 from math import sin, cos, radians
@@ -20,32 +20,39 @@ def env_metrics(index):
                     planner='NoMove',
                     debug=True,
                     static_map='maps/empty_map.npy')
-    params.render = True
+    params.render = False
     position_step = 60
     T = 12
     x_range = range(params.map_scale + params.drone_radius, params.map_size[0] - params.map_scale - params.drone_radius, position_step)
     y_range = range(params.map_scale + params.drone_radius, params.map_size[1] - params.map_scale - params.drone_radius, position_step)
-    total_survive = 0
+    
+    
+    survive_times = np.ones((len(x_range), len(y_range))) * T
     env = gym.make(params.env, params=params)
-    for x in x_range:
-        for y in y_range:
-            env.reset()
-            for t in np.arange(0, T, 0.1):
-                env.drone.x = x
-                env.drone.y = y
-                _, _, done, info = env.step(0)
-                env.render()
-                if info['collision_flag'] == 2:
-                    break
-            total_survive += t
-    return total_survive / (len(x_range) * len(y_range))
+    env.reset()
+    _, _, done, info = env.step(0)
+    for t in np.arange(0, T, 0.1):
+        for x in x_range:
+            for y in y_range:
+                drone_pos = np.array([x, y])
+                for agent in env.agents:
+                    if norm(agent.position - drone_pos) < agent.radius + env.drone.radius:
+                        survive_times[x_range.index(x), y_range.index(y)] = min(t, survive_times[x_range.index(x), y_range.index(y)])
+        _, _, done, info = env.step(0)
+        # env.render()
+
+    
+    survive_times = survive_times - 0.1
+    survive_times[survive_times < 0] = 0
+    print(np.mean(survive_times))
+    return np.mean(survive_times)
 
 all_metrics = []
 
-for map_id in range(20):
+for map_id in [0]:
 
     env_metric = []
-    for (agent_num, agent_size, agent_vel) in product([10, 20, 30], [5, 10, 15], [20, 40, 60]):
+    for (agent_num, agent_size, agent_vel) in product(range(10, 30, 2), range(5, 15), range(20, 60, 5)):
         index = {'motion_profile':'CVM',
                 'pillar_number':0,
                 'agent_number':agent_num,
@@ -58,4 +65,4 @@ for map_id in range(20):
 
 metric_dict = {"metric":all_metrics}
 df = pd.DataFrame(metric_dict)
-df.to_csv("metrics_6m_12s_RVO.csv")
+df.to_csv("metrics_fit.csv")
