@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, '/home/cc/moji_ws/forces_pro_client/')  # On Windows, note the doubly-escaped backslashes
+sys.path.insert(0, '/home/smoggy/Downloads/forces_pro_client/')  # On Windows, note the doubly-escaped backslashes
 import forcespro
 import numpy as np
 import casadi
@@ -85,7 +85,6 @@ model.xinitidx = range(3, nu + nx + 1)
 options = forcespro.CodeOptions('MPC_SOLVER')
 options.printlevel = 0
 options.overwrite = 1
-options.nlp.bfgs_init = None
 options.maxit = 5000
                             
 options.optlevel    = 3
