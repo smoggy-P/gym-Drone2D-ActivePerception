@@ -7,6 +7,8 @@ import tkinter as tk
 from PIL import Image, ImageTk
 # import main
 import gym
+import sys
+sys.path.insert(0, sys.path[0]+"/../")
 from utils import Params
 import main
 import pygame
