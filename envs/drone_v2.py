@@ -262,36 +262,39 @@ class Drone2DEnv2(gym.Env):
         
     def render(self, mode='human'):
         
-        # self.map_gt.render(self.screen, color_dict)
         self.drone.map.render(self.screen, color_dict)
         self.drone.render(self.screen)
 
         for ob in self.obstacles:
-            pygame.draw.circle(self.screen, (200, 200, 200), center=[ob[0], ob[1]], radius=ob[2])
+            pygame.draw.circle(self.screen, (130, 130, 130), center=[ob[0], ob[1]], radius=ob[2])
         
         if len(self.planner.trajectory.positions) > 1:
-            pygame.draw.lines(self.screen, (255,255,255), False, self.planner.trajectory.positions)
+            pygame.draw.lines(self.screen, (0,0,0), False, self.planner.trajectory.positions, 2)
         if hasattr(self.planner, 'future_trajectory') and len(self.planner.future_trajectory.positions) > 1:
-            pygame.draw.lines(self.screen, (255,255,255), False, self.planner.future_trajectory.positions)
+            pygame.draw.lines(self.screen, (0,0,0), False, self.planner.future_trajectory.positions, 2)
 
         if len(self.agents) > 0:
             for i, agent in enumerate(self.agents):
-                color = pygame.Color(0, 250, 250) if self.drone.trackers[i].active else pygame.Color(250, 0, 0)
+                color = pygame.Color(130, 176, 210) if self.drone.trackers[i].active else pygame.Color(200, 36, 35)
                 if agent.group_id >= 0:
                     pygame.draw.circle(self.screen, color, np.rint(agent.position).astype(int), int(round(agent.radius)), 0)
-                    pygame.draw.lines(self.screen, (0, 255, 0), False, [np.rint(agent.position).astype(int), np.rint(agent.position + agent.velocity).astype(int)], 2)
+                    pygame.draw.lines(self.screen, (153, 153, 153), False, [np.rint(agent.position).astype(int), np.rint(agent.position + agent.velocity).astype(int)], 2)
                 else:
                     pygame.draw.rect(self.screen, color, pygame.Rect(agent.position[0]-agent.radius, agent.position[1]-agent.radius, 2*agent.radius, 2*agent.radius))
         
-        for tracker in self.drone.trackers:
-            if tracker.active:
-                # pygame.draw.circle(self.screen, (100, 20, 20), center=[tracker.mu_upds[-1][0,0], tracker.mu_upds[-1][1,0]], radius=4)
-                draw_cov(self.screen, tracker.mu_upds[-1][:2,0], tracker.Sigma_upds[-1][:2,:2])
+        # for tracker in self.drone.trackers:
+        #     if tracker.active:
+        #         pygame.draw.circle(self.screen, (100, 20, 20), center=[tracker.mu_upds[-1][0,0], tracker.mu_upds[-1][1,0]], radius=4)
+        #         draw_cov(self.screen, tracker.mu_upds[-1][:2,0], tracker.Sigma_upds[-1][:2,:2])
 
-        pygame.draw.circle(self.screen, (0,0,255), self.planner.target[:2], self.drone.radius)
+        # Drawing the star as target
+        star_points = calculate_star_points(self.planner.target[:2], self.drone.radius, self.drone.radius * 0.5)
+        pygame.draw.polygon(self.screen, (0, 0, 150), star_points)
+
+
         default_font = pygame.font.SysFont('Arial', 15)
         pygame.Surface.blit(self.screen,
-            default_font.render('STATE: '+list(state_machine.keys())[list(state_machine.values()).index(self.state_machine)], False, (0, 102, 0)),
+            default_font.render('STATE: ' + list(state_machine.keys())[list(state_machine.values()).index(self.state_machine)], False, (0, 80, 0)), # Darker Green for text
             (0, 0)
         )
         

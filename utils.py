@@ -16,9 +16,9 @@ grid_type = {
 }
 
 color_dict = {
-    'OCCUPIED'   : (150, 150, 150),
-    'UNOCCUPIED' : (50, 50, 50),
-    'UNEXPLORED' : (0, 0, 0)
+    'OCCUPIED'   : (100, 100, 100),   # Dark Gray for occupied spaces
+    'UNOCCUPIED' : (200, 200, 200),   # Lighter Gray for unoccupied spaces
+    'UNEXPLORED' : (240, 240, 240)    # Very Light Gray (almost white) for unexplored areas
 }
 
 state_machine = {
@@ -27,6 +27,28 @@ state_machine = {
         'PLANNING'     :2,
         'EXECUTING'    :3
     }
+
+def calculate_star_points(center, outer_radius, inner_radius, num_points=5):
+    """
+    Calculate points for a star.
+    
+    :param center: A tuple representing the center of the star (x, y).
+    :param outer_radius: Outer radius of the star.
+    :param inner_radius: Inner radius of the star.
+    :param num_points: Number of points of the star. Default is 5 for a pentagram.
+    :return: A list of points representing the star.
+    """
+    points = []
+    for i in range(num_points * 2):
+        angle = math.pi / num_points * i
+        if i % 2 == 0:
+            radius = outer_radius
+        else:
+            radius = inner_radius
+        x = center[0] + radius * math.sin(angle)
+        y = center[1] - radius * math.cos(angle)
+        points.append((x, y))
+    return points
 
 def draw_cov(surface, mean, cov):
     # Compute the eigenvalues and eigenvectors of the covariance matrix
@@ -37,7 +59,7 @@ def draw_cov(surface, mean, cov):
 
     target_rect = pygame.Rect((int(mean[0]-major_axis/2-2), int(mean[1]-minor_axis/2-2), int(major_axis+4), int(minor_axis+4)))
     shape_surf = pygame.Surface(target_rect.size, pygame.SRCALPHA)
-    pygame.draw.ellipse(shape_surf, (255, 255, 0), (0, 0, *target_rect.size), 1)
+    pygame.draw.ellipse(shape_surf, (150, 0, 0), (0, 0, *target_rect.size), 1)
     rotated_surf = pygame.transform.rotate(shape_surf, angle)
     surface.blit(rotated_surf, rotated_surf.get_rect(center = target_rect.center))
 
@@ -698,8 +720,9 @@ class Drone2D():
         return local_map[drone_idx[0] : drone_idx[0] + 2 * edge_len + 1, drone_idx[1] : drone_idx[1] + 2 * edge_len + 1]
 
     def render(self, surface):
+        color = (100, 100, 100)
         pygame.draw.arc(surface, 
-                        (100,100,100), 
+                        color, 
                         [self.x - self.yaw_depth,
                             self.y - self.yaw_depth,
                             2 * self.yaw_depth,
@@ -709,6 +732,23 @@ class Drone2D():
                         2)
         angle1 = math.radians(self.yaw + self.yaw_range/2)
         angle2 = math.radians(self.yaw - self.yaw_range/2)
-        pygame.draw.line(surface, (100,100,100), (self.x, self.y), (self.x + self.yaw_depth * cos(angle1), self.y - self.yaw_depth * sin(angle1)), 2)
-        pygame.draw.line(surface, (100,100,100), (self.x, self.y), (self.x + self.yaw_depth * cos(angle2), self.y - self.yaw_depth * sin(angle2)), 2)
-        pygame.draw.circle(surface, (100,100,100), (self.x, self.y), self.radius)
+        pygame.draw.line(surface, color, (self.x, self.y), (self.x + self.yaw_depth * cos(angle1), self.y - self.yaw_depth * sin(angle1)), 2)
+        pygame.draw.line(surface, color, (self.x, self.y), (self.x + self.yaw_depth * cos(angle2), self.y - self.yaw_depth * sin(angle2)), 2)
+        # pygame.draw.circle(surface, color, (self.x, self.y), self.radius)
+
+        # Calculate rotated points for the drone body
+        # color = (0, 0, 0)
+        dx = 5 * math.cos(math.radians(self.yaw+45))
+        dy = -5 * math.sin(math.radians(self.yaw+45))
+        
+        # Draw the main body (cross)
+        pygame.draw.line(surface, color, (self.x - dx, self.y - dy), (self.x + dx, self.y + dy), 2)  # main line (adjusted for yaw)
+        pygame.draw.line(surface, color, (self.x - dy, self.y + dx), (self.x + dy, self.y - dx), 2)  # perpendicular line (adjusted for yaw)
+
+        # Draw four rotors at the ends of the cross
+        rotor_radius = 3.5
+        pygame.draw.circle(surface, color, (int(self.x - dx), int(self.y - dy)), rotor_radius)
+        pygame.draw.circle(surface, color, (int(self.x + dx), int(self.y + dy)), rotor_radius)
+        pygame.draw.circle(surface, color, (int(self.x - dy), int(self.y + dx)), rotor_radius)
+        pygame.draw.circle(surface, color, (int(self.x + dy), int(self.y - dx)), rotor_radius)
+        
