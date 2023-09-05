@@ -16,9 +16,9 @@ grid_type = {
 }
 
 color_dict = {
-    'OCCUPIED'   : (150, 150, 150),
-    'UNOCCUPIED' : (50, 50, 50),
-    'UNEXPLORED' : (0, 0, 0)
+    'OCCUPIED'   : (100, 100, 100),   # Dark Gray for occupied spaces
+    'UNOCCUPIED' : (200, 200, 200),   # Lighter Gray for unoccupied spaces
+    'UNEXPLORED' : (240, 240, 240)    # Very Light Gray (almost white) for unexplored areas
 }
 
 state_machine = {
@@ -27,6 +27,29 @@ state_machine = {
         'PLANNING'     :2,
         'EXECUTING'    :3
     }
+
+
+def calculate_star_points(center, outer_radius, inner_radius, num_points=5):
+    """
+    Calculate points for a star.
+    
+    :param center: A tuple representing the center of the star (x, y).
+    :param outer_radius: Outer radius of the star.
+    :param inner_radius: Inner radius of the star.
+    :param num_points: Number of points of the star. Default is 5 for a pentagram.
+    :return: A list of points representing the star.
+    """
+    points = []
+    for i in range(num_points * 2):
+        angle = math.pi / num_points * i
+        if i % 2 == 0:
+            radius = outer_radius
+        else:
+            radius = inner_radius
+        x = center[0] + radius * math.sin(angle)
+        y = center[1] - radius * math.cos(angle)
+        points.append((x, y))
+    return points
 
 def draw_cov(surface, mean, cov):
     # Compute the eigenvalues and eigenvectors of the covariance matrix
