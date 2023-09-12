@@ -292,11 +292,11 @@ class Drone2DEnv2(gym.Env):
         pygame.draw.polygon(self.screen, (0, 0, 150), star_points)
 
 
-        default_font = pygame.font.SysFont('Arial', 15)
-        pygame.Surface.blit(self.screen,
-            default_font.render('STATE: ' + list(state_machine.keys())[list(state_machine.values()).index(self.state_machine)], False, (0, 80, 0)), # Darker Green for text
-            (0, 0)
-        )
+        # default_font = pygame.font.SysFont('Arial', 15)
+        # pygame.Surface.blit(self.screen,
+        #     default_font.render('STATE: ' + list(state_machine.keys())[list(state_machine.values()).index(self.state_machine)], False, (0, 80, 0)), # Darker Green for text
+        #     (0, 0)
+        # )
         
         pygame.display.update()
         self.clock.tick(60)

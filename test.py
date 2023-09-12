@@ -1,99 +1,124 @@
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
-import matplotlib.animation as animation
+import pandas as pd
+import numpy as np
+import os
+import ast
+import seaborn as sns
+from itertools import product
 
-# Define the Agent and VelocityObstacle classes as before
+directory_path = "./experiment/validation/"
+csv_files = [file for file in os.listdir(directory_path) if file.endswith(".csv")]
+dataframes = []
+for file in csv_files:
+    file_path = os.path.join(directory_path, file)
+    dataframe = pd.read_csv(file_path)
+    dataframes.append(dataframe)
+df = pd.concat(dataframes, ignore_index=True)
+df['Planner'] = df['Planner'].replace({'Primitive' : 'Global Primitive', 'Jerk_Primitive': 'Local Primitive'})
+df['Method'] = df['Method'].replace({'NoControl': 'FullRange'})
+df['Method_Planner'] = df['Method'] + "+" + df['Planner']
+df = df[(df['Motion Profile'] == 'CVM')]
+unique_method_planner = df['Method_Planner'].unique()
+linestyles = ['-', '--', '-.', ':', '-', '--', '-', ':', '-', '--', '-', ':', '-']
+markers = ['o', 's', '^', 'v', '<', '>', 'p', '*', 'h', 'H', 'D', 'd', '+']
+colors = sns.color_palette('hsv', len(unique_method_planner))
+color_map = dict(zip(unique_method_planner, colors))
 
-class Agent:
-    def __init__(self, position, velocity, radius):
-        self.position = np.array(position, dtype=float)
-        self.velocity = np.array(velocity, dtype=float)
-        self.radius = radius
+sort_columns = ['Map ID', 'Number of agents', 'Agent size', 'Agent speed', 'Motion Profile']
+plt.rc('font', family='serif')
+plt.rc('text', usetex=True)
+plt.rcParams['xtick.labelsize'] = 16
+plt.rcParams['ytick.labelsize'] = 16
 
-class VelocityObstacle:
-    def __init__(self, primary, secondary, tau=5.0, eps=0.01):
-        self.primary = primary
-        self.secondary = secondary
-        self.tau = tau
-        self.eps = eps
+metric_dir_dict = {'Survivability': 'experiment/metrics/survivability/metrics_6m_12s_CVM.csv', 
+                   'Traversibility': 'experiment/metrics/traversibility/traversibility.csv',
+                   'VO Feasibility': 'experiment/metrics/vo/vo.csv',
+                   'Obstacle Density': 'experiment/metrics/density.csv',
+                   'Dynamic Traversability':'experiment/metrics/traversibility/traversibility_multiple.csv'}
 
-    def compute_new_velocity(self):
-        rel_position = self.secondary.position - self.primary.position
-        rel_velocity = self.primary.velocity - self.secondary.velocity
+fig, subfigs = plt.subplots(nrows=2, ncols=3, figsize=(15, 8), )
 
-        dist = np.linalg.norm(rel_position)
-        u_rel_position = rel_position / dist
+for j, metric in enumerate(['Obstacle Density', 'Traversibility', 'Dynamic Traversability', 'VO Feasibility', 'Survivability', 'Global Survivability']):
 
-        cos_theta = np.dot(rel_velocity, u_rel_position) / np.linalg.norm(rel_velocity)
+    metric_dict = {}
+    round_metrics_dict = {}
 
-        if dist < self.primary.radius + self.secondary.radius:  # already colliding
-            return -self.primary.velocity
+    if metric_dir_dict.get(metric, None) is None:
+        a = np.load("experiment/metrics/survivability/collision_states_6m_12s_RVO.npy")
+        index = 0
+        for map_id in range(20):
+            for (agent_num, agent_size, agent_vel) in product([10, 20, 30], [5, 10, 15], [20, 40, 60]):
+                survive_times = []
+                for start_time in range(0, 240, 40):
+                    survive_time = 0
+                    while (start_time + survive_time < 240) and (not (a[index,::2,::2,start_time+survive_time].any())):
+                        survive_time += 1
+                    survive_times.append(survive_time)
+                metric_dict[(map_id, agent_num, agent_size, agent_vel, 'CVM')] = np.mean(survive_times)
+                round_metrics_dict[(map_id, agent_num, agent_size, agent_vel, 'CVM')] = round(np.mean(survive_times))
+                index += 1
+    else:
+        df_metric = pd.read_csv(metric_dir_dict[metric])
+        metrics = []
+        for i in range(20):
+            metrics.append(ast.literal_eval(df_metric['metric'][i]))
+        data = np.array(metrics).flatten()
+        index = 0
+        for map_id in range(20):
+            for (agent_num, agent_size, agent_vel) in product([10, 20, 30], [5, 10, 15], [20, 40, 60]):
+                metric_dict[(map_id, agent_num, agent_size, agent_vel, 'CVM')] = data[index]
+                index += 1
 
-        # check if relative velocity is outside VO
-        if cos_theta < 0 and dist / np.linalg.norm(rel_velocity) > self.tau:
-            return self.primary.velocity
 
-        else:
-            leg_dist = self.secondary.radius + self.eps + self.primary.radius * self.tau / dist
-            left_leg_direction = rel_position - np.sqrt(leg_dist**2 - self.secondary.radius**2) * np.array([-u_rel_position[1], u_rel_position[0]])
-            right_leg_direction = rel_position + np.sqrt(leg_dist**2 - self.secondary.radius**2) * np.array([-u_rel_position[1], u_rel_position[0]])
-            if np.linalg.norm(right_leg_direction - rel_velocity) < np.linalg.norm(left_leg_direction - rel_velocity):
-                new_velocity = self.primary.velocity + right_leg_direction - rel_velocity
-            else:
-                new_velocity = self.primary.velocity + left_leg_direction - rel_velocity
-            return new_velocity
+    max_value = max(metric_dict.values())
+    min_value = min(metric_dict.values())
+    if metric == 'Obstacle Density':
+        for key in metric_dict.keys():
+            metric_dict[key] = 10 - 10 * (metric_dict[key] - min_value) / (max_value - min_value)
+            round_metrics_dict[key] = round(metric_dict[key])
+    else:
+        for key in metric_dict.keys():
+            metric_dict[key] = 10 * (metric_dict[key] - min_value) / (max_value - min_value)
+            round_metrics_dict[key] = round(metric_dict[key])
 
-# Create a simulation with two agents moving towards each other
-primary = Agent([0, 0], [1, 0], 1)
-secondary = Agent([10, 0], [-1, 0], 1)
+    df['round difficulty'] = [round_metrics_dict.get(tuple(x), 'N/A') for x in df[sort_columns].values]
+    df['map difficulty'] = [metric_dict.get(tuple(x), 'N/A') for x in df[sort_columns].values]
 
-# Initialize plot
-fig, ax = plt.subplots()
-ax.set_xlim(-5, 15)
-ax.set_ylim(-10, 10)
+    grouped = df.groupby(['Method_Planner', 'round difficulty', *sort_columns])
+    df_grouped = grouped.agg({'Success': 'mean'}).reset_index()
+    grouped = df_grouped.groupby(['Method_Planner', 'round difficulty'])['Success']
 
-# Plot agents
-circle1 = Circle(primary.position, primary.radius, fill=False)
-circle2 = Circle(secondary.position, secondary.radius, fill=False)
-ax.add_patch(circle1)
-ax.add_patch(circle2)
+    # Create a DataFrame for results
+    df_results = pd.DataFrame({
+        'Mean Success': grouped.mean(),
+        'Variance Success': 0 if grouped.var() is None else grouped.var()
+    }).reset_index()
+    df_results = df_results.fillna(0)
 
-# Plot trajectories
-trajectory1, = ax.plot([], [], 'r-')
-trajectory2, = ax.plot([], [], 'b-')
+    cvs = []
+    for i, method_planner in enumerate(unique_method_planner):
+        df_plot = df_results[df_results['Method_Planner'] == method_planner]
+        subfigs[j//3,j%3].plot(10 - df_plot['round difficulty'].to_numpy(), df_plot['Mean Success'].to_numpy(), 
+                    color=color_map[method_planner], label=method_planner,
+                    linestyle=linestyles[i],
+                    marker=markers[i],
+                    markersize=8,
+                    linewidth=2)
+        
+        # Here we create the shaded variance region
+        subfigs[j//3,j%3].fill_between(10 - df_plot['round difficulty'], 
+                        df_plot['Mean Success'] - np.sqrt(df_plot['Variance Success']), 
+                        df_plot['Mean Success'] + np.sqrt(df_plot['Variance Success']), 
+                        color=color_map[method_planner], alpha=0.2)
 
-# Function to initialize the animation
-def init():
-    trajectory1.set_data([], [])
-    trajectory2.set_data([], [])
-    return trajectory1, trajectory2,
+    subfigs[j//3,j%3].set_xlabel(metric+' Metric', fontsize=18)
+    # subfigs[j//3,j%3].set_ylabel('Success Rate', fontsize=20)
+    # subfigs[j//3,j%3].set_xticks(fontsize=20)
+    # subfigs[j//3,j%3].set_yticks(fontsize=20)
+    subfigs[j//3,j%3].set_ylim(0, 1)
+    subfigs[j//3,j%3].set_xlim(0, 10)
+    # plt.tick_params(axis='both', which='major', labelsize=16)
 
-# Function to update the animation each frame
-def update(frame):
-    # Calculate the new velocities using the VO
-    vo = VelocityObstacle(primary, secondary)
-    primary.velocity = vo.compute_new_velocity()
-
-    vo = VelocityObstacle(secondary, primary)
-    secondary.velocity = vo.compute_new_velocity()
-
-    # Update the positions of the agents
-    primary.position += primary.velocity * 0.1
-    secondary.position += secondary.velocity * 0.1
-
-    # Update the agent circles and trajectories
-    circle1.center = primary.position
-    circle2.center = secondary.position
-    trajectory1.set_xdata(np.append(trajectory1.get_xdata(), primary.position[0]))
-    trajectory1.set_ydata(np.append(trajectory1.get_ydata(), primary.position[1]))
-    trajectory2.set_xdata(np.append(trajectory2.get_xdata(), secondary.position[0]))
-    trajectory2.set_ydata(np.append(trajectory2.get_ydata(), secondary.position[1]))
-
-    return trajectory1, trajectory2,
-
-# Run the animation
-ani = animation.FuncAnimation(fig, update, frames=np.arange(0, 200), init_func=init, blit=True)
-
-# Display the animation
-plt.show()
+fig.tight_layout()
+lgd = plt.legend(fontsize=12.7, bbox_to_anchor=(1, 2.6), borderaxespad=0., ncol = 5)
+fig.savefig('results.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
