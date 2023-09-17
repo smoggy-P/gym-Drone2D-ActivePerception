@@ -800,5 +800,8 @@ def metric_loader(metric):
         for key in metric_dict.keys():
             metric_dict[key] = 10 * (metric_dict[key] - min_value) / (max_value - min_value)
             round_metrics_dict[key] = round(metric_dict[key])
+    
+    def normalizer(metric_value):
+        return 10 * (metric_value - min_value) / (max_value - min_value)
 
-    return metric_dict, round_metrics_dict
+    return metric_dict, round_metrics_dict, normalizer

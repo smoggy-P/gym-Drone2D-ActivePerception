@@ -36,7 +36,7 @@ if __name__ == '__main__':
     for (gaze_method, planner, motion_profile, var_depth,
         agent_number, pillar_number, agent_speed,
         drone_speed, agent_size, map_id) in params:
-        axis_range = [40, 250, 460]
+        axis_range = [250, 460]
         for start_pos, target_pos in vis.product(product(axis_range, axis_range), product(axis_range, axis_range)):
             if start_pos != target_pos:
                 cfg = Params(debug=True,
@@ -46,8 +46,8 @@ if __name__ == '__main__':
                             var_cam=var_depth,
                             drone_max_speed=drone_speed,
                             map_id=map_id,
-                            init_pos=start_pos,
-                            target_list=[target_pos],
+                            init_pos=(40,40),
+                            target_list=[(460, 460)],
                             agent_number=agent_number,
                             agent_radius=agent_size,
                             agent_max_speed=agent_speed,
