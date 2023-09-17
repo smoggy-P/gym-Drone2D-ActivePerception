@@ -751,4 +751,54 @@ class Drone2D():
         pygame.draw.circle(surface, color, (int(self.x + dx), int(self.y + dy)), rotor_radius)
         pygame.draw.circle(surface, color, (int(self.x - dy), int(self.y + dx)), rotor_radius)
         pygame.draw.circle(surface, color, (int(self.x + dy), int(self.y - dx)), rotor_radius)
-        
+
+
+from itertools import product
+import pandas as pd
+import ast
+def metric_loader(metric):
+    metric_dir_dict = {'surv': 'experiment/metrics/survivability/metrics_6m_12s_CVM.csv', 
+                   'trav': 'experiment/metrics/traversibility/traversibility.csv',
+                   'vo': 'experiment/metrics/vo/vo.csv',
+                   'density': 'experiment/metrics/density.csv',
+                   'dyn_trav':'experiment/metrics/traversibility/traversibility_multiple.csv'}
+    metric_dict = {}
+    round_metrics_dict = {}
+
+    if metric_dir_dict.get(metric, None) is None:
+        a = np.load("experiment/metrics/survivability/collision_states_6m_12s_RVO.npy")
+        index = 0
+        for map_id in range(20):
+            for (agent_num, agent_size, agent_vel) in product([10, 20, 30], [5, 10, 15], [20, 40, 60]):
+                survive_times = []
+                for start_time in range(0, 240, 40):
+                    survive_time = 0
+                    while (start_time + survive_time < 240) and (not (a[index,::2,::2,start_time+survive_time].any())):
+                        survive_time += 1
+                    survive_times.append(survive_time)
+                metric_dict[(map_id, agent_num, agent_size, agent_vel, 'CVM')] = np.mean(survive_times)
+                index += 1
+    else:
+        df_metric = pd.read_csv(metric_dir_dict[metric])
+        metrics = []
+        for i in range(20):
+            metrics.append(ast.literal_eval(df_metric['metric'][i]))
+        data = np.array(metrics).flatten()
+        index = 0
+        for map_id in range(20):
+            for (agent_num, agent_size, agent_vel) in product([10, 20, 30], [5, 10, 15], [20, 40, 60]):
+                metric_dict[(map_id, agent_num, agent_size, agent_vel, 'CVM')] = data[index]
+                index += 1
+    
+    max_value = max(metric_dict.values())
+    min_value = min(metric_dict.values())
+    if metric == 'Obstacle Density':
+        for key in metric_dict.keys():
+            metric_dict[key] = 10 - 10 * (metric_dict[key] - min_value) / (max_value - min_value)
+            round_metrics_dict[key] = round(metric_dict[key])
+    else:
+        for key in metric_dict.keys():
+            metric_dict[key] = 10 * (metric_dict[key] - min_value) / (max_value - min_value)
+            round_metrics_dict[key] = round(metric_dict[key])
+
+    return metric_dict, round_metrics_dict

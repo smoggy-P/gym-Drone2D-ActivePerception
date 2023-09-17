@@ -14,8 +14,8 @@ for file in csv_files:
     dataframe = pd.read_csv(file_path)
     dataframes.append(dataframe)
 df = pd.concat(dataframes, ignore_index=True)
-df['Planner'] = df['Planner'].replace({'Primitive' : 'Global Primitive', 'Jerk_Primitive': 'Local Primitive'})
-df['Method'] = df['Method'].replace({'NoControl': 'FullRange'})
+df['Planner'] = df['Planner'].replace({'Primitive' : 'Global Primitive [7]', 'Jerk_Primitive': 'Local Primitive [10]', 'MPC': 'MPC [11]'})
+df['Method'] = df['Method'].replace({'NoControl': 'FullRange', 'LookAhead':'LookAhead [16]', 'LookGoal':'LookGoal [18]', 'Oxford':'Finean et al. [3]', 'Owl':'Owl [10]'})
 df['Method_Planner'] = df['Method'] + "+" + df['Planner']
 df = df[(df['Motion Profile'] == 'CVM')]
 unique_method_planner = df['Method_Planner'].unique()
@@ -30,15 +30,15 @@ plt.rc('text', usetex=True)
 plt.rcParams['xtick.labelsize'] = 16
 plt.rcParams['ytick.labelsize'] = 16
 
-metric_dir_dict = {'Survivability': 'experiment/metrics/survivability/metrics_6m_12s_CVM.csv', 
-                   'Traversibility': 'experiment/metrics/traversibility/traversibility.csv',
-                   'VO Feasibility': 'experiment/metrics/vo/vo.csv',
+metric_dir_dict = {'Survivability(reversed)': 'experiment/metrics/survivability/metrics_6m_12s_CVM.csv', 
+                   'Traversibility(reversed)': 'experiment/metrics/traversibility/traversibility.csv',
+                   'VO Feasibility(reversed)': 'experiment/metrics/vo/vo.csv',
                    'Obstacle Density': 'experiment/metrics/density.csv',
-                   'Dynamic Traversability':'experiment/metrics/traversibility/traversibility_multiple.csv'}
+                   'Dynamic Traversability(reversed)':'experiment/metrics/traversibility/traversibility_multiple.csv'}
 
 fig, subfigs = plt.subplots(nrows=2, ncols=3, figsize=(15, 8), )
 
-for j, metric in enumerate(['Obstacle Density', 'Traversibility', 'Dynamic Traversability', 'VO Feasibility', 'Survivability', 'Global Survivability']):
+for j, metric in enumerate(['Obstacle Density', 'Traversibility(reversed)', 'Dynamic Traversability(reversed)', 'VO Feasibility(reversed)', 'Survivability(reversed)', 'Global Survivability(reversed)']):
 
     metric_dict = {}
     round_metrics_dict = {}
@@ -112,6 +112,8 @@ for j, metric in enumerate(['Obstacle Density', 'Traversibility', 'Dynamic Trave
                         color=color_map[method_planner], alpha=0.2)
 
     subfigs[j//3,j%3].set_xlabel(metric+' Metric', fontsize=18)
+    if j%3 == 0:
+        subfigs[j//3,j%3].set_ylabel('Success Rate', fontsize=18)
     # subfigs[j//3,j%3].set_ylabel('Success Rate', fontsize=20)
     # subfigs[j//3,j%3].set_xticks(fontsize=20)
     # subfigs[j//3,j%3].set_yticks(fontsize=20)
@@ -120,5 +122,5 @@ for j, metric in enumerate(['Obstacle Density', 'Traversibility', 'Dynamic Trave
     # plt.tick_params(axis='both', which='major', labelsize=16)
 
 fig.tight_layout()
-lgd = plt.legend(fontsize=12.7, bbox_to_anchor=(1, 2.6), borderaxespad=0., ncol = 5)
+lgd = plt.legend(fontsize=13.7, bbox_to_anchor=(1, 2.7), borderaxespad=0., ncol = 4)
 fig.savefig('results.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
