@@ -5,8 +5,9 @@ import os
 from datetime import datetime
 from itertools import product
 import tqdm.contrib.itertools as vis
+import argparse
 from utils import *
-result_dir = './experiment/results_'+str(datetime.now())+'.csv'
+result_dir = 'experiment/results_'+str(datetime.now())+'.csv'
 
 if __name__ == '__main__':
 
@@ -39,19 +40,20 @@ if __name__ == '__main__':
         axis_range = [250, 460]
         for start_pos, target_pos in vis.product(product(axis_range, axis_range), product(axis_range, axis_range)):
             if start_pos != target_pos:
-                cfg = Params(debug=True,
-                            gaze_method=gaze_method, 
-                            planner=planner, 
-                            motion_profile=motion_profile,
-                            var_cam=var_depth,
-                            drone_max_speed=drone_speed,
-                            map_id=map_id,
-                            init_pos=(40,40),
-                            target_list=[(460, 460)],
-                            agent_number=agent_number,
-                            agent_radius=agent_size,
-                            agent_max_speed=agent_speed,
-                            static_map='maps/empty_map.npy')
+                cfg = Params.from_parser()
+                # cfg = Params(debug=True,
+                #             gaze_method=gaze_method, 
+                #             planner=planner, 
+                #             motion_profile=motion_profile,
+                #             var_cam=var_depth,
+                #             drone_max_speed=drone_speed,
+                #             map_id=map_id,
+                #             init_pos=start_pos,
+                #             target_list=[target_pos],
+                #             agent_number=agent_number,
+                #             agent_radius=agent_size,
+                #             agent_max_speed=agent_speed,
+                #             static_map='maps/empty_map.npy')
                 
                 i += 1
                 if i >= 0:

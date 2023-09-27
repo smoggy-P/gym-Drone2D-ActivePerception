@@ -2,7 +2,7 @@ import numpy as np
 import pygame
 import math
 import torch
-
+import argparse
 from numpy import array
 from math import atan2, asin, cos, sin, radians, tan, pi, ceil, degrees
 from numpy.linalg import norm
@@ -62,8 +62,7 @@ def draw_cov(surface, mean, cov):
     pygame.draw.ellipse(shape_surf, (150, 0, 0), (0, 0, *target_rect.size), 1)
     rotated_surf = pygame.transform.rotate(shape_surf, angle)
     surface.blit(rotated_surf, rotated_surf.get_rect(center = target_rect.center))
-
-class Params: 
+class Params:
     def __init__(self, env='gym-2d-perception-v2', debug=True, record_img=False, 
                  trained_policy=False, policy_dir='./trained_policy/lookahead.zip', dt=0.1, 
                  map_scale=10, map_size=[500,500], agent_radius=10, drone_max_acceleration=40, 
@@ -105,6 +104,71 @@ class Params:
         self.init_position = init_pos
         self.target_list = target_list
         self.static_map = static_map
+
+    @classmethod
+    def from_parser(cls):
+        parser = argparse.ArgumentParser(description='Initialize Params class with command-line arguments')
+        parser.add_argument('--env', default='gym-2d-perception-v2', help='Environment name')
+        parser.add_argument('--debug', action='store_true', help='Enable debugging')
+        parser.add_argument('--record_img', action='store_true', help='Record images')
+        parser.add_argument('--trained_policy', action='store_true', help='Trained policy')
+        parser.add_argument('--policy_dir', default='./trained_policy/lookahead.zip', help='Policy directory')
+        parser.add_argument('--dt', type=float, default=0.1, help='Time step')
+        parser.add_argument('--map_scale', type=int, default=10, help='Map scale')
+        parser.add_argument('--map_size', nargs=2, type=int, default=[500, 500], help='Map size')
+        parser.add_argument('--agent_radius', type=int, default=10, help='Agent radius')
+        parser.add_argument('--drone_max_acceleration', type=int, default=40, help='Drone max acceleration')
+        parser.add_argument('--drone_radius', type=int, default=10, help='Drone radius')
+        parser.add_argument('--drone_max_yaw_speed', type=int, default=80, help='Drone max yaw speed')
+        parser.add_argument('--drone_view_depth', type=int, default=80, help='Drone view depth')
+        parser.add_argument('--drone_view_range', type=int, default=90, help='Drone view range')
+        parser.add_argument('--img_dir', default='./', help='Image directory')
+        parser.add_argument('--max_flight_time', type=int, default=80, help='Max flight time')
+        parser.add_argument('--gaze_method', default='LookAhead', help='Gaze method')
+        parser.add_argument('--planner', default='Primitive', help='Planner')
+        parser.add_argument('--var_cam', type=int, default=0, help='Camera variance')
+        parser.add_argument('--drone_max_speed', type=int, default=40, help='Drone max speed')
+        parser.add_argument('--motion_profile', default='CVM', help='Motion profile')
+        parser.add_argument('--pillar_number', type=int, default=0, help='Pillar number')
+        parser.add_argument('--agent_number', type=int, default=10, help='Agent number')
+        parser.add_argument('--agent_max_speed', type=int, default=40, help='Agent max speed')
+        parser.add_argument('--map_id', type=int, default=0, help='Map ID')
+        parser.add_argument('--init_pos', nargs=2, type=int, default=[50, 50], help='Initial position')
+        parser.add_argument('--target_list', nargs='+', type=int, default=[[50, 460]], help='Target list')
+        parser.add_argument('--static_map', default='maps/empty_map.npy', help='Static map file')
+
+        args = parser.parse_args()
+
+        return cls(
+            env=args.env,
+            debug=args.debug,
+            record_img=args.record_img,
+            trained_policy=args.trained_policy,
+            policy_dir=args.policy_dir,
+            dt=args.dt,
+            map_scale=args.map_scale,
+            map_size=args.map_size,
+            agent_radius=args.agent_radius,
+            drone_max_acceleration=args.drone_max_acceleration,
+            drone_radius=args.drone_radius,
+            drone_max_yaw_speed=args.drone_max_yaw_speed,
+            drone_view_depth=args.drone_view_depth,
+            drone_view_range=args.drone_view_range,
+            img_dir=args.img_dir,
+            max_flight_time=args.max_flight_time,
+            gaze_method=args.gaze_method,
+            planner=args.planner,
+            var_cam=args.var_cam,
+            drone_max_speed=args.drone_max_speed,
+            motion_profile=args.motion_profile,
+            pillar_number=args.pillar_number,
+            agent_number=args.agent_number,
+            agent_max_speed=args.agent_max_speed,
+            map_id=args.map_id,
+            init_pos=args.init_pos,
+            target_list=args.target_list,
+            static_map=args.static_map,
+        )
 class KalmanFilter:
 
     def copy(self):

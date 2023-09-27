@@ -1,16 +1,12 @@
 # Gym for 2D active perception
-This is a repository for openai gym environment. The general task is navigation of MAV with limited field of view in unknown and dynamic environment.
+This is a repository for OpenAI gym environment. The general task is navigation of MAV with limited field of view in unknown and dynamic environment.
 ![](picture/example.gif)
-## Installation
-To run the code, it would be suggested to use anaconda to setup the environment:
-```bash
-conda create -n myenv --file package-list.txt
-```
 
 ## Basic Usage
+### Run Experiment
 To run an experiment, an example command is listed below:
 ```bash
-python main.py --gaze-method Oxford --agent-number 10 --render --map-size 640 640 --map-scale 10 --dt 0.1 --agent-max-speed 20 --agent-radius 15 --drone-max-speed 40 --drone-max-acceleration 15 --drone-radius 10 --drone-max-yaw-speed 180
+python main.py --gaze-method Oxford --agent-number 10 --map-size 640 640 --map-scale 10 --dt 0.1 --agent-max-speed 20 --agent-radius 15 --drone-max-speed 40 --drone-max-acceleration 15 --drone-radius 10 --drone-max-yaw-speed 180
 ```
 There are many parameters that can be pre-defined. By running `python main.py -h`, a list of all parameters can be seen:
 ```bash
