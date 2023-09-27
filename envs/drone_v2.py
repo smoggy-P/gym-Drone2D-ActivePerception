@@ -263,6 +263,7 @@ class Drone2DEnv2(gym.Env):
     def render(self, mode='human'):
         
         self.drone.map.render(self.screen, color_dict)
+        # self.map_gt.render(self.screen, color_dict)
         self.drone.render(self.screen)
 
         for ob in self.obstacles:

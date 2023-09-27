@@ -114,7 +114,7 @@ agent_vel_input = tk.StringVar()
 result_var = tk.StringVar()
 
 # Load an image from a directory
-image_path = '/home/smoggy/thesis/paper/thesis/figures/dense1.png'
+image_path = 'picture/example.gif'
 img = Image.open(image_path)
 photo = ImageTk.PhotoImage(img)
 
