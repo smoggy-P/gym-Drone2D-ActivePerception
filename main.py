@@ -1,11 +1,7 @@
-import time
 from experiment import Experiment
-import random
-import os
 from datetime import datetime
 from itertools import product
 import tqdm.contrib.itertools as vis
-import argparse
 from utils import *
 result_dir = 'experiment/results_'+str(datetime.now())+'.csv'
 

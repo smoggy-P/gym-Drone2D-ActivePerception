@@ -109,7 +109,7 @@ class Params:
     def from_parser(cls):
         parser = argparse.ArgumentParser(description='Initialize Params class with command-line arguments')
         parser.add_argument('--env', default='gym-2d-perception-v2', help='Environment name')
-        parser.add_argument('--debug', action='store_true', help='Enable debugging')
+        parser.add_argument('--debug', action='store_false', help='Enable debugging')
         parser.add_argument('--record_img', action='store_true', help='Record images')
         parser.add_argument('--trained_policy', action='store_true', help='Trained policy')
         parser.add_argument('--policy_dir', default='./trained_policy/lookahead.zip', help='Policy directory')
