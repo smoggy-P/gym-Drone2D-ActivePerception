@@ -1,106 +1,116 @@
+"""Experiment runner — execute one simulation episode and record results.
+
+The :class:`Experiment` class wires together an environment and a gaze policy,
+runs the episode loop, and optionally appends the outcome to a CSV file.
+"""
+
+from __future__ import annotations
+
+import os
+
 import gym
 import numpy as np
 import pandas as pd
-import os
-# from tqdm import tqdm
-from yaw_planner import Oxford, LookAhead, NoControl, Rotating, Owl, LookGoal
-from datetime import datetime
-from utils import *
-# import matplotlib.pyplot as plt
-from envs.drone_v2 import Drone2DEnv2
 
-policy_list = {
-    'LookAhead': LookAhead,
-    'NoControl': NoControl,
-    'Oxford': Oxford,
-    'Rotating': Rotating,
-    'Owl' : Owl,
-    'LookGoal' : LookGoal
-}
+import drone2d.envs  # noqa: F401  — triggers Gym registration
+from drone2d.config import STATE_GOAL_REACHED, SimConfig
+from drone2d.gaze import get_gaze_planner
 
-def add_to_csv(dir, value):
-    df = pd.read_csv(dir, index_col=False)
-    df.loc[len(df)] = value
-    df.to_csv(dir, index=False)
+
+# CSV column names for experiment results
+_RESULT_COLUMNS = [
+    "Method", "Planner", "Motion Profile", "Map ID",
+    "Agent size", "Number of agents", "Number of pillars",
+    "Agent speed", "Drone speed", "Depth variance",
+    "Initial position", "Target position",
+    "Flight time", "Grid discovered", "Agent tracked",
+    "Agent tracked time", "Success",
+    "Static Collision", "Dynamic Collision",
+    "Freezing", "Dead Lock", "state machine",
+]
+
+
+def _append_csv(path: str, row: tuple) -> None:
+    """Append a single result row to *path*."""
+    df = pd.read_csv(path, index_col=False)
+    df.loc[len(df)] = row
+    df.to_csv(path, index=False)
+
 
 class Experiment:
-    def __init__(self, params, dir):
-        if params.gaze_method == 'NoControl':
-            params.drone_view_range = 360
-        self.params = params
-        self.env = gym.make(params.env, params=params)
-        self.dt = params.dt
-        self.policy = policy_list[params.gaze_method]
-        self.policy.__init__(self.policy, params)
-        self.result_dir = dir
+    """Single-episode experiment runner.
 
-        if (not os.path.isfile(dir)) and (params.record):
-            d = {'Method':[],
-                 'Planner':[],
-                 'Motion Profile':[],
-                 'Map ID':[],
-                 'Agent size':[],
-                 'Number of agents':[],
-                 'Number of pillars':[], 
-                 'Agent speed':[], 
-                 'Drone speed':[], 
-                 'Depth variance':[],
-                 'Initial position':[],
-                 'Target position':[],
+    Parameters
+    ----------
+    config : SimConfig
+        Simulation configuration.
+    result_dir : str
+        Path to the CSV results file.  Created automatically if it does not
+        exist.
+    """
 
-                 'Flight time':[],
-                 'Grid discovered':[],
-                 'Agent tracked':[],
-                 'Agent tracked time':[],
-                 'Success':[],
-                 'Static Collision':[],
-                 'Dynamic Collision':[],
-                 'Freezing':[],
-                 'Dead Lock':[],
-                 'state machine':[]}
-            df = pd.DataFrame(d)
-            df.to_csv(dir, index=False)
+    def __init__(self, config: SimConfig, result_dir: str) -> None:
+        if config.gaze_method == "NoControl":
+            config.drone_view_range = 360
 
+        self.config = config
+        self.env = gym.make(config.env, config=config)
+        self.dt = config.dt
+        self.result_dir = result_dir
 
-    def run(self):
+        # Instantiate the gaze planner properly
+        gaze_cls = get_gaze_planner(config.gaze_method)
+        self.gaze = gaze_cls(config)
+
+        # Create CSV header if needed
+        if config.record and not os.path.isfile(result_dir):
+            pd.DataFrame(columns=_RESULT_COLUMNS).to_csv(result_dir, index=False)
+
+    def run(self) -> None:
+        """Execute the episode until termination."""
         self.env.reset()
         done = False
+
         while not done:
-            a = self.policy.plan(self.policy, self.env.info)
-            _, _, done, info = self.env.step(a)
+            action = self.gaze.plan(self.env.info)
+            _, _, done, info = self.env.step(action)
 
-            if done:
-                if self.params.record:
-                    tracking_time = np.array([len(tracker.ts)*0.1 for tracker in info['tracker_buffer']]).sum()
+            if done and self.config.record:
+                tracking_time = np.array([
+                    len(t.ts) * 0.1 for t in info["tracker_buffer"]
+                ]).sum()
+                n_tracked = len(info["tracker_buffer"])
+                grid_map = info["drone"].map.grid_map
+                grid_discovered = (
+                    grid_map.shape[0] * grid_map.shape[1]
+                    - np.sum(grid_map == 0)
+                )
 
-                    value = (self.params.gaze_method,
-                             self.params.planner,
-                             
-                             self.params.motion_profile,
-                             self.params.map_id,
-                             self.params.agent_radius,
-                             self.params.agent_number,
-                             self.params.pillar_number,
-                             self.params.agent_max_speed,
-                             self.params.drone_max_speed,
-                             self.params.var_cam,
-                             self.params.init_position,
-                             self.params.target_list[0],
+                row = (
+                    self.config.gaze_method,
+                    self.config.planner,
+                    self.config.motion_profile,
+                    self.config.map_id,
+                    self.config.agent_radius,
+                    self.config.agent_number,
+                    self.config.pillar_number,
+                    self.config.agent_max_speed,
+                    self.config.drone_max_speed,
+                    self.config.var_cam,
+                    self.config.init_position,
+                    self.config.target_list[0] if self.config.target_list else None,
+                    info["flight_time"],
+                    grid_discovered,
+                    n_tracked,
+                    tracking_time / max(n_tracked, 1),
+                    int(info["state_machine"] == STATE_GOAL_REACHED),
+                    int(info["collision_flag"] == 1),
+                    int(info["collision_flag"] == 2),
+                    info["freezing_flag"],
+                    info["dead_lock_flag"],
+                    info["state_machine"],
+                )
+                _append_csv(self.result_dir, row)
 
-
-                             info['flight_time'],
-                             info['drone'].map.grid_map.shape[0] * info['drone'].map.grid_map.shape[1] - np.sum(np.where(info['drone'].map.grid_map == 0, 1, 0)),# grid discovered
-                             len(info['tracker_buffer']),
-                             tracking_time / len(info['tracker_buffer']),
-
-                             1 if info['state_machine'] == state_machine['GOAL_REACHED'] else 0,
-                             1 if info['collision_flag'] == 1 else 0,
-                             1 if info['collision_flag'] == 2 else 0,
-                             info['freezing_flag'],
-                             info['dead_lock_flag'],
-                             info['state_machine'])
-
-                    add_to_csv(self.result_dir, value)
-                    
-            if self.params.render:
+            if self.config.render:
                 self.env.render()
