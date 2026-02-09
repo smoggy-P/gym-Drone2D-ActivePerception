@@ -1,17 +1,33 @@
-.vscode/**
-gym_2d_perception.egg-info
-**/__pycache__/
-experiment/fails/**
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.env
+
+# Project-specific
+experiment/fails/
+experiment/results_*.csv
+experiment/log/
+trained_policy/
+maps/*.npy
 slurm-*.out
-src/**
-FORCES_NLP_solver/**
-*.forces
-.ipynb_checkpoints/**
-MPC_SOLVER/**
-trained_policy/**
+FORCES_NLP_solver/
 FORCES_*
+*.forces
+MPC_SOLVER/
 run*
-mpc/**
-mpc/!mpc_generator.py
-research/**
-experiment/**
+src/
+research/
+picture/
